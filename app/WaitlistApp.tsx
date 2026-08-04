@@ -44,6 +44,14 @@ export default function App() {
   const waiting=useMemo(()=>players.filter(p=>p.status==='waiting'||p.status==='sitout').sort(byPosition),[players]);
 
   useEffect(()=>{ void boot(); },[]);
+  useEffect(()=>{
+    const closeDrawerFromBackdrop=(event:MouseEvent)=>{
+      const target=event.target;
+      if(target instanceof HTMLElement&&target.classList.contains('drawer'))setScreen('queue');
+    };
+    document.addEventListener('click',closeDrawerFromBackdrop);
+    return()=>document.removeEventListener('click',closeDrawerFromBackdrop);
+  },[]);
   async function boot(){
     let {data:{session}}=await supabase.auth.getSession();
     if(!session){const result=await supabase.auth.signInAnonymously(); if(result.error){setNotice({title:'Connection needed',message:result.error.message});return;} session=result.data.session;}

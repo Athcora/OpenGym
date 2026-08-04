@@ -84,8 +84,19 @@ begin
     select config.game_number,coalesce(jsonb_agg(display_name order by queue_position),'[]'::jsonb) from public.waitlist_players where status='current'
     on conflict(game_number)do nothing;
 
-  update public.waitlist_players set status='rejoin',rejoin_expires_at=now()+interval '15 minutes',updated_at=now()
-    where status='current' and user_id is null;
+  -- Move admin-added players behind everyone who was already waiting before
+  -- hiding them for rejoin. Keeping their old current-game positions here
+  -- would let them jump ahead of the waiting line when they returned.
+  select coalesce(max(queue_position),0) into last_position
+    from public.waitlist_players where status in('current','waiting','sitout','rejoin');
+  with offline_finished as(
+    select id,row_number()over(order by queue_position)rn
+      from public.waitlist_players where status='current' and user_id is null
+  )
+  update public.waitlist_players p
+    set status='rejoin',queue_position=last_position+offline_finished.rn,
+        rejoin_expires_at=now()+interval '15 minutes',updated_at=now()
+    from offline_finished where p.id=offline_finished.id;
 
   select count(*) into total_active from public.waitlist_players where status in('current','waiting','sitout');
   if total_active>config.max_players then

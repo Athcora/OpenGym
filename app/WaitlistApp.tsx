@@ -4,9 +4,10 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { enablePush, pushSupported } from './push';
 import { supabase } from './supabase';
+import './admin-player.css';
 
 type PlayerStatus = 'current' | 'waiting' | 'sitout' | 'rejoin' | 'left';
-type Player = { id:string; user_id:string; first_name:string; last_name:string; display_name:string; status:PlayerStatus; queue_position:number|null; restricted:boolean; group_id:string|null };
+type Player = { id:string; user_id:string|null; first_name:string; last_name:string; display_name:string; status:PlayerStatus; queue_position:number|null; restricted:boolean; group_id:string|null };
 type Game = { id:string; game_number:number; player_names:string[]; ended_at:string };
 type Config = { game_number:number; max_players:number; mode:'regular'|'rejoin'|'teams' };
 type GroupRequest = { id:string; requester_id:string; target_id:string; status:string; requester?:Player };
@@ -20,7 +21,7 @@ export default function App() {
   const [players,setPlayers]=useState<Player[]>([]);
   const [games,setGames]=useState<Game[]>([]);
   const [config,setConfig]=useState<Config>({game_number:1,max_players:12,mode:'regular'});
-  const [screen,setScreen]=useState<'welcome'|'email'|'name'|'admin'|'queue'|'history'|'members'|'restricted'>('welcome');
+  const [screen,setScreen]=useState<'welcome'|'email'|'name'|'admin'|'queue'|'history'|'members'|'restricted'|'add-player'>('welcome');
   const [first,setFirst]=useState(''); const [last,setLast]=useState('');
   const [email,setEmail]=useState(''); const [authMode,setAuthMode]=useState<'signin'|'signup'>('signin');
   const [busy,setBusy]=useState(false); const [notice,setNotice]=useState<Notice>(null);
@@ -33,6 +34,7 @@ export default function App() {
   const [rejoinResponse,setRejoinResponse]=useState<string|null>(null);
   const [dragging,setDragging]=useState<string|null>(null);const [dragOver,setDragOver]=useState<string|null>(null);
   const [members,setMembers]=useState<Member[]>([]);
+  const [adminFirst,setAdminFirst]=useState(''); const [adminLast,setAdminLast]=useState('');
 
   const me=players.find(p=>p.user_id===user?.id);
   const current=useMemo(()=>players.filter(p=>p.status==='current').sort(byPosition),[players]);
@@ -97,6 +99,11 @@ export default function App() {
   async function openMembers(){const {data,error}=await supabase.rpc('admin_list_members');if(error)setNotice({title:'Members unavailable',message:error.message});else{setMembers((data??[]) as Member[]);setScreen('members')}}
   function confirmRestriction(player:Player){ask(player.restricted?'Unrestrict player?':'Restrict player?',player.restricted?`${player.display_name} will regain access to Next Game.`:`${player.display_name} will no longer be allowed to press Next Game.`,player.restricted?'Unrestrict':'Restrict',async()=>{await rpc('admin_restrict_player',{p_player_id:player.id,p_restricted:!player.restricted})})}
   async function adminLogin(event:FormEvent){event.preventDefault();if(await rpc('sign_in_waitlist_admin',{p_username:adminUser,p_password:adminPassword})){setAdmin(true);setScreen('queue');}}
+  async function adminAddPlayer(event:FormEvent){
+    event.preventDefault(); const f=cleanName(adminFirst),l=cleanName(adminLast);
+    if(!f){setNotice({title:'Enter a player name',message:'The player name needs to contain letters.'});return;}
+    if(await rpc('admin_add_player',{p_first_name:f,p_last_name:l})){setAdminFirst('');setAdminLast('');setScreen('queue');}
+  }
   async function requestGroup(player:Player){await rpc('request_player_group',{p_target_id:player.id});}
   async function answerGroup(id:string,accept:boolean){await rpc('answer_player_group',{p_request_id:id,p_accept:accept});}
   async function movePlayer(playerId:string,status:'current'|'waiting',index:number){setDragging(null);setDragOver(null);await rpc('admin_move_player',{p_player_id:playerId,p_status:status,p_index:index});}
@@ -121,7 +128,7 @@ export default function App() {
     <header className="topbar"><Logo compact/><div className="top-actions">{pushSupported()&&!notifications&&<button className="icon-button" onClick={turnOnNotifications}>Enable alerts</button>}<button className="icon-button" onClick={()=>ask('Log out?','This will remove you from the waitlist and sign you out.','Log out',async()=>{await rpc('leave_waitlist');await logout()})}>Log out</button></div></header>
     <main className="queue-page">
       <section className="game-heading"><div><span className="kicker">LIVE QUEUE {admin?'· ADMIN':''}</span><h1>Game {config.game_number}</h1></div><span className="live-pill"><i/>Live</span></section>
-      {admin&&<section className="admin-tools"><select value={config.mode} onChange={e=>void rpc('admin_set_mode',{p_mode:e.target.value})}><option value="regular">Regular waitlist</option><option value="rejoin">Rejoin waitlist</option><option value="teams">Teams mode</option></select><button onClick={()=>void rpc('admin_undo_last')}>↶ Undo</button><button onClick={()=>setScreen('restricted')}>Restricted</button><button onClick={()=>void openMembers()}>Members</button><button className="reset-tool" onClick={()=>ask('Reset the entire waitlist?','This removes every player and clears past games. The admin can undo this action.','Reset',async()=>{await rpc('admin_reset_waitlist')})}>Reset</button></section>}
+      {admin&&<section className="admin-tools"><select value={config.mode} onChange={e=>void rpc('admin_set_mode',{p_mode:e.target.value})}><option value="regular">Regular waitlist</option><option value="rejoin">Rejoin waitlist</option><option value="teams">Teams mode</option></select><button className="add-player-tool" onClick={()=>setScreen('add-player')}>＋ Add player</button><button onClick={()=>void rpc('admin_undo_last')}>↶ Undo</button><button onClick={()=>setScreen('restricted')}>Restricted</button><button onClick={()=>void openMembers()}>Members</button><button className="reset-tool" onClick={()=>ask('Reset the entire waitlist?','This removes every player and clears past games. The admin can undo this action.','Reset',async()=>{await rpc('admin_reset_waitlist')})}>Reset</button></section>}
       <QueueCard title={`Game ${config.game_number}`} subtitle={`${current.length} playing`} status="current" players={current} start={1} me={me} admin={admin} editing={editing} editName={editName} setEditing={setEditing} setEditName={setEditName} saveName={saveName} requestGroup={requestGroup} restrict={confirmRestriction} dragging={dragging} dragOver={dragOver} setDragging={setDragging} setDragOver={setDragOver} movePlayer={movePlayer}/>
       <QueueCard title="Waitlist" subtitle={waiting.length?`${waiting.length} waiting`:'No one waiting'} status="waiting" players={waiting} start={current.length+1} me={me} admin={admin} editing={editing} editName={editName} setEditing={setEditing} setEditName={setEditName} saveName={saveName} game={config.game_number} max={config.max_players} requestGroup={requestGroup} restrict={confirmRestriction} dragging={dragging} dragOver={dragOver} setDragging={setDragging} setDragOver={setDragOver} movePlayer={movePlayer}/>
       {groupRequests.filter(request=>players.find(p=>p.id===request.target_id)?.user_id===user?.id).map(request=><section className="request-card" key={request.id}><strong>{request.requester?.display_name??'A player'} wants to group with you</strong><p>Accepting may move you back to the furthest group member’s position.</p><div><button className="next" onClick={()=>void answerGroup(request.id,true)}>Accept</button><button className="neutral" onClick={()=>void answerGroup(request.id,false)}>Decline</button></div></section>)}
@@ -132,6 +139,7 @@ export default function App() {
     </main>
     {screen==='history'&&<div className="drawer"><div className="drawer-card"><button className="back" onClick={()=>setScreen('queue')}>← Back to waitlist</button><span className="kicker">GAME HISTORY</span><h2>Past games</h2>{games.length===0?<p>No completed games yet.</p>:games.map(game=><article className="past-game" key={game.id}><strong>Game {game.game_number}</strong><p>{game.player_names.join(', ')}</p></article>)}</div></div>}
     {screen==='restricted'&&<div className="drawer"><div className="drawer-card"><button className="back" onClick={()=>setScreen('queue')}>← Back to waitlist</button><span className="kicker">ADMIN</span><h2>Restricted players</h2>{players.filter(p=>p.restricted).length===0?<p>No restricted players.</p>:players.filter(p=>p.restricted).map(player=><article className="past-game member-row" key={player.id}><strong>{player.display_name}</strong><button onClick={()=>void rpc('admin_restrict_player',{p_player_id:player.id,p_restricted:false})}>Unrestrict</button></article>)}</div></div>}
+    {screen==='add-player'&&<div className="drawer"><div className="drawer-card add-player-card"><button className="back" onClick={()=>setScreen('queue')}>← Back to waitlist</button><span className="kicker">ADMIN</span><h2>Add a player</h2><p>Add a walk-in player directly to the live queue. They do not need an account.</p><form onSubmit={adminAddPlayer}><label>First name<input autoFocus value={adminFirst} onChange={e=>setAdminFirst(e.target.value)} placeholder="First name"/></label><label>Last initial or name <em>optional</em><input value={adminLast} onChange={e=>setAdminLast(e.target.value)} placeholder="Last initial or name"/></label><button className="hero-button" disabled={busy}>{busy?'Adding…':'Add to waitlist'}</button></form></div></div>}
     {screen==='members'&&<div className="drawer"><div className="drawer-card"><button className="back" onClick={()=>setScreen('queue')}>← Back to waitlist</button><span className="kicker">ADMIN</span><h2>Members</h2>{members.length===0?<p>No accounts have been created yet.</p>:members.map(member=><article className="past-game" key={member.user_id}><strong>{member.player_name??member.email??member.phone??'Member'}</strong><p>{member.email??member.phone??'Verified account'} · Joined {new Date(member.created_at).toLocaleDateString()}</p></article>)}</div></div>}
     {notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
 }

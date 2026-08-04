@@ -1,0 +1,72 @@
+.admin-tools {
+  flex-wrap: wrap;
+}
+
+.admin-tools select {
+  min-width: 180px;
+}
+
+.admin-tools .add-player-tool {
+  background: #286b54;
+  border-color: #347f66;
+  color: #fff;
+  font-weight: 800;
+}
+
+.add-player-card > p {
+  color: #a4a9b4;
+  line-height: 1.5;
+}
+
+.add-player-card form {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.add-player-card label {
+  color: #b8bdc7;
+  font-size: .8rem;
+  font-weight: 700;
+}
+
+.add-player-card label em {
+  color: #777d88;
+  float: right;
+  font-weight: 400;
+}
+
+.add-player-card input {
+  background: #1d1e22;
+  border: 1px solid #42454e;
+  border-radius: 12px;
+  color: #fff;
+  margin-top: 7px;
+  outline: none;
+  padding: 14px;
+  width: 100%;
+}
+
+.add-player-card input:focus {
+  border-color: #7564f5;
+  box-shadow: 0 0 0 4px #7564f522;
+}
+
+@media (prefers-color-scheme: light) {
+  .admin-tools .add-player-tool {
+    background: #2f8b69;
+    border-color: #2f8b69;
+    color: #fff;
+  }
+
+  .add-player-card > p,
+  .add-player-card label {
+    color: #5f6876;
+  }
+
+  .add-player-card input {
+    background: #f4f6f8;
+    border-color: #d9dee5;
+    color: #1c222b;
+  }
+}

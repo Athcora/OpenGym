@@ -14,8 +14,8 @@
 }
 
 .admin-tools .next-game-tool {
-  background: #2f8b69;
-  border-color: #3aa47d;
+  background: #2563a8;
+  border-color: #3479c3;
   color: #fff;
   font-weight: 800;
 }
@@ -112,8 +112,8 @@
   }
 
   .admin-tools .next-game-tool {
-    background: #247a5b;
-    border-color: #247a5b;
+    background: #2878c8;
+    border-color: #2878c8;
   }
 
   .add-player-card > p,

@@ -25,6 +25,46 @@
   opacity: .45;
 }
 
+.admin-tools .rejoin-tool.attention {
+  background: #8b672f;
+  border-color: #b58943;
+  color: #fff;
+  font-weight: 800;
+}
+
+.offline-rejoin-row {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.offline-rejoin-row > div:last-child {
+  display: flex;
+  gap: 8px;
+}
+
+.offline-rejoin-row button {
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 9px 12px;
+}
+
+.history-row strong {
+  display: block;
+  line-height: 1.35;
+}
+
+@media (max-width: 520px) {
+  .offline-rejoin-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 .add-player-card > p {
   color: #a4a9b4;
   line-height: 1.5;

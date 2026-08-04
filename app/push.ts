@@ -7,7 +7,11 @@ function decodeBase64Url(value: string) {
 }
 
 export function pushSupported() {
-  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  return typeof window !== 'undefined'
+    && typeof navigator !== 'undefined'
+    && 'serviceWorker' in navigator
+    && 'PushManager' in window
+    && 'Notification' in window;
 }
 
 export async function enablePush() {
@@ -39,4 +43,3 @@ export async function enablePush() {
   }, { onConflict: 'endpoint' });
   if (error) throw error;
 }
-

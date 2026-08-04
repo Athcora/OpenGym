@@ -24,7 +24,9 @@ export default function App() {
   const [first,setFirst]=useState(''); const [last,setLast]=useState('');
   const [busy,setBusy]=useState(false); const [notice,setNotice]=useState<Notice>(null);
   const [editing,setEditing]=useState<string|null>(null); const [editName,setEditName]=useState('');
-  const [notifications,setNotifications]=useState(Notification.permission==='granted');
+  const [notifications,setNotifications]=useState(
+    typeof Notification !== 'undefined' && Notification.permission === 'granted',
+  );
   const [admin,setAdmin]=useState(false); const [adminUser,setAdminUser]=useState(''); const [adminPassword,setAdminPassword]=useState('');
   const [groupRequests,setGroupRequests]=useState<GroupRequest[]>([]);
   const [rejoinResponse,setRejoinResponse]=useState<string|null>(null);

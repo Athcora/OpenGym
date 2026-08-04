@@ -1,0 +1,12 @@
+{
+  "id": "/",
+  "name": "Open Gym Waitlist",
+  "short_name": "Open Gym",
+  "description": "Join the volleyball waitlist and receive game notifications.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#17181c",
+  "theme_color": "#17181c",
+  "icons": []
+}
+

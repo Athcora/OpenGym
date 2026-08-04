@@ -1,0 +1,11 @@
+.rejoin-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:22px; }
+.rejoin-actions button { min-height:54px; border:0; border-radius:14px; color:#fff; font-weight:800; }
+.rejoin-card { margin-top:12vh; }
+.player-row[draggable="true"] { cursor:grab; }
+.player-row.dragging { opacity:.28; transform:scale(.98); }
+.player-row.drop-space { transform:translateY(12px); box-shadow:0 -10px 22px rgba(117,100,245,.16); }
+.player-row[draggable="true"]:active { cursor:grabbing; }
+.member-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.member-row button { border:0; border-radius:10px; background:#5d536f; color:white; padding:9px 12px; }
+@media (max-width:620px) { .admin-tools { display:grid; grid-template-columns:1fr 1fr; } .admin-tools select { grid-column:1/-1; } }
+.admin-tools .reset-tool { color:#ffabb3; border-color:#70444a; }

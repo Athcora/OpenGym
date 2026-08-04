@@ -35,7 +35,7 @@ $$;
 
 create or replace function public.admin_answer_offline_rejoin(p_player_id uuid,p_stay boolean)
 returns jsonb language plpgsql security definer set search_path=public as $$
-declare player public.waitlist_players;
+declare player public.waitlist_players;declare active_count integer;declare max_players integer;declare new_status text;
 begin
   if not public.is_waitlist_admin() then raise exception 'Admin access required.'; end if;
   select * into player from public.waitlist_players where id=p_player_id and user_id is null and status='rejoin' for update;
@@ -45,13 +45,16 @@ begin
     raise exception 'The 15-minute rejoin window has expired.';
   end if;
   perform public.save_admin_undo(case when p_stay then 'rejoin player' else 'remove rejoin player' end);
-  update public.waitlist_players set status=case when p_stay then 'waiting' else 'left' end,
+  select count(*) into active_count from public.waitlist_players where status in('current','waiting','sitout');
+  select c.max_players into max_players from public.waitlist_config c where c.id;
+  new_status:=case when active_count<max_players then 'current' else 'waiting' end;
+  update public.waitlist_players set status=case when p_stay then new_status else 'left' end,
     queue_position=case when p_stay then player.queue_position else null end,rejoin_expires_at=null,updated_at=now() where id=player.id;
   if p_stay then
     insert into public.waitlist_events(actor_user_id,actor_name,event_type,message)
-    values(auth.uid(),'Admin','admin_rejoin','The admin returned '||player.display_name||' to their saved queue position.');
+    values(auth.uid(),'Admin','admin_rejoin','The admin returned '||player.display_name||case when new_status='current' then ' directly to the current game.' else ' to their saved queue position.' end);
   end if;
-  return jsonb_build_object('message',case when p_stay then player.display_name||' rejoined at their saved position.' else player.display_name||' was removed.' end);
+  return jsonb_build_object('message',case when p_stay and new_status='current' then player.display_name||' rejoined the current game.' when p_stay then player.display_name||' rejoined at their saved position.' else player.display_name||' was removed.' end);
 end;
 $$;
 

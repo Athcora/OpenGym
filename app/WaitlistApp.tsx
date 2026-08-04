@@ -102,7 +102,7 @@ export default function App() {
   async function adminAddPlayer(event:FormEvent){
     event.preventDefault(); const f=cleanName(adminFirst),l=cleanName(adminLast);
     if(!f){setNotice({title:'Enter a player name',message:'The player name needs to contain letters.'});return;}
-    if(await rpc('admin_add_player',{p_first_name:f,p_last_name:l})){setAdminFirst('');setAdminLast('');setScreen('queue');}
+    if(await rpc('admin_add_player',{p_first_name:f,p_last_name:l})){setAdminFirst('');setAdminLast('');}
   }
   async function requestGroup(player:Player){await rpc('request_player_group',{p_target_id:player.id});}
   async function answerGroup(id:string,accept:boolean){await rpc('answer_player_group',{p_request_id:id,p_accept:accept});}

@@ -81,10 +81,10 @@ export default function App() {
     const uid=(activeUser??user)?.id; const own=(p??[]).find(item=>item.user_id===uid);
     if(own) setScreen('queue');
   }
-  async function rpc(name:string,args:Record<string,unknown>={}){
+  async function rpc(name:string,args:Record<string,unknown>={},showSuccess=true){
     setBusy(true); const {data,error}=await supabase.rpc(name,args); setBusy(false);
     if(error){setNotice({title:'Could not complete that',message:error.message});return false;}
-    if(data?.message)setNotice({title:'Done',message:data.message}); await refresh(); return true;
+    if(data?.message&&showSuccess)setNotice({title:'Done',message:data.message}); await refresh(); return true;
   }
   async function join(event:FormEvent){event.preventDefault(); const f=cleanName(first),l=cleanName(last); if(!f){setNotice({title:'Enter your name',message:'Your name needs to contain letters.'});return;}
     if(await rpc('join_waitlist',{p_first_name:f,p_last_name:l}))setScreen('queue');
@@ -118,7 +118,7 @@ export default function App() {
     if(await rpc('admin_add_player',{p_first_name:f,p_last_name:l})){setAdminFirst('');setAdminLast('');}
   }
   async function answerOfflineRejoin(player:AdminRejoin,stay:boolean){
-    await rpc('admin_answer_offline_rejoin',{p_player_id:player.id,p_stay:stay});
+    await rpc('admin_answer_offline_rejoin',{p_player_id:player.id,p_stay:stay},false);
   }
   async function requestGroup(player:Player){await rpc('request_player_group',{p_target_id:player.id});}
   async function answerGroup(id:string,accept:boolean){await rpc('answer_player_group',{p_request_id:id,p_accept:accept});}

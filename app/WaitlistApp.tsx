@@ -20,8 +20,9 @@ export default function App() {
   const [players,setPlayers]=useState<Player[]>([]);
   const [games,setGames]=useState<Game[]>([]);
   const [config,setConfig]=useState<Config>({game_number:1,max_players:12,mode:'regular'});
-  const [screen,setScreen]=useState<'welcome'|'name'|'admin'|'queue'|'history'|'members'|'restricted'>('welcome');
+  const [screen,setScreen]=useState<'welcome'|'email'|'name'|'admin'|'queue'|'history'|'members'|'restricted'>('welcome');
   const [first,setFirst]=useState(''); const [last,setLast]=useState('');
+  const [email,setEmail]=useState(''); const [authMode,setAuthMode]=useState<'signin'|'signup'>('signin');
   const [busy,setBusy]=useState(false); const [notice,setNotice]=useState<Notice>(null);
   const [editing,setEditing]=useState<string|null>(null); const [editName,setEditName]=useState('');
   const [notifications,setNotifications]=useState(
@@ -78,7 +79,21 @@ export default function App() {
   async function turnOnNotifications(){setBusy(true);try{await enablePush();setNotifications(true);setNotice({title:'Notifications are on',message:"We’ll alert you when your game starts or needs a response."});}catch(error){setNotice({title:'Notifications unavailable',message:error instanceof Error?error.message:'Could not enable notifications.'});}setBusy(false);}
   async function saveName(player:Player){const parts=cleanName(editName).split(' ');const f=parts.shift()??'';const l=parts.join(' ');if(await rpc('rename_waitlist_player',{p_player_id:player.id,p_first_name:f,p_last_name:l}))setEditing(null);}
   async function logout(){await supabase.auth.signOut();setPlayers([]);setUser(null);setScreen('welcome');await boot();}
-  async function accountSignIn(){const {error}=await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin}});if(error)setNotice({title:'Sign in unavailable',message:error.message});}
+  function openEmailAuth(mode:'signin'|'signup'){setAuthMode(mode);setEmail('');if(mode==='signin'){setFirst('');setLast('');}setScreen('email');}
+  async function emailSignIn(event:FormEvent){
+    event.preventDefault();
+    const address=email.trim().toLowerCase(); const f=cleanName(first); const l=cleanName(last);
+    if(!address){setNotice({title:'Enter your email',message:'Enter the email address you want to use for OpenGym.'});return;}
+    if(authMode==='signup'&&(!f||!l)){setNotice({title:'Enter your full name',message:'A first and last name are required when creating an account.'});return;}
+    setBusy(true);
+    const {error}=await supabase.auth.signInWithOtp({
+      email:address,
+      options:{emailRedirectTo:location.origin,shouldCreateUser:authMode==='signup',data:authMode==='signup'?{first_name:f,last_name:l}:undefined},
+    });
+    setBusy(false);
+    if(error){setNotice({title:'Could not send the email',message:error.message});return;}
+    setNotice({title:'Check your email',message:`We sent a secure sign-in link to ${address}. Open it on this device to continue.`});
+  }
   async function openMembers(){const {data,error}=await supabase.rpc('admin_list_members');if(error)setNotice({title:'Members unavailable',message:error.message});else{setMembers((data??[]) as Member[]);setScreen('members')}}
   function confirmRestriction(player:Player){ask(player.restricted?'Unrestrict player?':'Restrict player?',player.restricted?`${player.display_name} will regain access to Next Game.`:`${player.display_name} will no longer be allowed to press Next Game.`,player.restricted?'Unrestrict':'Restrict',async()=>{await rpc('admin_restrict_player',{p_player_id:player.id,p_restricted:!player.restricted})})}
   async function adminLogin(event:FormEvent){event.preventDefault();if(await rpc('sign_in_waitlist_admin',{p_username:adminUser,p_password:adminPassword})){setAdmin(true);setScreen('queue');}}
@@ -96,7 +111,8 @@ export default function App() {
     setBusy(false);setNotice({title:'Next game started',message:data.message});await refresh();
   }
 
-  if(screen==='welcome')return <Shell><section className="auth-card"><Logo/><div className="auth-links"><button className="text-button" onClick={()=>void accountSignIn()}>Sign in</button><span>or</span><button className="text-button" onClick={()=>void accountSignIn()}>Create account</button></div><button className="hero-button" onClick={()=>setScreen('name')}>Continue as guest</button><button className="admin-link" onClick={()=>setScreen('admin')}>Admin</button><p className="fine">Join the live volleyball queue from your phone.</p></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
+  if(screen==='welcome')return <Shell><section className="auth-card"><Logo/><div className="auth-links"><button className="text-button" onClick={()=>openEmailAuth('signin')}>Sign in</button><span>or</span><button className="text-button" onClick={()=>openEmailAuth('signup')}>Create account</button></div><button className="hero-button" onClick={()=>setScreen('name')}>Continue as guest</button><button className="admin-link" onClick={()=>setScreen('admin')}>Admin</button><p className="fine">Join the live volleyball queue from your phone.</p></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
+  if(screen==='email')return <Shell><section className="auth-card"><button className="back" onClick={()=>setScreen('welcome')}>← Go back</button><span className="kicker">{authMode==='signup'?'CREATE ACCOUNT':'ACCOUNT SIGN IN'}</span><h1>{authMode==='signup'?'Create your OpenGym account':'Welcome back'}</h1><p>We’ll email you a secure link—no password needed.</p><form onSubmit={emailSignIn}>{authMode==='signup'&&<><label>First name<input autoFocus value={first} onChange={e=>setFirst(e.target.value)} placeholder="First name" autoComplete="given-name" required/></label><label>Last name<input value={last} onChange={e=>setLast(e.target.value)} placeholder="Last name" autoComplete="family-name" required/></label></>}<label>Email address<input autoFocus={authMode==='signin'} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required/></label><button className="hero-button" disabled={busy}>{busy?'Sending…':'Email me a sign-in link'}</button></form><p className="fine">The link expires for your security.</p></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
   if(screen==='admin')return <Shell><section className="auth-card"><button className="back" onClick={()=>setScreen('welcome')}>← Go back</button><span className="kicker">ADMIN ACCESS</span><h1>Manage OpenGym</h1><p>Sign in to choose a waitlist mode and manage players.</p><form onSubmit={adminLogin}><label>Username<input autoFocus value={adminUser} onChange={e=>setAdminUser(e.target.value)} autoCapitalize="none"/></label><label>Password<input type="password" value={adminPassword} onChange={e=>setAdminPassword(e.target.value)}/></label><button className="hero-button" disabled={busy}>Sign in</button></form></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
   if(me?.status==='rejoin'&&rejoinResponse)return <Shell><section className="auth-card rejoin-card"><Logo/><span className="kicker">REJOIN WAITLIST</span><h1>Do you want to stay?</h1><p>Your position is saved. Choose within five minutes or you’ll automatically leave the waitlist.</p><div className="rejoin-actions"><button className="next" onClick={()=>void answerRejoin('stay')}>Stay</button><button className="danger" onClick={()=>void answerRejoin('leave')}>Leave</button></div></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
   if(screen==='name')return <Shell><section className="auth-card"><button className="back" onClick={()=>setScreen('welcome')}>← Go back</button><span className="kicker">PLAYER DETAILS</span><h1>What should we call you?</h1><p>Your name is added to the waitlist as soon as you continue.</p><form onSubmit={join}><label>First name<input autoFocus value={first} onChange={e=>setFirst(e.target.value)} placeholder="First name"/></label><label>Last initial or name <em>optional</em><input value={last} onChange={e=>setLast(e.target.value)} placeholder="Last initial or name"/></label><button className="hero-button" disabled={busy}>Join waitlist</button></form></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;

@@ -97,8 +97,13 @@ begin
     set queue_position=last_position+finished_order.rn,updated_at=now()
     from finished_order where p.id=finished_order.id;
 
-  update public.waitlist_players set status='rejoin',rejoin_expires_at=now()+interval '15 minutes',updated_at=now()
-    where status='current' and user_id is null;
+  -- Regular mode is a continuous queue: every finished player stays active and
+  -- rotates behind the existing waiters until that player or an admin removes
+  -- them. Only Rejoin mode temporarily removes finished players for confirmation.
+  if config.mode='rejoin' then
+    update public.waitlist_players set status='rejoin',rejoin_expires_at=now()+interval '15 minutes',updated_at=now()
+      where status='current' and user_id is null;
+  end if;
 
   -- Rejoin mode always requires every account player from the finished game
   -- to confirm that they are staying, even when the remaining queue is small.

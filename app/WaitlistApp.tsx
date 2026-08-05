@@ -175,10 +175,10 @@ export default function App() {
     if(!me)return;
     const projectedGame=projectedGameForGrouping(me.id,player.id);
     ask(
-      `Group up with ${player.display_name}?`,
+      `Group up with ${player.display_name}? (Current game: Game ${config.game_number})`,
       `Grouping may move you back to the furthest group member’s position. If accepted, you are projected to play in Game ${projectedGame}.`,
       'Send request',
-      async()=>{if(await rpc('request_player_group',{p_target_id:player.id},false))setNotice({title:'Group request sent',message:`Your request was sent to ${player.display_name}. (Current game: Game ${config.game_number})`});}
+      async()=>{if(await rpc('request_player_group',{p_target_id:player.id},false))setNotice({title:'Group request sent',message:`Your request was sent to ${player.display_name}.`});}
     );
   }
   async function answerGroup(id:string,accept:boolean){

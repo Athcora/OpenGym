@@ -69,6 +69,12 @@
 .theme-light .player-row.group-end,.theme-light .player-row.group-single { border-bottom-color:#26966a; }
 .group-projection-warning { display:block; margin:10px 0 15px; padding:12px 14px; border-radius:11px; background:#dff8ec; color:#175c42; font-size:.92rem; line-height:1.4; }
 .theme-dark .group-projection-warning { background:#183d31; color:#91e3c2; }
+
+/* Keep the projected-game label attached to the player's name. */
+.player-name small { margin-left:0; }
+@media (max-width:520px) {
+  .player-name small { display:block; font-size:.64rem; }
+}
 .group-button.remove-group-button { background:#d95763; color:#fff; }
 .group-button.remove-group-button:hover { background:#e66b75; box-shadow:0 0 16px #d9576355; }
 .theme-dark .group-button.remove-group-button { background:#a94350; color:#fff; }

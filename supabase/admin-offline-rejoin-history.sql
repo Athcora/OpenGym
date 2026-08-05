@@ -68,6 +68,29 @@ begin
 end;
 $$;
 
+create or replace function public.next_game_player_ids(p_limit integer)
+returns table(player_id uuid) language plpgsql security definer set search_path=public as $$
+declare player_block record; remaining integer:=greatest(p_limit,0);
+begin
+  for player_block in
+    select coalesce(group_id,id) block_id,count(*)::integer block_size,min(queue_position) first_position
+    from public.waitlist_players
+    where status='waiting'
+    group by coalesce(group_id,id)
+    order by min(queue_position),coalesce(group_id,id)
+  loop
+    exit when remaining<=0;
+    if player_block.block_size<=remaining then
+      return query
+        select p.id from public.waitlist_players p
+        where p.status='waiting' and coalesce(p.group_id,p.id)=player_block.block_id
+        order by p.queue_position,p.id;
+      remaining:=remaining-player_block.block_size;
+    end if;
+  end loop;
+end;
+$$;
+
 create or replace function public.end_current_game()
 returns jsonb language plpgsql security definer set search_path=public as $$
 declare caller public.waitlist_players;declare config public.waitlist_config;declare total_active integer;
@@ -125,15 +148,15 @@ begin
     if config.mode<>'rejoin' then
       update public.waitlist_players set status='waiting',updated_at=now() where status='current';
     end if;
-    with chosen as(select id from public.waitlist_players where status='waiting' order by queue_position limit config.max_players)
-      update public.waitlist_players set status='current',updated_at=now() where id in(select id from chosen);
+    with chosen as(select player_id from public.next_game_player_ids(config.max_players))
+      update public.waitlist_players set status='current',updated_at=now() where id in(select player_id from chosen);
     select coalesce(min(queue_position),1)into last_position from public.waitlist_players where status='waiting';
     with skipped as(select id,row_number()over(order by queue_position)rn from public.waitlist_players where status='sitout')
       update public.waitlist_players p set status='waiting',queue_position=last_position-skipped.rn,updated_at=now() from skipped where p.id=skipped.id;
   else
     select greatest(config.max_players-count(*),0) into open_slots from public.waitlist_players where status='current';
-    with chosen as(select id from public.waitlist_players where status='waiting' order by queue_position limit open_slots)
-      update public.waitlist_players set status='current',updated_at=now() where id in(select id from chosen);
+    with chosen as(select player_id from public.next_game_player_ids(open_slots))
+      update public.waitlist_players set status='current',updated_at=now() where id in(select player_id from chosen);
   end if;
   update public.waitlist_config set game_number=game_number+1,updated_at=now()where id;
   actor:=coalesce(caller.display_name,'Admin');

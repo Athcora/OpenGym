@@ -75,6 +75,17 @@
 @media (max-width:520px) {
   .player-name small { display:block; font-size:.64rem; }
 }
+
+.history-drawer-card { width:min(100%,820px); }
+.past-games-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; align-items:start; }
+.past-games-grid .past-game { margin:0; min-width:0; }
+.past-games-grid .past-game>strong { display:block; margin-bottom:12px; font-size:1.05rem; }
+.past-games-grid ol { margin:0; padding:0; list-style:none; counter-reset:past-player; }
+.past-games-grid li { counter-increment:past-player; display:flex; gap:8px; align-items:baseline; padding:7px 0; border-top:1px solid rgba(139,144,160,.18); line-height:1.25; }
+.past-games-grid li::before { content:counter(past-player); min-width:1.2em; color:#8b90a0; font-size:.72rem; font-weight:750; }
+@media (max-width:520px) {
+  .past-games-grid { grid-template-columns:1fr; }
+}
 .group-button.remove-group-button { background:#d95763; color:#fff; }
 .group-button.remove-group-button:hover { background:#e66b75; box-shadow:0 0 16px #d9576355; }
 .theme-dark .group-button.remove-group-button { background:#a94350; color:#fff; }

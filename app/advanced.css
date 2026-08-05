@@ -21,6 +21,8 @@
 .admin-player-actions { display:flex; align-items:center; gap:5px; margin-left:8px; }
 .admin-player-actions button { border:0; border-radius:9px; padding:7px 9px; color:#fff; cursor:pointer; font-size:.66rem; font-weight:800; transition:transform .16s,box-shadow .16s,filter .16s; }
 .admin-sitout-button,.admin-leave-button { background:#6b6478; }
+.admin-player-actions .admin-leave-button { font-size:0; }
+.admin-player-actions .admin-leave-button::after { content:"Remove"; font-size:.68rem; }
 .restrict-button { background:#a33f4b; }
 .admin-player-actions button:hover { transform:translateY(-1px); filter:brightness(1.08); }
 .admin-sitout-button:hover,.admin-leave-button:hover { box-shadow:0 0 15px #80768e70; }

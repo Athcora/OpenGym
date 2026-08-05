@@ -15,7 +15,7 @@ type GroupNotification = { id:string; user_id:string; message:string; read_at:st
 type Member = { user_id:string;email:string|null;phone:string|null;created_at:string;player_name:string|null };
 type AdminRejoin = { id:string;display_name:string;queue_position:number;expires_at:string };
 type AdminEvent = { id:number;actor_name:string;event_type:string;message:string;created_at:string };
-type Notice = { title:string; message:string; confirm?:string; action?:()=>Promise<void> } | null;
+type Notice = { title:string; message:string; confirm?:string; action?:()=>Promise<void>; onClose?:()=>void } | null;
 
 const cleanName = (value:string) => value.replace(/[^\p{L}\s]/gu, '').replace(/\s+/g, ' ').trim();
 
@@ -34,12 +34,12 @@ export default function App() {
   );
   const [admin,setAdmin]=useState(false); const [adminUser,setAdminUser]=useState(''); const [adminPassword,setAdminPassword]=useState('');
   const [groupRequests,setGroupRequests]=useState<GroupRequest[]>([]);
-  const [rejoinResponse,setRejoinResponse]=useState<string|null>(null);
+  const [rejoinResponse,setRejoinResponse]=useState<string|null>(null); const [rejoinChecked,setRejoinChecked]=useState(false);
   const [dragging,setDragging]=useState<string|null>(null);const [dragOver,setDragOver]=useState<string|null>(null);
   const [members,setMembers]=useState<Member[]>([]);
   const [adminFirst,setAdminFirst]=useState(''); const [adminLast,setAdminLast]=useState('');
   const [adminRejoins,setAdminRejoins]=useState<AdminRejoin[]>([]); const [adminEvents,setAdminEvents]=useState<AdminEvent[]>([]); const [historySearch,setHistorySearch]=useState('');
-  const outsideSince=useRef<number|null>(null);
+  const outsideSince=useRef<number|null>(null); const expiredRejoinHandled=useRef(false);
 
   const me=players.find(p=>p.user_id===user?.id);
   const current=useMemo(()=>players.filter(p=>p.status==='current').sort(byPosition),[players]);
@@ -67,6 +67,17 @@ export default function App() {
     },()=>{}, {enableHighAccuracy:true,maximumAge:15_000,timeout:20_000});
     return()=>{active=false;navigator.geolocation.clearWatch(watch);outsideSince.current=null;};
   },[me?.id,me?.status,admin,config.geofence_enabled]);
+  useEffect(()=>{
+    if(me?.status!=='rejoin'||rejoinResponse||!rejoinChecked){if(me?.status!=='rejoin')expiredRejoinHandled.current=false;return;}
+    if(expiredRejoinHandled.current)return;
+    expiredRejoinHandled.current=true;
+    void (async()=>{
+      const {error}=await supabase.rpc('leave_waitlist');
+      if(error){expiredRejoinHandled.current=false;setNotice({title:'Could not update the waitlist',message:error.message});return;}
+      await refresh();
+      setNotice({title:'Rejoin time expired',message:'You did not rejoin within the allotted time, so you were removed from the waitlist.',onClose:()=>setScreen('welcome')});
+    })();
+  },[me?.status,rejoinResponse,rejoinChecked]);
   async function boot(){
     let {data:{session}}=await supabase.auth.getSession();
     if(!session){const result=await supabase.auth.signInAnonymously(); if(result.error){setNotice({title:'Connection needed',message:result.error.message});return;} session=result.data.session;}
@@ -92,7 +103,7 @@ export default function App() {
     return()=>{void supabase.removeChannel(channel)};
   }
   async function refresh(activeUser?:User|null){
-    const [{data:p},{data:c},{data:g},{data:a},{data:r},{data:rejoin}]=await Promise.all([
+    const [{data:p},{data:c},{data:g},{data:a},{data:r},{data:rejoin,error:rejoinError}]=await Promise.all([
       supabase.from('waitlist_players').select('*').neq('status','left').order('queue_position'),
       supabase.from('waitlist_config').select('game_number,max_players,mode,geofence_enabled,geofence_radius_m').single(),
       supabase.from('past_games').select('*').order('game_number',{ascending:false}),
@@ -103,7 +114,7 @@ export default function App() {
     const playerRows=(p??[]) as Player[];setPlayers(playerRows); if(c)setConfig(c as Config); setGames((g??[]) as Game[]);setAdmin(Boolean(a));
     if(a){const {data:offline}=await supabase.rpc('admin_list_offline_rejoins');setAdminRejoins((offline??[]) as AdminRejoin[]);}else setAdminRejoins([]);
     setGroupRequests(((r??[]) as GroupRequest[]).map(request=>({...request,requester:playerRows.find(player=>player.id===request.requester_id)})));
-    setRejoinResponse(rejoin?.id??null);
+    setRejoinResponse(rejoin?.id??null);setRejoinChecked(!rejoinError);
     const uid=(activeUser??user)?.id; const own=(p??[]).find(item=>item.user_id===uid);
     if(own) setScreen('queue');
   }
@@ -235,4 +246,4 @@ function QueueCard({title,subtitle,status,players,start,me,admin=false,editing,e
  const draggingPlayer=players.find(player=>player.id===dragging);
  return <section className={`queue-card ${dragging?'is-dragging':''}`} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(dragging)void movePlayer(dragging,status,players.length)}}><header><h2>{title}</h2><span>{subtitle}</span></header><div>{players.length===0?<p className="empty">Players will appear here.</p>:players.map((player,index)=>{const own=player.user_id===me?.user_id;const projection=game&&max?game+Math.floor((start+index-1)/max):null;const sameGroupBefore=Boolean(player.group_id&&players[index-1]?.group_id===player.group_id);const sameGroupAfter=Boolean(player.group_id&&players[index+1]?.group_id===player.group_id);const hasGroupMember=Boolean(player.group_id&&players.some(other=>other.id!==player.id&&other.group_id===player.group_id));const groupClass=hasGroupMember?(!sameGroupBefore?'grouped group-start':!sameGroupAfter?'grouped group-end':'grouped group-middle'):'';const sameGroup=Boolean(me?.group_id&&player.group_id===me.group_id);return <article draggable={admin} onDragStart={e=>{setDragging(player.id);e.dataTransfer.effectAllowed='move'}} onDragEnd={()=>{setDragging(null);setDragOver(null)}} onDragOver={e=>{e.preventDefault();e.stopPropagation();setDragOver(player.id)}} onDrop={e=>{e.preventDefault();e.stopPropagation();if(dragging)void movePlayer(dragging,status,index)}} className={`player-row ${admin?'admin-row':''} ${own?'own':''} ${groupClass} ${draggingPlayer?.group_id?(player.group_id===draggingPlayer.group_id?'dragging':''):(dragging===player.id?'dragging':'')} ${dragOver===player.id&&dragging!==player.id?'drop-space':''}`} key={player.id}><span className="position">{start+index}</span><div className="player-name">{(own||admin)&&<button className="pencil" aria-label="Edit player name" onClick={()=>{setEditing(player.id);setEditName(`${player.first_name} ${player.last_name}`.trim())}}>✎</button>}{editing===player.id?<input className="inline-name" autoFocus value={editName} onChange={e=>setEditName(e.target.value)} onBlur={()=>void saveName(player)} onKeyDown={e=>{if(e.key==='Enter')void saveName(player);if(e.key==='Escape')setEditing(null)}}/>:<><strong>{player.display_name}{player.restricted&&(own||admin)?' (restricted)':''}</strong>{(own||admin)&&projection&&<small>Projected: Game {projection}</small>}{player.status==='sitout'&&<small>Sitting out next game</small>}</>}</div>{own&&<span className="you">You</span>}{!own&&me&&!admin&&(sameGroup?<button className="group-button remove-group-button" onClick={()=>void leaveGroup(player)}>Remove</button>:<button className="group-button" onClick={()=>void requestGroup(player)}>Group Up</button>)}{admin&&<div className="admin-player-actions"><button className="admin-sitout-button" onClick={()=>adminSitOut(player)}>Sit out</button><button className="admin-leave-button" onClick={()=>adminLeave(player)}>Leave</button><button className="restrict-button" onClick={()=>void restrict(player)}>{player.restricted?'Unrestrict':'Restrict'}</button></div>}</article>})}</div></section>
 }
-function Modal({notice,close,busy}:{notice:Exclude<Notice,null>;close:()=>void;busy:boolean}){return <div className="modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)close()}}><section className="modal" role="dialog" aria-modal="true"><span className="modal-mark">OG</span><h2>{notice.title}</h2><p>{notice.message}</p><div className="modal-actions">{notice.action&&<button className="danger" disabled={busy} onClick={async()=>{await notice.action?.();close()}}>{notice.confirm}</button>}<button className="neutral" onClick={close}>{notice.action?'Cancel':'OK'}</button></div></section></div>}
+function Modal({notice,close,busy}:{notice:Exclude<Notice,null>;close:()=>void;busy:boolean}){const dismiss=()=>{notice.onClose?.();close()};return <div className="modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!notice.onClose)dismiss()}}><section className="modal" role="dialog" aria-modal="true"><span className="modal-mark">OG</span><h2>{notice.title}</h2><p>{notice.message}</p><div className="modal-actions">{notice.action&&<button className="danger" disabled={busy} onClick={async()=>{await notice.action?.();dismiss()}}>{notice.confirm}</button>}<button className="neutral" onClick={dismiss}>{notice.action?'Cancel':'OK'}</button></div></section></div>}

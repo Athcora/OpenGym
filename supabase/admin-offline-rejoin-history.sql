@@ -100,15 +100,24 @@ begin
   update public.waitlist_players set status='rejoin',rejoin_expires_at=now()+interval '15 minutes',updated_at=now()
     where status='current' and user_id is null;
 
+  -- Rejoin mode always requires every account player from the finished game
+  -- to confirm that they are staying, even when the remaining queue is small.
+  if config.mode='rejoin' then
+    with changed as(
+      update public.waitlist_players p
+        set status='rejoin',rejoin_expires_at=now()+interval '5 minutes',updated_at=now()
+        where status='current' and user_id is not null
+        returning p.id,p.user_id,p.queue_position,p.rejoin_expires_at
+    )
+    insert into public.rejoin_responses(user_id,game_number,original_position,expires_at)
+      select user_id,config.game_number+1,queue_position,rejoin_expires_at from changed;
+    select coalesce(jsonb_agg(jsonb_build_object('user_id',r.user_id,'response_id',r.id)),'[]'::jsonb)into response_rows
+      from public.rejoin_responses r where r.game_number=config.game_number+1 and r.choice is null;
+  end if;
+
   select count(*) into total_active from public.waitlist_players where status in('current','waiting','sitout');
   if total_active>config.max_players then
-    if config.mode='rejoin' then
-      with changed as(update public.waitlist_players p set status='rejoin',rejoin_expires_at=now()+interval '5 minutes',updated_at=now() where status='current' and user_id is not null returning p.id,p.user_id,p.queue_position,p.rejoin_expires_at)
-      insert into public.rejoin_responses(user_id,game_number,original_position,expires_at)
-        select user_id,config.game_number+1,queue_position,rejoin_expires_at from changed;
-      select coalesce(jsonb_agg(jsonb_build_object('user_id',r.user_id,'response_id',r.id)),'[]'::jsonb)into response_rows
-        from public.rejoin_responses r where r.game_number=config.game_number+1 and r.choice is null;
-    else
+    if config.mode<>'rejoin' then
       update public.waitlist_players set status='waiting',updated_at=now() where status='current';
     end if;
     with chosen as(select id from public.waitlist_players where status='waiting' order by queue_position limit config.max_players)

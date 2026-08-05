@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { enablePush, pushSupported } from './push';
 import { supabase } from './supabase';
@@ -9,7 +9,7 @@ import './admin-player.css';
 type PlayerStatus = 'current' | 'waiting' | 'sitout' | 'rejoin' | 'left';
 type Player = { id:string; user_id:string|null; first_name:string; last_name:string; display_name:string; status:PlayerStatus; queue_position:number|null; restricted:boolean; group_id:string|null };
 type Game = { id:string; game_number:number; player_names:string[]; ended_at:string };
-type Config = { game_number:number; max_players:number; mode:'regular'|'rejoin'|'teams' };
+type Config = { game_number:number; max_players:number; mode:'regular'|'rejoin'|'teams'; geofence_enabled:boolean; geofence_radius_m:number };
 type GroupRequest = { id:string; requester_id:string; target_id:string; status:string; requester?:Player };
 type Member = { user_id:string;email:string|null;phone:string|null;created_at:string;player_name:string|null };
 type AdminRejoin = { id:string;display_name:string;queue_position:number;expires_at:string };
@@ -22,7 +22,7 @@ export default function App() {
   const [user,setUser]=useState<User|null>(null);
   const [players,setPlayers]=useState<Player[]>([]);
   const [games,setGames]=useState<Game[]>([]);
-  const [config,setConfig]=useState<Config>({game_number:1,max_players:12,mode:'regular'});
+  const [config,setConfig]=useState<Config>({game_number:1,max_players:12,mode:'regular',geofence_enabled:false,geofence_radius_m:150});
   const [screen,setScreen]=useState<'welcome'|'email'|'name'|'admin'|'queue'|'history'|'members'|'restricted'|'add-player'|'offline-rejoin'|'admin-history'>('welcome');
   const [first,setFirst]=useState(''); const [last,setLast]=useState('');
   const [email,setEmail]=useState(''); const [authMode,setAuthMode]=useState<'signin'|'signup'>('signin');
@@ -38,6 +38,7 @@ export default function App() {
   const [members,setMembers]=useState<Member[]>([]);
   const [adminFirst,setAdminFirst]=useState(''); const [adminLast,setAdminLast]=useState('');
   const [adminRejoins,setAdminRejoins]=useState<AdminRejoin[]>([]); const [adminEvents,setAdminEvents]=useState<AdminEvent[]>([]);
+  const outsideSince=useRef<number|null>(null);
 
   const me=players.find(p=>p.user_id===user?.id);
   const current=useMemo(()=>players.filter(p=>p.status==='current').sort(byPosition),[players]);
@@ -52,6 +53,19 @@ export default function App() {
     document.addEventListener('click',closeDrawerFromBackdrop);
     return()=>document.removeEventListener('click',closeDrawerFromBackdrop);
   },[]);
+  useEffect(()=>{
+    if(!me||me.status==='left'||me.status==='rejoin'||admin||!config.geofence_enabled||!navigator.geolocation)return;
+    let active=true;
+    const watch=navigator.geolocation.watchPosition(async position=>{
+      if(!active)return;
+      const result=await verifyLocation(position.coords.latitude,position.coords.longitude);
+      if(!result)return;
+      if(result.inside){outsideSince.current=null;return;}
+      if(outsideSince.current===null){outsideSince.current=Date.now();setNotice({title:'You appear to have left the facility',message:'Return within one minute to remain in the waitlist. Keep this page open so your location can be rechecked.'});return;}
+      if(Date.now()-outsideSince.current>=60_000){outsideSince.current=null;await rpc('leave_waitlist',{},false);setNotice({title:'Removed from the waitlist',message:'Your phone remained outside the facility area for more than one minute.'});}
+    },()=>{}, {enableHighAccuracy:true,maximumAge:15_000,timeout:20_000});
+    return()=>{active=false;navigator.geolocation.clearWatch(watch);outsideSince.current=null;};
+  },[me?.id,me?.status,admin,config.geofence_enabled]);
   async function boot(){
     let {data:{session}}=await supabase.auth.getSession();
     if(!session){const result=await supabase.auth.signInAnonymously(); if(result.error){setNotice({title:'Connection needed',message:result.error.message});return;} session=result.data.session;}
@@ -70,7 +84,7 @@ export default function App() {
   async function refresh(activeUser?:User|null){
     const [{data:p},{data:c},{data:g},{data:a},{data:r},{data:rejoin}]=await Promise.all([
       supabase.from('waitlist_players').select('*').neq('status','left').order('queue_position'),
-      supabase.from('waitlist_config').select('game_number,max_players,mode').single(),
+      supabase.from('waitlist_config').select('game_number,max_players,mode,geofence_enabled,geofence_radius_m').single(),
       supabase.from('past_games').select('*').order('game_number',{ascending:false}),
       supabase.from('admin_sessions').select('user_id').maybeSingle(),
       supabase.from('group_requests').select('*').eq('status','pending'),
@@ -89,7 +103,19 @@ export default function App() {
     if(data?.message&&showSuccess)setNotice({title:'Done',message:data.message}); await refresh(); return true;
   }
   async function join(event:FormEvent){event.preventDefault(); const f=cleanName(first),l=cleanName(last); if(!f){setNotice({title:'Enter your name',message:'Your name needs to contain letters.'});return;}
+    if(!await requireOnSite())return;
     if(await rpc('join_waitlist',{p_first_name:f,p_last_name:l},false))setScreen('queue');
+  }
+  function getPosition(){return new Promise<GeolocationPosition>((resolve,reject)=>{if(!navigator.geolocation){reject(new Error('Location is not supported on this device.'));return;}navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,maximumAge:10_000,timeout:20_000});});}
+  async function verifyLocation(latitude:number,longitude:number){const {data,error}=await supabase.rpc('verify_facility_location',{p_latitude:latitude,p_longitude:longitude});if(error)return null;return data as {configured:boolean;inside:boolean;distance_m:number;radius_m:number};}
+  async function requireOnSite(){
+    if(!config.geofence_enabled)return true;
+    setBusy(true);
+    try{const position=await getPosition();const result=await verifyLocation(position.coords.latitude,position.coords.longitude);setBusy(false);if(!result){setNotice({title:'Location check failed',message:'We could not verify the facility location. Please try again.'});return false;}if(!result.inside){setNotice({title:'You must be at the facility',message:`You are about ${Math.round(result.distance_m)} meters from the OpenGym check-in area. Move inside the facility and try again.`});return false;}return true;}catch{setBusy(false);setNotice({title:'Location permission needed',message:'Allow location access to join or rejoin the waitlist. OpenGym only checks whether you are inside the facility area.'});return false;}
+  }
+  async function setFacilityLocation(){
+    setBusy(true);
+    try{const position=await getPosition();await rpc('admin_set_facility_location',{p_latitude:position.coords.latitude,p_longitude:position.coords.longitude,p_radius_m:150},false);setNotice({title:'Facility location saved',message:'Players must now be within about 150 meters of this location to join or rejoin.'});}catch{setNotice({title:'Location unavailable',message:'Allow location access on the admin device, then try again while standing at the facility.'});}finally{setBusy(false);}
   }
   function ask(title:string,message:string,confirm:string,action:()=>Promise<void>){setNotice({title,message,confirm,action});}
   async function turnOnNotifications(){setBusy(true);try{await enablePush();setNotifications(true);setNotice({title:'Notifications are on',message:"We’ll alert you when your game starts or needs a response."});}catch(error){setNotice({title:'Notifications unavailable',message:error instanceof Error?error.message:'Could not enable notifications.'});}setBusy(false);}
@@ -127,14 +153,14 @@ export default function App() {
   async function requestGroup(player:Player){await rpc('request_player_group',{p_target_id:player.id});}
   async function answerGroup(id:string,accept:boolean){await rpc('answer_player_group',{p_request_id:id,p_accept:accept});}
   async function movePlayer(playerId:string,status:'current'|'waiting',index:number){setDragging(null);setDragOver(null);await rpc('admin_move_player',{p_player_id:playerId,p_status:status,p_index:index});}
-  async function answerRejoin(choice:'stay'|'leave'){if(rejoinResponse)await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse,p_choice:choice});setRejoinResponse(null);}
+  async function answerRejoin(choice:'stay'|'leave'){if(choice==='stay'&&!await requireOnSite())return;if(rejoinResponse)await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse,p_choice:choice});setRejoinResponse(null);}
   async function advanceGame(){
     setBusy(true);const {data,error}=await supabase.rpc('end_current_game');
     if(error){setBusy(false);setNotice({title:'Could not start the next game',message:error.message});return;}
     const {data:newCurrent}=await supabase.from('waitlist_players').select('user_id').eq('status','current');
     const currentIds=(newCurrent??[]).map(row=>row.user_id);
     if(currentIds.length)await supabase.functions.invoke('send-push',{body:{userIds:currentIds,notification:{title:`Game ${data.game_number} has started`,body:'You are in the current game. Head to the court!',kind:'game_started',url:'/'}}});
-    for(const prompt of data.rejoin_prompts??[]){await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Stay in the OpenGym waitlist?',body:'Choose Stay or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.response_id}}});}
+    for(const prompt of data.rejoin_prompts??[]){await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.response_id}}});}
     setBusy(false);setNotice({title:'Next game started',message:data.message});await refresh();
   }
 
@@ -148,7 +174,7 @@ export default function App() {
     <header className="topbar"><Logo compact/><div className="top-actions">{pushSupported()&&!notifications&&<button className="icon-button" onClick={turnOnNotifications}>Enable alerts</button>}<button className="icon-button" onClick={()=>ask('Log out?','This will remove you from the waitlist and sign you out.','Log out',async()=>{await rpc('leave_waitlist',{},false);await logout()})}>Log out</button></div></header>
     <main className="queue-page">
       <section className="game-heading"><div><span className="kicker">LIVE QUEUE {admin?'· ADMIN':''}</span><h1>Game {config.game_number}</h1></div><span className="live-pill"><i/>Live</span></section>
-      {admin&&<section className="admin-tools"><select value={config.mode} onChange={e=>void rpc('admin_set_mode',{p_mode:e.target.value})}><option value="regular">Regular waitlist</option><option value="rejoin">Rejoin waitlist</option><option value="teams">Teams mode</option></select><button className="next-game-tool" disabled={busy||current.length===0} onClick={()=>ask('Start the next game?','This will notify all players and advance the entire queue to the next game.','Next game',advanceGame)}>Next game</button><button className="add-player-tool" onClick={()=>setScreen('add-player')}>＋ Add player</button><button className={adminRejoins.length?'rejoin-tool attention':'rejoin-tool'} onClick={()=>setScreen('offline-rejoin')}>Rejoin requests{adminRejoins.length?` (${adminRejoins.length})`:''}</button><button onClick={()=>void openAdminHistory()}>History</button><button onClick={()=>void rpc('admin_undo_last')}>↶ Undo</button><button onClick={()=>setScreen('restricted')}>Restricted</button><button onClick={()=>void openMembers()}>Members</button><button className="reset-tool" onClick={()=>ask('Reset the entire waitlist?','This removes every player and clears past games. The admin can undo this action.','Reset',async()=>{await rpc('admin_reset_waitlist')})}>Reset</button></section>}
+      {admin&&<section className="admin-tools"><select value={config.mode} onChange={e=>void rpc('admin_set_mode',{p_mode:e.target.value})}><option value="regular">Regular waitlist</option><option value="rejoin">Rejoin waitlist</option><option value="teams">Teams mode</option></select><button className="next-game-tool" disabled={busy||current.length===0} onClick={()=>ask('Start the next game?','This will notify all players and advance the entire queue to the next game.','Next game',advanceGame)}>Next game</button><button className="add-player-tool" onClick={()=>setScreen('add-player')}>＋ Add player</button><button onClick={()=>void setFacilityLocation()}>{config.geofence_enabled?'Update facility location':'Set facility location'}</button><button className={adminRejoins.length?'rejoin-tool attention':'rejoin-tool'} onClick={()=>setScreen('offline-rejoin')}>Rejoin requests{adminRejoins.length?` (${adminRejoins.length})`:''}</button><button onClick={()=>void openAdminHistory()}>History</button><button onClick={()=>void rpc('admin_undo_last')}>↶ Undo</button><button onClick={()=>setScreen('restricted')}>Restricted</button><button onClick={()=>void openMembers()}>Members</button><button className="reset-tool" onClick={()=>ask('Reset the entire waitlist?','This removes every player and clears past games. The admin can undo this action.','Reset',async()=>{await rpc('admin_reset_waitlist')})}>Reset</button></section>}
       <QueueCard title={`Game ${config.game_number}`} subtitle={`${current.length} playing`} status="current" players={current} start={1} me={me} admin={admin} editing={editing} editName={editName} setEditing={setEditing} setEditName={setEditName} saveName={saveName} requestGroup={requestGroup} restrict={confirmRestriction} adminSitOut={confirmAdminSitOut} adminLeave={confirmAdminLeave} dragging={dragging} dragOver={dragOver} setDragging={setDragging} setDragOver={setDragOver} movePlayer={movePlayer}/>
       <QueueCard title="Waitlist" subtitle={waiting.length?`${waiting.length} waiting`:'No one waiting'} status="waiting" players={waiting} start={current.length+1} me={me} admin={admin} editing={editing} editName={editName} setEditing={setEditing} setEditName={setEditName} saveName={saveName} game={config.game_number} max={config.max_players} requestGroup={requestGroup} restrict={confirmRestriction} adminSitOut={confirmAdminSitOut} adminLeave={confirmAdminLeave} dragging={dragging} dragOver={dragOver} setDragging={setDragging} setDragOver={setDragOver} movePlayer={movePlayer}/>
       {groupRequests.filter(request=>players.find(p=>p.id===request.target_id)?.user_id===user?.id).map(request=><section className="request-card" key={request.id}><strong>{request.requester?.display_name??'A player'} wants to group with you</strong><p>Accepting may move you back to the furthest group member’s position.</p><div><button className="next" onClick={()=>void answerGroup(request.id,true)}>Accept</button><button className="neutral" onClick={()=>void answerGroup(request.id,false)}>Decline</button></div></section>)}

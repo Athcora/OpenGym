@@ -61,7 +61,9 @@ export default function App() {
       .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_config'},()=>void refresh())
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'past_games'},()=>void refresh())
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'waitlist_events'},payload=>{
-        const event=payload.new as {message?:string}; if(event.message) setNotice({title:'Waitlist update',message:event.message});
+        const event=payload.new as {event_type?:string;message?:string};
+        const quietEvents=new Set(['join','leave','admin_leave','admin_rejoin']);
+        if(event.message&&!quietEvents.has(event.event_type??''))setNotice({title:'Waitlist update',message:event.message});
       }).subscribe();
     return()=>{void supabase.removeChannel(channel)};
   }

@@ -73,6 +73,7 @@ export default function App() {
     const channel=supabase.channel('live-waitlist')
       .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_players'},()=>void refresh())
       .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_config'},()=>void refresh())
+      .on('postgres_changes',{event:'*',schema:'public',table:'group_requests'},()=>void refresh())
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'past_games'},()=>void refresh())
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'waitlist_events'},payload=>{
         const event=payload.new as {event_type?:string;message?:string};

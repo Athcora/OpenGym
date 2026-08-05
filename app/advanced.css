@@ -107,4 +107,9 @@
 .theme-dark .drawer { background:#0009; }
 .theme-dark .modal-backdrop { background:#0c0d10bb; }
 .theme-dark .neutral { background:#4b5362!important; }
+.history-search { width:100%; margin:18px 0 4px; padding:13px 15px; border:1px solid #42454e; border-radius:13px; background:#1d1e22; color:#f5f6f8; outline:none; transition:border-color .18s,box-shadow .18s,background .18s; }
+.history-search::placeholder { color:#a1a7b3; opacity:.58; }
+.history-search:focus { border-color:#7564f5; box-shadow:0 0 0 4px #7564f522; }
+.theme-light .history-search { background:#f4f6f8; color:#1c222b; border-color:#d9dee5; }
+.theme-light .history-search::placeholder { color:#677282; opacity:.55; }
 .position { font-size:.75em; }

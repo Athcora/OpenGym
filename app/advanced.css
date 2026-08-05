@@ -7,9 +7,13 @@
 .player-row[draggable="true"]:active { cursor:grabbing; }
 .member-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .member-row button { border:0; border-radius:10px; background:#5d536f; color:white; padding:9px 12px; }
+.restricted-members-button { width:100%; margin:0 0 16px; padding:12px 14px; border:0; border-radius:12px; background:#b94f5b; color:#fff; font-weight:800; cursor:pointer; }
+.restricted-members-button:hover { background:#c85b67; box-shadow:0 0 18px rgba(185,79,91,.3); }
+.theme-dark .restricted-members-button { background:#8f4650; }
+.theme-dark .restricted-members-button:hover { background:#a6535e; box-shadow:0 0 18px rgba(166,83,94,.35); }
 @media (max-width:620px) { .admin-tools { display:grid; grid-template-columns:1fr 1fr; } .admin-tools select { grid-column:1/-1; } }
 .admin-tools .undo-redo-controls { display:flex; align-items:center; gap:4px; padding:3px; border:1px solid #3b3e47; border-radius:12px; background:#202126; }
-.admin-tools .undo-redo-controls button { min-width:40px; padding:8px 11px; font-size:1.15rem; line-height:1; }
+.admin-tools .undo-redo-controls button { min-width:58px; padding:8px 11px; font-size:.75rem; font-weight:800; line-height:1; }
 .admin-tools .undo-redo-controls button:hover { background:#343640; box-shadow:0 0 14px #7c66ff33; }
 .admin-tools .reset-tool,.theme-light .admin-tools .reset-tool,.theme-dark .admin-tools .reset-tool { background:#b9424f; color:#fff; border-color:#d05a66; font-weight:850; }
 .admin-tools .reset-tool:hover { background:#ce4b59; box-shadow:0 0 16px #c7485555; }

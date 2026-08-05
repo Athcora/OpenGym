@@ -9,6 +9,7 @@ declare
   target_position bigint;
   max_players integer;
   destination_index integer;
+  moving_count integer;
 begin
   if not public.is_waitlist_admin() then raise exception 'Admin access required.'; end if;
   if p_status not in ('current','waiting') then raise exception 'Invalid destination.'; end if;
@@ -21,14 +22,24 @@ begin
   select * into player from public.waitlist_players where id=p_player_id for update;
   if player.id is null then raise exception 'Player not found.'; end if;
 
+  select count(*) into moving_count
+  from public.waitlist_players
+  where id=player.id or (player.group_id is not null and group_id=player.group_id);
+
+  if p_status='current' and moving_count>max_players then
+    raise exception 'This group is larger than the current game capacity.';
+  end if;
+
   destination_index:=greatest(p_index,0);
   if p_status='current' then
-    destination_index:=least(destination_index,greatest(max_players-1,0));
+    destination_index:=least(destination_index,greatest(max_players-moving_count,0));
   end if;
 
   select queue_position into target_position
   from public.waitlist_players
-  where status=p_status and id<>p_player_id
+  where status=p_status
+    and id<>player.id
+    and (player.group_id is null or group_id is distinct from player.group_id)
   order by queue_position
   offset destination_index
   limit 1;
@@ -36,12 +47,28 @@ begin
   if target_position is null then
     select coalesce(max(queue_position),0)+1000 into target_position
     from public.waitlist_players
-    where status=p_status;
+    where status=p_status
+      and id<>player.id
+      and (player.group_id is null or group_id is distinct from player.group_id);
   end if;
 
+  -- Give every existing position room, then insert all moving group members
+  -- immediately before the selected destination while preserving their order.
   update public.waitlist_players
-  set status=p_status,queue_position=target_position-1,updated_at=now()
-  where id=p_player_id;
+  set queue_position=queue_position*1000
+  where status in ('current','waiting');
+
+  with moving as (
+    select id,row_number() over(order by queue_position,id) rn
+    from public.waitlist_players
+    where id=player.id or (player.group_id is not null and group_id=player.group_id)
+  )
+  update public.waitlist_players p
+  set status=p_status,
+      queue_position=target_position*1000-moving_count+moving.rn-1,
+      updated_at=now()
+  from moving
+  where p.id=moving.id;
 
   with ranked as (
     select id,row_number() over(order by case status when 'current' then 0 else 1 end,queue_position,id) rn
@@ -75,7 +102,13 @@ begin
   from ranked
   where p.id=ranked.id;
 
-  return jsonb_build_object('message',player.display_name||' was moved.');
+  return jsonb_build_object(
+    'message',
+    case when moving_count>1
+      then 'The entire group was moved.'
+      else player.display_name||' was moved.'
+    end
+  );
 end;
 $$;
 

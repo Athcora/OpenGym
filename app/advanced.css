@@ -64,6 +64,10 @@
 .theme-light .player-row.group-end,.theme-light .player-row.group-single { border-bottom-color:#26966a; }
 .group-projection-warning { display:block; margin:10px 0 15px; padding:12px 14px; border-radius:11px; background:#dff8ec; color:#175c42; font-size:.92rem; line-height:1.4; }
 .theme-dark .group-projection-warning { background:#183d31; color:#91e3c2; }
+.group-button.remove-group-button { background:#d95763; color:#fff; }
+.group-button.remove-group-button:hover { background:#e66b75; box-shadow:0 0 16px #d9576355; }
+.theme-dark .group-button.remove-group-button { background:#a94350; color:#fff; }
+.theme-dark .group-button.remove-group-button:hover { background:#bd5260; box-shadow:0 0 16px #bd526066; }
 .theme-dark .icon-button,.theme-dark .history-button,.theme-dark .admin-tools select,.theme-dark .admin-tools button { background:#25262b; color:#e9ebef; border-color:#3b3e47; }
 .theme-dark .admin-tools .add-player-tool { background:#286b54; border-color:#347f66; color:#fff; }
 .theme-dark .admin-tools .next-game-tool { background:#2563a8; border-color:#3479c3; color:#fff; }

@@ -160,7 +160,16 @@ export default function App() {
   async function answerOfflineRejoin(player:AdminRejoin,stay:boolean){
     await rpc('admin_answer_offline_rejoin',{p_player_id:player.id,p_stay:stay},false);
   }
-  async function requestGroup(player:Player){await rpc('request_player_group',{p_target_id:player.id});}
+  async function requestGroup(player:Player){
+    if(!me)return;
+    const projectedGame=projectedGameForGrouping(me.id,player.id);
+    ask(
+      `Group up with ${player.display_name}?`,
+      `Grouping may move you back to the furthest group member’s position. If accepted, you are projected to play in Game ${projectedGame}.`,
+      'Send request',
+      async()=>{await rpc('request_player_group',{p_target_id:player.id},false);}
+    );
+  }
   async function answerGroup(id:string,accept:boolean){
     const request=groupRequests.find(item=>item.id===id);
     const requesterName=request?.requester?.display_name??'the player';
@@ -169,15 +178,16 @@ export default function App() {
     }
   }
   async function removeGroupMember(player:Player){await rpc('remove_player_from_group',{p_target_id:player.id});}
-  function projectedGameAfterGrouping(request:GroupRequest){
-    const requester=players.find(player=>player.id===request.requester_id);
-    const target=players.find(player=>player.id===request.target_id);
+  function projectedGameForGrouping(requesterId:string,targetId:string){
+    const requester=players.find(player=>player.id===requesterId);
+    const target=players.find(player=>player.id===targetId);
     const groupIds=new Set([requester?.group_id,target?.group_id].filter((id):id is string=>Boolean(id)));
-    const groupedIds=new Set(players.filter(player=>player.id===request.requester_id||player.id===request.target_id||(player.group_id&&groupIds.has(player.group_id))).map(player=>player.id));
+    const groupedIds=new Set(players.filter(player=>player.id===requesterId||player.id===targetId||(player.group_id&&groupIds.has(player.group_id))).map(player=>player.id));
     const active=[...current,...waiting];
     const furthestIndex=active.reduce((furthest,player,index)=>groupedIds.has(player.id)?Math.max(furthest,index):furthest,0);
     return config.game_number+Math.floor(furthestIndex/config.max_players);
   }
+  function projectedGameAfterGrouping(request:GroupRequest){return projectedGameForGrouping(request.requester_id,request.target_id);}
   async function movePlayer(playerId:string,status:'current'|'waiting',index:number){setDragging(null);setDragOver(null);await rpc('admin_move_player',{p_player_id:playerId,p_status:status,p_index:index});}
   async function answerRejoin(choice:'stay'|'leave'){if(choice==='stay'&&!await requireOnSite())return;if(rejoinResponse)await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse,p_choice:choice});setRejoinResponse(null);}
   async function advanceGame(){

@@ -8,7 +8,12 @@
 .member-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .member-row button { border:0; border-radius:10px; background:#5d536f; color:white; padding:9px 12px; }
 @media (max-width:620px) { .admin-tools { display:grid; grid-template-columns:1fr 1fr; } .admin-tools select { grid-column:1/-1; } }
-.admin-tools .reset-tool { color:#ffabb3; border-color:#70444a; }
+.admin-tools .undo-redo-controls { display:flex; align-items:center; gap:4px; padding:3px; border:1px solid #3b3e47; border-radius:12px; background:#202126; }
+.admin-tools .undo-redo-controls button { min-width:40px; padding:8px 11px; font-size:1.15rem; line-height:1; }
+.admin-tools .undo-redo-controls button:hover { background:#343640; box-shadow:0 0 14px #7c66ff33; }
+.admin-tools .reset-tool,.theme-light .admin-tools .reset-tool,.theme-dark .admin-tools .reset-tool { background:#b9424f; color:#fff; border-color:#d05a66; font-weight:850; }
+.admin-tools .reset-tool:hover { background:#ce4b59; box-shadow:0 0 16px #c7485555; }
+.theme-light .admin-tools .undo-redo-controls { background:#f4f6f8; border-color:#dbe0e6; }
 .admin-player-actions { display:flex; align-items:center; gap:5px; margin-left:8px; }
 .admin-player-actions button { border:0; border-radius:9px; padding:7px 9px; color:#fff; cursor:pointer; font-size:.66rem; font-weight:800; transition:transform .16s,box-shadow .16s,filter .16s; }
 .admin-sitout-button,.admin-leave-button { background:#6b6478; }

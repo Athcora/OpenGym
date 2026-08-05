@@ -161,7 +161,13 @@ export default function App() {
     await rpc('admin_answer_offline_rejoin',{p_player_id:player.id,p_stay:stay},false);
   }
   async function requestGroup(player:Player){await rpc('request_player_group',{p_target_id:player.id});}
-  async function answerGroup(id:string,accept:boolean){await rpc('answer_player_group',{p_request_id:id,p_accept:accept});}
+  async function answerGroup(id:string,accept:boolean){
+    const request=groupRequests.find(item=>item.id===id);
+    const requesterName=request?.requester?.display_name??'the player';
+    if(await rpc('answer_player_group',{p_request_id:id,p_accept:accept},false)){
+      setNotice({title:accept?'Group accepted':'Group request declined',message:accept?`You are now grouped with ${requesterName}. (Current game: Game ${config.game_number})`:'The group request was declined.'});
+    }
+  }
   async function leaveGroup(){await rpc('leave_player_group',{},false);}
   function projectedGameAfterGrouping(request:GroupRequest){
     const requester=players.find(player=>player.id===request.requester_id);

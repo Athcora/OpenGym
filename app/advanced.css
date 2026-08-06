@@ -38,6 +38,7 @@
 .theme-light .language-picker { border-color:#dbe0e6; background:#fff; color:#333944; }
 .theme-light .language-picker select option { background:#fff; color:#20242c; }
 @media(max-width:520px){.language-picker{min-width:120px}.language-symbol b{display:none}}
+@media(max-width:520px){.auth-card input{font-size:16px}}
 .member-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .member-row button { border:0; border-radius:10px; background:#5d536f; color:white; padding:9px 12px; }
 .restricted-members-button { width:100%; margin:0 0 16px; padding:12px 14px; border:0; border-radius:12px; background:#b94f5b; color:#fff; font-weight:800; cursor:pointer; }

@@ -134,9 +134,9 @@ export default function App() {
       })
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'past_games'},()=>void refresh())
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'waitlist_events'},payload=>{
-        const event=payload.new as {event_type?:string;message?:string};
+        const event=payload.new as {actor_user_id?:string;event_type?:string;message?:string};
         const quietEvents=new Set(['join','leave','add_player','admin_leave','admin_rejoin']);
-        if(event.message&&!quietEvents.has(event.event_type??''))setNotice({title:'Waitlist update',message:event.message});
+        if(event.actor_user_id!==session?.user.id&&event.message&&!quietEvents.has(event.event_type??''))setNotice({title:'Waitlist update',message:event.message});
       }).subscribe();
     return()=>{void supabase.removeChannel(channel)};
   }
@@ -250,10 +250,10 @@ export default function App() {
     setBusy(true);const {data,error}=await supabase.rpc('end_current_game');
     if(error){setBusy(false);setNotice({title:'Could not start the next game',message:error.message});return;}
     const {data:newCurrent}=await supabase.from('waitlist_players').select('user_id').eq('status','current');
-    const currentIds=(newCurrent??[]).map(row=>row.user_id);
+    const currentIds=(newCurrent??[]).map(row=>row.user_id).filter((id):id is string=>Boolean(id)&&id!==user?.id);
     if(currentIds.length)await supabase.functions.invoke('send-push',{body:{userIds:currentIds,notification:{title:`Game ${data.game_number} has started`,body:'You are in the current game. Head to the court!',kind:'game_started',url:'/'}}});
     for(const prompt of data.rejoin_prompts??[]){await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.response_id}}});}
-    setBusy(false);setNotice({title:'Next game started',message:data.message});await refresh();
+    setBusy(false);await refresh();
   }
 
   if(screen==='welcome')return <Shell><section className="auth-card"><Logo/><div className="auth-links"><button className="text-button" onClick={()=>openEmailAuth('signin')}>Sign in</button><span>or</span><button className="text-button" onClick={()=>openEmailAuth('signup')}>Create account</button></div><button className="hero-button" onClick={()=>setScreen('name')}>Continue as guest</button><button className="admin-link" onClick={()=>setScreen('admin')}>Admin</button><p className="fine">Join the live volleyball queue from your phone.</p></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;

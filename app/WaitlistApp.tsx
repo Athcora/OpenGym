@@ -20,6 +20,34 @@ type Notice = { title:string; message:string; confirm?:string; action?:()=>Promi
 type OnboardingStage = 'idle'|'disclaimer'|'tutorial';
 
 const cleanName = (value:string) => value.replace(/[^\p{L}\s]/gu, '').replace(/\s+/g, ' ').trim();
+const blockedNameTerms = [
+  'fuck','fuk','fck','shit','bitch','btch','cunt','dick','pussy','asshole','whore','slut',
+  'nigger','nigga','nigha','niga','niger','faggot','fagot','fag','retard','kike','chink','spic','wetback',
+  'porn','rape','rapist','nazi','hitler','stalin','yourmom','urmom','yomama','yourmama',
+];
+function normalizedNameForms(value:string){
+  const leet=value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase()
+    .replace(/[@4]/g,'a').replace(/[8]/g,'b').replace(/[3]/g,'e').replace(/[69]/g,'g')
+    .replace(/[!1|]/g,'i').replace(/[0]/g,'o').replace(/[$5]/g,'s').replace(/[7+]/g,'t');
+  const spaced=leet.replace(/[^a-z]+/g,' ').trim();
+  const compact=spaced.replace(/\s/g,'').replace(/(.)\1{2,}/g,'$1$1');
+  return {tokens:spaced.split(' ').filter(Boolean),compact};
+}
+function oneEditAway(value:string,target:string){
+  if(Math.abs(value.length-target.length)>1)return false;
+  let i=0,j=0,edits=0;
+  while(i<value.length&&j<target.length){
+    if(value[i]===target[j]){i++;j++;continue;}
+    if(++edits>1)return false;
+    if(value.length>target.length)i++;else if(target.length>value.length)j++;else{i++;j++;}
+  }
+  return edits+(i<value.length?1:0)+(j<target.length?1:0)<=1;
+}
+function isInappropriateName(value:string){
+  const {tokens,compact}=normalizedNameForms(value);
+  return blockedNameTerms.some(term=>compact.includes(term)||tokens.some(token=>term.length>=5&&token.length>=4&&oneEditAway(token,term)));
+}
+const inappropriateNameNotice = {title:'Choose a different name',message:'This name is not allowed. Please enter an appropriate name.'};
 
 export default function App() {
   const [user,setUser]=useState<User|null>(null);
@@ -162,6 +190,7 @@ export default function App() {
     if(data?.message&&showSuccess)setNotice({title:'Done',message:data.message}); await refresh(); return true;
   }
   async function join(event:FormEvent){event.preventDefault(); const f=cleanName(first),l=cleanName(last); if(!f){setNotice({title:'Enter your name',message:'Your name needs to contain letters.'});return;}
+    if(isInappropriateName(`${first} ${last}`)){setNotice(inappropriateNameNotice);return;}
     if(!await requireOnSite())return;
     if(await rpc('join_waitlist',{p_first_name:f,p_last_name:l},false)){setScreen('queue');if(config.mode!=='teams'&&!user?.user_metadata?.opengym_tutorial_completed)setOnboarding('disclaimer');}
   }
@@ -185,7 +214,7 @@ export default function App() {
   }
   function ask(title:string,message:string,confirm:string,action:()=>Promise<void>){setNotice({title,message,confirm,action});}
   async function turnOnNotifications(){setBusy(true);try{await enablePush();setNotifications(true);setNotice({title:'Notifications are on',message:"We’ll alert you when your game starts or needs a response."});}catch(error){setNotice({title:'Notifications unavailable',message:error instanceof Error?error.message:'Could not enable notifications.'});}setBusy(false);}
-  async function saveName(player:Player){const parts=cleanName(editName).split(' ');const f=parts.shift()??'';const l=parts.join(' ');if(await rpc('rename_waitlist_player',{p_player_id:player.id,p_first_name:f,p_last_name:l}))setEditing(null);}
+  async function saveName(player:Player){if(isInappropriateName(editName)){setNotice(inappropriateNameNotice);return;}const parts=cleanName(editName).split(' ');const f=parts.shift()??'';const l=parts.join(' ');if(await rpc('rename_waitlist_player',{p_player_id:player.id,p_first_name:f,p_last_name:l}))setEditing(null);}
   async function logout(){await supabase.auth.signOut();setPlayers([]);setUser(null);setScreen('welcome');await boot();}
   function openEmailAuth(mode:'signin'|'signup'){setAuthMode(mode);setEmail('');if(mode==='signin'){setFirst('');setLast('');}setScreen('email');}
   async function emailSignIn(event:FormEvent){
@@ -193,6 +222,7 @@ export default function App() {
     const address=email.trim().toLowerCase(); const f=cleanName(first); const l=cleanName(last);
     if(!address){setNotice({title:'Enter your email',message:'Enter the email address you want to use for OpenGym.'});return;}
     if(authMode==='signup'&&(!f||!l)){setNotice({title:'Enter your full name',message:'A first and last name are required when creating an account.'});return;}
+    if(authMode==='signup'&&isInappropriateName(`${first} ${last}`)){setNotice(inappropriateNameNotice);return;}
     setBusy(true);
     const {error}=await supabase.auth.signInWithOtp({
       email:address,
@@ -211,6 +241,7 @@ export default function App() {
   async function adminAddPlayer(event:FormEvent){
     event.preventDefault(); const f=cleanName(adminFirst),l=cleanName(adminLast);
     if(!f){setNotice({title:'Enter a player name',message:'The player name needs to contain letters.'});return;}
+    if(isInappropriateName(`${adminFirst} ${adminLast}`)){setNotice(inappropriateNameNotice);return;}
     if(await rpc('admin_add_player',{p_first_name:f,p_last_name:l},false)){setAdminFirst('');setAdminLast('');}
   }
   async function answerOfflineRejoin(player:AdminRejoin,stay:boolean){

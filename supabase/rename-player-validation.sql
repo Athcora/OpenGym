@@ -6,12 +6,12 @@ declare
   token text;
   blocked text[] := array[
     'fuck','fuk','fck','shit','bitch','cunt','dick','pussy','asshole','whore','slut',
-    'nigger','nigga','niger','faggot','fag','retard','kike','chink','spic','wetback',
-    'porn','rape','rapist','nazi','hitler'
+    'nigger','nigga','nigha','niga','niger','faggot','fagot','fag','retard','kike','chink','spic','wetback',
+    'porn','rape','rapist','nazi','hitler','stalin','yourmom','urmom','yomama','yourmama'
   ];
 begin
   normalized := lower(coalesce(p_name,''));
-  normalized := translate(normalized,'013457@$!','oieasgasii');
+  normalized := translate(normalized,'013457896@$!','oieastbggasi');
   normalized := regexp_replace(normalized,'[^a-z]+',' ','g');
   foreach token in array blocked loop
     if (' '||normalized||' ') like '% '||token||' %'

@@ -18,6 +18,7 @@
 .tutorial-scrim { position:fixed; inset:0; z-index:60; background:rgba(8,9,12,.68); pointer-events:none; }
 .tutorial-focus { position:relative; z-index:61; border-radius:18px; box-shadow:0 0 0 4px #8a79ff,0 0 0 10px rgba(138,121,255,.2),0 22px 60px rgba(0,0,0,.48)!important; }
 .tutorial-coach { position:fixed; z-index:70; left:50%; bottom:max(18px,env(safe-area-inset-bottom)); transform:translateX(-50%); width:min(calc(100% - 28px),520px); padding:20px; border:1px solid #484b55; border-radius:20px; background:#292a30; color:#f6f7f9; box-shadow:0 24px 70px rgba(0,0,0,.58); }
+.tutorial-coach.tutorial-coach-contextual { top:45%; bottom:auto; transform:translate(-50%,-100%); }
 .tutorial-progress { display:flex; align-items:center; justify-content:space-between; gap:12px; color:#9ba0ac; font-size:.66rem; font-weight:850; letter-spacing:.1em; }
 .tutorial-progress button { border:0; background:none; color:#b9afff; font-size:.72rem; font-weight:800; cursor:pointer; }
 .tutorial-coach h2 { margin:12px 0 6px; font-size:1.35rem; }

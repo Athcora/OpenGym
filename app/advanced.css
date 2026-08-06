@@ -42,6 +42,11 @@
 .theme-light .language-picker { border-color:#dbe0e6; background:#fff; color:#333944; }
 .theme-light .language-symbol b { color:#626a76; }
 .theme-light .language-picker select option { background:#fff; color:#20242c; }
+.your-history-button { margin-bottom:10px; }
+.rejoin-at-back,.theme-dark .rejoin-at-back { background:#2f8b69; }
+.rejoin-at-back:hover,.theme-dark .rejoin-at-back:hover { background:#39a17b; box-shadow:0 0 18px rgba(57,161,123,.35); }
+.theme-light .rejoin-at-back { background:#25845f; }
+.theme-light .rejoin-at-back:hover { background:#2d9870; box-shadow:0 0 18px rgba(45,152,112,.3); }
 @media(max-width:520px){.language-picker{width:60px;min-width:60px}}
 @media(max-width:520px){.auth-card input{font-size:16px}}
 .member-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }

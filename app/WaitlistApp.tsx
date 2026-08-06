@@ -54,7 +54,7 @@ export default function App() {
   const [players,setPlayers]=useState<Player[]>([]);
   const [games,setGames]=useState<Game[]>([]);
   const [config,setConfig]=useState<Config>({game_number:1,max_players:12,mode:'regular',geofence_enabled:false,geofence_radius_m:150});
-  const [screen,setScreen]=useState<'welcome'|'email'|'name'|'admin'|'queue'|'history'|'members'|'restricted'|'add-player'|'offline-rejoin'|'admin-history'>('welcome');
+  const [screen,setScreen]=useState<'welcome'|'email'|'name'|'admin'|'queue'|'history'|'player-history'|'members'|'restricted'|'add-player'|'offline-rejoin'|'admin-history'>('welcome');
   const [first,setFirst]=useState(''); const [last,setLast]=useState('');
   const [email,setEmail]=useState(''); const [authMode,setAuthMode]=useState<'signin'|'signup'>('signin');
   const [busy,setBusy]=useState(false); const [notice,setNotice]=useState<Notice>(null);
@@ -68,12 +68,13 @@ export default function App() {
   const [dragging,setDragging]=useState<string|null>(null);const [dragOver,setDragOver]=useState<string|null>(null);
   const [members,setMembers]=useState<Member[]>([]);
   const [adminFirst,setAdminFirst]=useState(''); const [adminLast,setAdminLast]=useState('');
-  const [adminRejoins,setAdminRejoins]=useState<AdminRejoin[]>([]); const [adminEvents,setAdminEvents]=useState<AdminEvent[]>([]); const [historySearch,setHistorySearch]=useState('');
+  const [adminRejoins,setAdminRejoins]=useState<AdminRejoin[]>([]); const [adminEvents,setAdminEvents]=useState<AdminEvent[]>([]); const [playerEvents,setPlayerEvents]=useState<AdminEvent[]>([]); const [historySearch,setHistorySearch]=useState('');
+  const [ownPlayer,setOwnPlayer]=useState<Player|null>(null);
   const [onboarding,setOnboarding]=useState<OnboardingStage>('idle'); const [tutorialStep,setTutorialStep]=useState(0);
   const [language,setLanguage]=useState<AppLanguage>('en'); const translationMemory=useRef(new WeakMap<Text,{original:string;applied:string}>());
   const outsideSince=useRef<number|null>(null); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0);
 
-  const me=players.find(p=>p.user_id===user?.id);
+  const me=players.find(p=>p.user_id===user?.id)??ownPlayer;
   const current=useMemo(()=>players.filter(p=>p.status==='current').sort(byPosition),[players]);
   const waiting=useMemo(()=>players.filter(p=>p.status==='waiting'||p.status==='sitout').sort(byPosition),[players]);
   const projectedGames=useMemo(()=>projectQueueGames(waiting,config.game_number,config.max_players),[waiting,config.game_number,config.max_players]);
@@ -141,7 +142,7 @@ export default function App() {
       const {error}=await supabase.rpc('leave_waitlist');
       if(error){expiredRejoinHandled.current=false;setNotice({title:'Could not update the waitlist',message:error.message});return;}
       await refresh();
-      setNotice({title:'Rejoin time expired',message:'You did not rejoin within the allotted time, so you were removed from the waitlist.',onClose:()=>setScreen('welcome')});
+      setNotice({title:'Rejoin time expired',message:'You did not rejoin within the allotted time, so you were removed from the waitlist.',onClose:()=>setScreen('queue')});
     })();
   },[me?.status,rejoinResponse,rejoinChecked]);
   async function boot(){
@@ -181,8 +182,9 @@ export default function App() {
     if(a){const {data:offline}=await supabase.rpc('admin_list_offline_rejoins');setAdminRejoins((offline??[]) as AdminRejoin[]);}else setAdminRejoins([]);
     setGroupRequests(((r??[]) as GroupRequest[]).map(request=>({...request,requester:playerRows.find(player=>player.id===request.requester_id)})));
     setRejoinResponse(rejoin?.id??null);setRejoinChecked(!rejoinError);
-    const uid=(activeUser??user)?.id; const own=(p??[]).find(item=>item.user_id===uid);
-    if(own) setScreen('queue');
+    const uid=(activeUser??user)?.id; let own=playerRows.find(item=>item.user_id===uid)??null;
+    if(uid&&!own){const {data:storedOwn}=await supabase.from('waitlist_players').select('*').eq('user_id',uid).maybeSingle();own=(storedOwn as Player|null)??null;}
+    setOwnPlayer(own);if(own)setScreen('queue');
   }
   async function rpc(name:string,args:Record<string,unknown>={},showSuccess=true){
     setBusy(true); const {data,error}=await supabase.rpc(name,args); setBusy(false);
@@ -234,6 +236,7 @@ export default function App() {
   }
   async function openMembers(){const {data,error}=await supabase.rpc('admin_list_members');if(error)setNotice({title:'Members unavailable',message:error.message});else{setMembers((data??[]) as Member[]);setScreen('members')}}
   async function openAdminHistory(){const {data,error}=await supabase.rpc('admin_list_waitlist_history');if(error)setNotice({title:'History unavailable',message:error.message});else{setAdminEvents((data??[]) as AdminEvent[]);setScreen('admin-history')}}
+  async function openPlayerHistory(){if(!user)return;const {data,error}=await supabase.from('waitlist_events').select('id,actor_name,event_type,message,created_at').eq('actor_user_id',user.id).in('event_type',['join','leave']).order('created_at',{ascending:false}).limit(100);if(error)setNotice({title:'History unavailable',message:error.message});else{setPlayerEvents((data??[]) as AdminEvent[]);setScreen('player-history')}}
   function confirmRestriction(player:Player){ask(player.restricted?'Unrestrict player?':'Restrict player?',player.restricted?`${player.display_name} will regain access to Next Game.`:`${player.display_name} will no longer be allowed to press Next Game.`,player.restricted?'Unrestrict':'Restrict',async()=>{await rpc('admin_restrict_player',{p_player_id:player.id,p_restricted:!player.restricted})})}
   function confirmAdminSitOut(player:Player){ask(`Sit out ${player.display_name}?`,`${player.display_name} will skip one game and then return with priority for the following game.`,'Sit out',async()=>{await rpc('admin_set_player_sitout',{p_player_id:player.id})})}
   function confirmAdminLeave(player:Player){ask(`Remove ${player.display_name}?`,`${player.display_name} will leave the current game or waitlist. The admin can undo this action.`,'Remove',async()=>{await rpc('admin_leave_player',{p_player_id:player.id},false)})}
@@ -277,6 +280,7 @@ export default function App() {
   function projectedGameAfterGrouping(request:GroupRequest){return projectedGameForGrouping(request.requester_id,request.target_id);}
   async function movePlayer(playerId:string,status:'current'|'waiting',index:number){setDragging(null);setDragOver(null);await rpc('admin_move_player',{p_player_id:playerId,p_status:status,p_index:index});}
   async function answerRejoin(choice:'stay'|'leave'){if(choice==='stay'&&!await requireOnSite())return;if(rejoinResponse)await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse,p_choice:choice});setRejoinResponse(null);}
+  async function rejoinAtBack(){if(!me)return;if(!await requireOnSite())return;await rpc('join_waitlist',{p_first_name:me.first_name,p_last_name:me.last_name},false);}
   async function advanceGame(){
     setBusy(true);const {data,error}=await supabase.rpc('end_current_game');
     if(error){setBusy(false);setNotice({title:'Could not start the next game',message:error.message});return;}
@@ -302,7 +306,8 @@ export default function App() {
       <QueueCard title={`Game ${config.game_number}`} subtitle={`${current.length} playing`} status="current" players={current} start={1} me={me} admin={admin} spotlight={onboarding==='tutorial'&&tutorialStep===3} editing={editing} editName={editName} setEditing={setEditing} setEditName={setEditName} saveName={saveName} requestGroup={requestGroup} leaveGroup={removeGroupMember} restrict={confirmRestriction} adminSitOut={confirmAdminSitOut} adminLeave={confirmAdminLeave} dragging={dragging} dragOver={dragOver} setDragging={setDragging} setDragOver={setDragOver} movePlayer={movePlayer}/>
       <QueueCard title="Waitlist" subtitle={waiting.length?`${waiting.length} waiting`:'No one waiting'} status="waiting" players={waiting} start={current.length+1} me={me} admin={admin} spotlight={onboarding==='tutorial'&&tutorialStep===4} editing={editing} editName={editName} setEditing={setEditing} setEditName={setEditName} saveName={saveName} projections={projectedGames} requestGroup={requestGroup} leaveGroup={removeGroupMember} restrict={confirmRestriction} adminSitOut={confirmAdminSitOut} adminLeave={confirmAdminLeave} dragging={dragging} dragOver={dragOver} setDragging={setDragging} setDragOver={setDragOver} movePlayer={movePlayer}/>
       {groupRequests.filter(request=>players.find(p=>p.id===request.target_id)?.user_id===user?.id).map(request=><section className="request-card" key={request.id}><strong>{request.requester?.display_name??'A player'} wants to group with you</strong><p>Accepting may move you back to the furthest group member’s position.</p><strong className="group-projection-warning">If you accept, you are projected to play in Game {projectedGameAfterGrouping(request)}.</strong><div><button className="next" onClick={()=>void answerGroup(request.id,true)}>Accept</button><button className="neutral" onClick={()=>void answerGroup(request.id,false)}>Decline</button></div></section>)}
-      {me?.status==='left'&&<button className="hero-button join-again" onClick={()=>setScreen('name')}>Join again</button>}
+      {me?.status==='left'&&<button className="hero-button join-again rejoin-at-back" onClick={()=>void rejoinAtBack()}>Rejoin</button>}
+      <button className="history-button your-history-button" onClick={()=>void openPlayerHistory()}>Your history <span>→</span></button>
       <button className={`history-button ${onboarding==='tutorial'&&tutorialStep===5?'tutorial-focus':''}`} onClick={()=>setScreen('history')}>Past games <span>→</span></button>
       <p className="projection-note">Queue positions update live on every connected phone.</p>
     </main>
@@ -311,6 +316,7 @@ export default function App() {
       <TutorialCoach step={tutorialStep} next={()=>tutorialStep<tutorialSteps.length-1?setTutorialStep(step=>step+1):void completeTutorial()} back={()=>setTutorialStep(step=>Math.max(0,step-1))} skip={()=>void completeTutorial()}/>
     )}
     {screen==='history'&&<div className="drawer"><div className="drawer-card history-drawer-card"><button className="back" onClick={()=>setScreen('queue')}>← Back to waitlist</button><h2>Past games</h2>{games.length===0?<p>No completed games yet.</p>:<div className="past-games-grid">{games.map(game=><article className="past-game" key={game.id}><strong>Game {game.game_number}</strong><ol>{game.player_names.map((name,index)=><li key={`${game.id}-${index}`}>{name}</li>)}</ol></article>)}</div>}</div></div>}
+    {screen==='player-history'&&<div className="drawer"><div className="drawer-card"><button className="back" onClick={()=>setScreen('queue')}>← Back to waitlist</button><h2>Your history</h2>{playerEvents.length===0?<p>You have no join or leave activity yet.</p>:playerEvents.map(event=><article className="past-game history-row" key={event.id}><strong>{event.message}</strong><p>{new Date(event.created_at).toLocaleString()}</p></article>)}</div></div>}
     {screen==='restricted'&&<div className="drawer"><div className="drawer-card"><button className="back" onClick={()=>setScreen('members')}>← Back to members</button><h2>Restricted members</h2>{players.filter(p=>p.restricted).length===0?<p>No restricted members.</p>:players.filter(p=>p.restricted).map(player=><article className="past-game member-row" key={player.id}><strong>{player.display_name}</strong><button onClick={()=>void rpc('admin_restrict_player',{p_player_id:player.id,p_restricted:false})}>Unrestrict</button></article>)}</div></div>}
     {screen==='add-player'&&<div className="drawer"><div className="drawer-card add-player-card"><button className="back" onClick={()=>setScreen('queue')}>← Back to waitlist</button><h2>Add a player</h2><p>Add a walk-in player directly to the live queue. They do not need an account.</p><form onSubmit={adminAddPlayer}><label>First name<input autoFocus value={adminFirst} onChange={e=>setAdminFirst(e.target.value)} placeholder="First name"/></label><label>Last initial or name <em>optional</em><input value={adminLast} onChange={e=>setAdminLast(e.target.value)} placeholder="Last initial or name"/></label><button className="hero-button" disabled={busy}>{busy?'Adding…':'Add to waitlist'}</button></form></div></div>}
     {screen==='offline-rejoin'&&<div className="drawer"><div className="drawer-card"><button className="back" onClick={()=>setScreen('queue')}>← Back to waitlist</button><h2>Rejoin requests</h2><p>These players have 15 minutes to return to the admin. Rejoining restores their saved queue position.</p>{adminRejoins.length===0?<p>No players are waiting to rejoin.</p>:adminRejoins.map(player=><article className="past-game offline-rejoin-row" key={player.id}><div><strong>{player.display_name}</strong><p>Saved position {player.queue_position} · expires {new Date(player.expires_at).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}</p></div><div><button className="next" onClick={()=>void answerOfflineRejoin(player,true)}>Rejoin</button><button className="danger" onClick={()=>ask(`Remove ${player.display_name}?`,'They will lose their saved position and must be added again normally.','Remove',async()=>{await answerOfflineRejoin(player,false)})}>Remove</button></div></article>)}</div></div>}

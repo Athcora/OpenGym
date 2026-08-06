@@ -39,7 +39,7 @@ export default function App() {
   const [members,setMembers]=useState<Member[]>([]);
   const [adminFirst,setAdminFirst]=useState(''); const [adminLast,setAdminLast]=useState('');
   const [adminRejoins,setAdminRejoins]=useState<AdminRejoin[]>([]); const [adminEvents,setAdminEvents]=useState<AdminEvent[]>([]); const [historySearch,setHistorySearch]=useState('');
-  const outsideSince=useRef<number|null>(null); const expiredRejoinHandled=useRef(false);
+  const outsideSince=useRef<number|null>(null); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0);
 
   const me=players.find(p=>p.user_id===user?.id);
   const current=useMemo(()=>players.filter(p=>p.status==='current').sort(byPosition),[players]);
@@ -47,6 +47,25 @@ export default function App() {
   const projectedGames=useMemo(()=>projectQueueGames(waiting,config.game_number,config.max_players),[waiting,config.game_number,config.max_players]);
 
   useEffect(()=>{ void boot(); },[]);
+  useEffect(()=>{
+    const refreshAfterReturn=()=>{
+      if(document.visibilityState!=='visible')return;
+      const now=Date.now();
+      if(now-lastResumeRefresh.current<1_000)return;
+      lastResumeRefresh.current=now;
+      void refresh(user);
+    };
+    document.addEventListener('visibilitychange',refreshAfterReturn);
+    window.addEventListener('pageshow',refreshAfterReturn);
+    window.addEventListener('focus',refreshAfterReturn);
+    window.addEventListener('online',refreshAfterReturn);
+    return()=>{
+      document.removeEventListener('visibilitychange',refreshAfterReturn);
+      window.removeEventListener('pageshow',refreshAfterReturn);
+      window.removeEventListener('focus',refreshAfterReturn);
+      window.removeEventListener('online',refreshAfterReturn);
+    };
+  },[user?.id]);
   useEffect(()=>{
     const closeDrawerFromBackdrop=(event:MouseEvent)=>{
       const target=event.target;

@@ -5,6 +5,11 @@
 .player-row.dragging { opacity:.28; transform:scale(.98); }
 .player-row.drop-space { transform:translateY(12px); box-shadow:0 -10px 22px rgba(117,100,245,.16); }
 .player-row[draggable="true"]:active { cursor:grabbing; }
+.admin-drag-preview { position:fixed; top:-1000px; left:-1000px; z-index:9999; width:280px; overflow:hidden; border:3px solid #54b88f; border-radius:16px; background:#24252a; color:#f5f6f8; box-shadow:0 18px 45px rgba(0,0,0,.42); }
+.admin-drag-preview-label { padding:9px 14px; background:#28453a; color:#a9ebd0; font-size:.68rem; font-weight:850; letter-spacing:.08em; text-transform:uppercase; }
+.admin-drag-preview-row { display:flex; align-items:center; gap:12px; min-height:54px; padding:8px 14px; border-top:1px solid #34363d; }
+.admin-drag-preview-row span { width:24px; color:#8b8e97; font-size:.82rem; font-weight:750; }
+.admin-drag-preview-row strong { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
 .member-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .member-row button { border:0; border-radius:10px; background:#5d536f; color:white; padding:9px 12px; }
 .restricted-members-button { width:100%; margin:0 0 16px; padding:12px 14px; border:0; border-radius:12px; background:#b94f5b; color:#fff; font-weight:800; cursor:pointer; }

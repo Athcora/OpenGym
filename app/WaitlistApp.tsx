@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { enablePush, pushSupported } from './push';
 import { supabase } from './supabase';
+import { translateUiText, type AppLanguage } from './i18n';
 import './admin-player.css';
 
 type PlayerStatus = 'current' | 'waiting' | 'sitout' | 'rejoin' | 'left';
@@ -41,6 +42,7 @@ export default function App() {
   const [adminFirst,setAdminFirst]=useState(''); const [adminLast,setAdminLast]=useState('');
   const [adminRejoins,setAdminRejoins]=useState<AdminRejoin[]>([]); const [adminEvents,setAdminEvents]=useState<AdminEvent[]>([]); const [historySearch,setHistorySearch]=useState('');
   const [onboarding,setOnboarding]=useState<OnboardingStage>('idle'); const [tutorialStep,setTutorialStep]=useState(0);
+  const [language,setLanguage]=useState<AppLanguage>('en'); const translationMemory=useRef(new WeakMap<Text,{original:string;applied:string}>());
   const outsideSince=useRef<number|null>(null); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0);
 
   const me=players.find(p=>p.user_id===user?.id);
@@ -49,6 +51,20 @@ export default function App() {
   const projectedGames=useMemo(()=>projectQueueGames(waiting,config.game_number,config.max_players),[waiting,config.game_number,config.max_players]);
 
   useEffect(()=>{ void boot(); },[]);
+  useEffect(()=>{const saved=localStorage.getItem('opengym-language');if(saved==='en'||saved==='es'||saved==='zh-CN')setLanguage(saved)},[]);
+  useEffect(()=>{
+    localStorage.setItem('opengym-language',language);document.documentElement.lang=language;
+    const applyText=(node:Text)=>{
+      const parent=node.parentElement;if(!parent||parent.closest('script,style'))return;
+      let state=translationMemory.current.get(node);
+      if(!state){state={original:node.data,applied:node.data};translationMemory.current.set(node,state)}else if(node.data!==state.applied)state.original=node.data;
+      const translated=translateUiText(state.original,language);state.applied=translated;if(node.data!==translated)node.data=translated;
+    };
+    const scan=(root:Node)=>{if(root.nodeType===Node.TEXT_NODE){applyText(root as Text);return}const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node=walker.nextNode();while(node){applyText(node as Text);node=walker.nextNode()}};
+    scan(document.body);
+    const observer=new MutationObserver(records=>{for(const record of records){if(record.type==='characterData')applyText(record.target as Text);for(const node of record.addedNodes)scan(node)}});
+    observer.observe(document.body,{subtree:true,childList:true,characterData:true});return()=>observer.disconnect();
+  },[language]);
   useEffect(()=>{
     const refreshAfterReturn=()=>{
       if(document.visibilityState!=='visible')return;
@@ -247,7 +263,7 @@ export default function App() {
   if(screen==='name')return <Shell><section className="auth-card"><button className="back" onClick={()=>setScreen('welcome')}>← Go back</button><span className="kicker">PLAYER DETAILS</span><h1>What should we call you?</h1><p>Your name is added to the waitlist as soon as you continue.</p><form onSubmit={join}><label>First name<input autoFocus value={first} onChange={e=>setFirst(e.target.value)} placeholder="First name"/></label><label>Last initial or name <em>optional</em><input value={last} onChange={e=>setLast(e.target.value)} placeholder="Last initial or name"/></label><button className="hero-button" disabled={busy}>Join waitlist</button></form></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
 
   return <Shell>
-    <header className="topbar"><Logo compact/><div className="top-actions">{pushSupported()&&!notifications&&<button className="icon-button" onClick={turnOnNotifications}>Enable alerts</button>}<button className="icon-button" onClick={()=>ask('Log out?','This will remove you from the waitlist and sign you out.','Log out',async()=>{await rpc('leave_waitlist',{},false);await logout()})}>Log out</button></div></header>
+    <header className="topbar"><Logo compact/><div className="top-actions">{pushSupported()&&!notifications&&<button className="icon-button" onClick={turnOnNotifications}>Enable alerts</button>}<button className="icon-button" onClick={()=>ask('Log out?','This will remove you from the waitlist and sign you out.','Log out',async()=>{await rpc('leave_waitlist',{},false);await logout()})}>Log out</button><label className="language-picker" aria-label="Change language"><span className="language-symbol" aria-hidden="true"><i>🌐</i><b>A/文</b></span><select value={language} onChange={event=>setLanguage(event.target.value as AppLanguage)}><option value="en">English</option><option value="es">Español</option><option value="zh-CN">简体中文</option></select></label></div></header>
     <main className="queue-page">
       <section className="game-heading"><div><span className="kicker">LIVE QUEUE {admin?'· ADMIN':''}</span><h1>Game {config.game_number}</h1></div><span className="live-pill"><i/>Live</span></section>
       {me&&me.status!=='left'&&<section className={`my-actions ${onboarding==='tutorial'&&tutorialStep===0?'tutorial-focus':''}`}><span>Your actions</span><div>{me.status==='current'&&<button className="next" disabled={busy||me.restricted} onClick={()=>ask('Start the next game?',`This will notify all players that ${me.display_name} advanced the queue. This cannot be quietly undone.`,'Next game',advanceGame)}>Next game</button>}<button className="neutral" disabled={busy} onClick={()=>ask('Sit out one game?',"You’ll skip one game, then receive priority for the following game.",'Sit out',async()=>{await rpc('sit_out_one_game')})}>Sit out</button><button className="danger" disabled={busy} onClick={()=>ask('Leave the waitlist?','This removes you from the current game or queue. You can join again later.','Leave',async()=>{await rpc('leave_waitlist',{},false)})}>Leave</button></div></section>}
@@ -259,7 +275,7 @@ export default function App() {
       <button className={`history-button ${onboarding==='tutorial'&&tutorialStep===3?'tutorial-focus':''}`} onClick={()=>setScreen('history')}>Past games <span>→</span></button>
       <p className="projection-note">Queue positions update live on every connected phone.</p>
     </main>
-    {onboarding==='disclaimer'&&<WaitlistDisclaimer mode={config.mode} acknowledge={()=>{setTutorialStep(0);setOnboarding('tutorial')}}/>}
+    {onboarding==='disclaimer'&&<WaitlistDisclaimer mode={config.mode} language={language} acknowledge={()=>{setTutorialStep(0);setOnboarding('tutorial')}}/>}
     {onboarding==='tutorial'&&(
       <TutorialCoach step={tutorialStep} next={()=>tutorialStep<tutorialSteps.length-1?setTutorialStep(step=>step+1):void completeTutorial()} back={()=>setTutorialStep(step=>Math.max(0,step-1))} skip={()=>void completeTutorial()}/>
     )}
@@ -286,9 +302,12 @@ function projectQueueGames(players:Player[],currentGame:number,maxPlayers:number
 function byPosition(a:Player,b:Player){return (a.queue_position??Number.MAX_SAFE_INTEGER)-(b.queue_position??Number.MAX_SAFE_INTEGER)}
 function Shell({children}:{children:React.ReactNode}){const [theme,setTheme]=useState<'dark'|'light'>('dark');useEffect(()=>{const saved=localStorage.getItem('opengym-theme');setTheme(saved==='dark'||saved==='light'?saved:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'));},[]);function toggleTheme(){const next=theme==='dark'?'light':'dark';setTheme(next);localStorage.setItem('opengym-theme',next)}const nextTheme=theme==='dark'?'light':'dark';return <div className={`app-shell theme-${theme}`}><button className="theme-switch" aria-label={`Switch to ${nextTheme} mode`} title={`Switch to ${nextTheme} mode`} onClick={toggleTheme}><span className="theme-track" aria-hidden="true"><i className="theme-thumb">{theme==='dark'?'☾':'☀'}</i></span></button>{children}</div>}
 function Logo({compact=false}:{compact?:boolean}){return <div className={`logo ${compact?'compact':''}`}><span>OG</span><div><strong>OpenGym</strong>{!compact&&<small>VOLLEYBALL WAITLIST</small>}</div></div>}
-function WaitlistDisclaimer({mode,acknowledge}:{mode:Config['mode'];acknowledge:()=>void}){
- const details=mode==='rejoin'?<>After you play, <strong>rejoin within five minutes</strong> to keep your place.</>:<>You stay in line until you or an admin removes you.</>;
- return <div className="onboarding-backdrop"><section className="onboarding-card" role="dialog" aria-modal="true" aria-labelledby="waitlist-mode-title"><span className="onboarding-kicker">BEFORE YOU START</span><h2 id="waitlist-mode-title">This is a {mode.toUpperCase()} waitlist</h2><p>{details} Only current-game players can press <strong>Next Game</strong>.</p><button className="hero-button" onClick={acknowledge}>I acknowledge</button></section></div>;
+function WaitlistDisclaimer({mode,language,acknowledge}:{mode:Config['mode'];language:AppLanguage;acknowledge:()=>void}){
+ const rejoin=mode==='rejoin';
+ const title=language==='es'?`Esta es una lista ${rejoin?'de REINGRESO':'REGULAR'}`:language==='zh-CN'?`这是${rejoin?'重新加入':'普通'}等候名单`:`This is a ${mode.toUpperCase()} waitlist`;
+ const details=language==='es'?(rejoin?'Después de jugar, vuelve a ingresar dentro de cinco minutos para conservar tu lugar.':'Permaneces en la fila hasta que tú o un administrador te retire.'):language==='zh-CN'?(rejoin?'比赛结束后，请在五分钟内重新加入以保留位置。':'你会保留在队列中，直到你或管理员将你移除。'):(rejoin?'After you play, rejoin within five minutes to keep your place.':'You stay in line until you or an admin removes you.');
+ const permission=language==='es'?'Solo los jugadores del juego actual pueden presionar Siguiente juego.':language==='zh-CN'?'只有当前上场的球员可以点击“下一场”。':'Only current-game players can press Next Game.';
+ return <div className="onboarding-backdrop"><section className="onboarding-card" role="dialog" aria-modal="true" aria-labelledby="waitlist-mode-title"><span className="onboarding-kicker">BEFORE YOU START</span><h2 id="waitlist-mode-title">{title}</h2><p>{details} <strong>{permission}</strong></p><button className="hero-button" onClick={acknowledge}>I acknowledge</button></section></div>;
 }
 const tutorialSteps=[
  {title:'Your controls',message:'Sit Out skips one game. Leave removes you. When you are playing, Next Game appears here.'},

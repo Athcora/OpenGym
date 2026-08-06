@@ -28,6 +28,16 @@
 .theme-light .onboarding-card p,.theme-light .tutorial-coach p { color:#596270; }
 .theme-light .tutorial-scrim { background:rgba(44,51,63,.55); }
 @media(max-width:520px){.tutorial-coach{bottom:max(10px,env(safe-area-inset-bottom));padding:17px}.tutorial-focus{scroll-margin-bottom:230px}}
+.top-actions { flex-direction:column; align-items:stretch; }
+.language-picker { position:relative; display:flex; align-items:center; min-width:128px; min-height:38px; border:1px solid #3b3e47; border-radius:11px; background:#25262b; color:#ccd0d8; cursor:pointer; overflow:hidden; }
+.language-symbol { display:flex; align-items:center; gap:3px; padding-left:8px; pointer-events:none; }
+.language-symbol i { font-style:normal; font-size:.9rem; filter:grayscale(1); }
+.language-symbol b { font-size:.56rem; letter-spacing:-.04em; color:#b8bdc8; }
+.language-picker select { min-width:0; flex:1; height:36px; border:0; outline:0; background:transparent; color:inherit; padding:0 22px 0 6px; font-size:.72rem; font-weight:750; cursor:pointer; appearance:auto; }
+.language-picker select option { background:#25262b; color:#f5f6f8; }
+.theme-light .language-picker { border-color:#dbe0e6; background:#fff; color:#333944; }
+.theme-light .language-picker select option { background:#fff; color:#20242c; }
+@media(max-width:520px){.language-picker{min-width:120px}.language-symbol b{display:none}}
 .member-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .member-row button { border:0; border-radius:10px; background:#5d536f; color:white; padding:9px 12px; }
 .restricted-members-button { width:100%; margin:0 0 16px; padding:12px 14px; border:0; border-radius:12px; background:#b94f5b; color:#fff; font-weight:800; cursor:pointer; }

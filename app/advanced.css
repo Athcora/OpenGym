@@ -10,6 +10,24 @@
 .admin-drag-preview-row { display:flex; align-items:center; gap:12px; min-height:54px; padding:8px 14px; border-top:1px solid #34363d; }
 .admin-drag-preview-row span { width:24px; color:#8b8e97; font-size:.82rem; font-weight:750; }
 .admin-drag-preview-row strong { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.onboarding-backdrop { position:fixed; inset:0; z-index:80; display:grid; place-items:center; padding:20px; background:rgba(10,11,14,.76); backdrop-filter:blur(8px); }
+.onboarding-card { width:min(100%,410px); padding:27px; border:1px solid #444751; border-radius:22px; background:#292a30; color:#f6f7f9; box-shadow:0 30px 90px rgba(0,0,0,.58); }
+.onboarding-kicker { color:#9da3b0; font-size:.68rem; font-weight:850; letter-spacing:.13em; }
+.onboarding-card h2 { margin:10px 0; font-size:1.65rem; letter-spacing:-.035em; }
+.onboarding-card p { margin:0 0 22px; color:#c3c7d0; line-height:1.55; }
+.tutorial-scrim { position:fixed; inset:0; z-index:60; background:rgba(8,9,12,.68); pointer-events:none; }
+.tutorial-focus { position:relative; z-index:61; border-radius:18px; box-shadow:0 0 0 4px #8a79ff,0 0 0 10px rgba(138,121,255,.2),0 22px 60px rgba(0,0,0,.48)!important; }
+.tutorial-coach { position:fixed; z-index:70; left:50%; bottom:max(18px,env(safe-area-inset-bottom)); transform:translateX(-50%); width:min(calc(100% - 28px),520px); padding:20px; border:1px solid #484b55; border-radius:20px; background:#292a30; color:#f6f7f9; box-shadow:0 24px 70px rgba(0,0,0,.58); }
+.tutorial-progress { display:flex; align-items:center; justify-content:space-between; gap:12px; color:#9ba0ac; font-size:.66rem; font-weight:850; letter-spacing:.1em; }
+.tutorial-progress button { border:0; background:none; color:#b9afff; font-size:.72rem; font-weight:800; cursor:pointer; }
+.tutorial-coach h2 { margin:12px 0 6px; font-size:1.35rem; }
+.tutorial-coach p { margin:0; color:#c2c6cf; line-height:1.5; }
+.tutorial-actions { display:flex; justify-content:flex-end; gap:9px; margin-top:17px; }
+.tutorial-actions button { min-width:90px; min-height:42px; border:0; border-radius:12px; color:white; font-weight:800; cursor:pointer; }
+.theme-light .onboarding-card,.theme-light .tutorial-coach { border-color:#d8dde5; background:#fff; color:#20242c; }
+.theme-light .onboarding-card p,.theme-light .tutorial-coach p { color:#596270; }
+.theme-light .tutorial-scrim { background:rgba(44,51,63,.55); }
+@media(max-width:520px){.tutorial-coach{bottom:max(10px,env(safe-area-inset-bottom));padding:17px}.tutorial-focus{scroll-margin-bottom:230px}}
 .member-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .member-row button { border:0; border-radius:10px; background:#5d536f; color:white; padding:9px 12px; }
 .restricted-members-button { width:100%; margin:0 0 16px; padding:12px 14px; border:0; border-radius:12px; background:#b94f5b; color:#fff; font-weight:800; cursor:pointer; }

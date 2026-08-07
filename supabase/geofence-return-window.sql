@@ -13,7 +13,15 @@ create policy "players view their geofence return window" on public.geofence_ret
 
 create or replace function public.normalize_active_waitlist()
 returns void language plpgsql security definer set search_path=public as $$
-declare c public.waitlist_config; candidate record; open_spots integer;
+declare
+  c public.waitlist_config;
+  candidate record;
+  open_spots integer;
+  split_group uuid;
+  promoted_group uuid;
+  split_members uuid[];
+  split_size integer;
+  remaining_size integer;
 begin
   select * into c from public.waitlist_config where id;
   update public.waitlist_players set status='waiting' where status in ('current','waiting') and queue_position is not null;
@@ -29,6 +37,52 @@ begin
     end if;
     exit when open_spots=0;
   end loop;
+
+  -- A group normally stays together. If whole groups and single players cannot
+  -- fill the game, split only the earliest oversized waiting group and move
+  -- exactly the number of members needed into the remaining current-game spots.
+  if open_spots>0 then
+    select p.group_id,count(*)::integer
+      into split_group,remaining_size
+      from public.waitlist_players p
+      where p.status='waiting' and p.queue_position is not null and p.group_id is not null
+      group by p.group_id
+      having count(*)>open_spots
+      order by min(p.queue_position)
+      limit 1;
+
+    if split_group is not null then
+      select array_agg(chosen.id order by chosen.queue_position)
+        into split_members
+        from (
+          select p.id,p.queue_position
+          from public.waitlist_players p
+          where p.status='waiting' and p.group_id=split_group
+          order by p.queue_position,p.id
+          limit open_spots
+        ) chosen;
+      split_size:=coalesce(array_length(split_members,1),0);
+      remaining_size:=remaining_size-split_size;
+      promoted_group:=case when split_size>1 then gen_random_uuid() else null end;
+
+      insert into public.group_notifications(user_id,message)
+      select distinct p.user_id,
+        'Your group needed to split because there were not enough single players to make a full game. You have been placed into a smaller group so the current game can be filled.'
+      from public.waitlist_players p
+      where p.group_id=split_group and p.user_id is not null;
+
+      update public.waitlist_players p
+      set status='current',group_id=promoted_group,updated_at=now()
+      where p.id=any(split_members);
+
+      if remaining_size<2 then
+        update public.waitlist_players p set group_id=null,updated_at=now()
+        where p.group_id=split_group;
+      end if;
+      open_spots:=open_spots-split_size;
+    end if;
+  end if;
+
   with ranked as (select id,row_number() over(order by queue_position,id) rn from public.waitlist_players where status in ('current','waiting','sitout') and queue_position is not null)
   update public.waitlist_players p set queue_position=ranked.rn from ranked where p.id=ranked.id;
 end; $$;

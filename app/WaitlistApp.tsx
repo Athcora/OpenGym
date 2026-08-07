@@ -18,6 +18,7 @@ type AdminRejoin = { id:string;display_name:string;queue_position:number;expires
 type AdminEvent = { id:number;actor_name:string;event_type:string;message:string;created_at:string };
 type Notice = { title:string; message:string; confirm?:string; action?:()=>Promise<void>; onClose?:()=>void } | null;
 type OnboardingStage = 'idle'|'disclaimer'|'tutorial';
+const TUTORIAL_VERSION = 2;
 
 const cleanName = (value:string) => value.replace(/[^\p{L}\s]/gu, '').replace(/\s+/g, ' ').trim();
 const blockedNameTerms = [
@@ -81,6 +82,10 @@ export default function App() {
   const projectedGames=useMemo(()=>projectQueueGames(waiting,config.game_number,config.max_players),[waiting,config.game_number,config.max_players]);
 
   useEffect(()=>{ void boot(); },[]);
+  useEffect(()=>{
+    if(!user||!me||admin||config.mode==='teams'||onboarding!=='idle'||me.status==='left'||me.status==='rejoin')return;
+    if(user.user_metadata?.opengym_tutorial_version!==TUTORIAL_VERSION)setOnboarding('disclaimer');
+  },[user?.id,user?.user_metadata?.opengym_tutorial_version,me?.id,me?.status,admin,config.mode,onboarding]);
   useEffect(()=>{const saved=localStorage.getItem('opengym-language');if(saved==='en'||saved==='es'||saved==='zh-CN')setLanguage(saved)},[]);
   useEffect(()=>{
     localStorage.setItem('opengym-language',language);document.documentElement.lang=language;
@@ -195,12 +200,12 @@ export default function App() {
   async function join(event:FormEvent){event.preventDefault(); const f=cleanName(first),l=cleanName(last); if(!f){setNotice({title:'Enter your name',message:'Your name needs to contain letters.'});return;}
     if(isInappropriateName(`${first} ${last}`)){setNotice(inappropriateNameNotice);return;}
     if(!await requireOnSite())return;
-    if(await rpc('join_waitlist',{p_first_name:f,p_last_name:l},false)){setScreen('queue');if(config.mode!=='teams'&&!user?.user_metadata?.opengym_tutorial_completed)setOnboarding('disclaimer');}
+    if(await rpc('join_waitlist',{p_first_name:f,p_last_name:l},false)){setScreen('queue');if(config.mode!=='teams'&&user?.user_metadata?.opengym_tutorial_version!==TUTORIAL_VERSION)setOnboarding('disclaimer');}
   }
   async function completeTutorial(){
     setOnboarding('idle');setTutorialStep(0);
     if(!user)return;
-    const {data,error}=await supabase.auth.updateUser({data:{opengym_tutorial_completed:true}});
+    const {data,error}=await supabase.auth.updateUser({data:{opengym_tutorial_completed:true,opengym_tutorial_version:TUTORIAL_VERSION}});
     if(data.user)setUser(data.user);
     if(error)setNotice({title:'Tutorial completed',message:'Your tutorial choice could not be saved to your account, but you can continue using the waitlist.'});
   }

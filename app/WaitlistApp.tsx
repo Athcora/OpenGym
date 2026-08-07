@@ -17,6 +17,7 @@ type GroupNotification = { id:string; user_id:string; message:string; read_at:st
 type Member = { user_id:string;email:string|null;phone:string|null;created_at:string;player_name:string|null };
 type AdminRejoin = { id:string;display_name:string;queue_position:number;expires_at:string };
 type AdminEvent = { id:number;actor_name:string;event_type:string;message:string;created_at:string };
+type GeofenceReturn = { id:string;removed_at:string;saved_position_until:string;expires_at:string };
 type Notice = { title:string; message:string; confirm?:string; action?:()=>Promise<void>; onClose?:()=>void; actionTone?:'danger'|'success'; cancelTone?:'neutral'|'danger'; cancelLabel?:string; cancelAction?:()=>Promise<void>; blocking?:boolean; requestId?:string } | null;
 type OnboardingStage = 'idle'|'disclaimer'|'tutorial';
 const TUTORIAL_VERSION = 2;
@@ -79,7 +80,8 @@ export default function App() {
   const [adminGrouping,setAdminGrouping]=useState(false); const [adminGroupIds,setAdminGroupIds]=useState<string[]>([]);
   const [adminSubstituting,setAdminSubstituting]=useState(false); const [playerSubstituting,setPlayerSubstituting]=useState(false); const [substituteIds,setSubstituteIds]=useState<string[]>([]);
   const [language,setLanguage]=useState<AppLanguage>('en'); const translationMemory=useRef(new WeakMap<Text,{original:string;applied:string}>());
-  const outsideSince=useRef<number|null>(null); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false);
+  const [geofenceReturn,setGeofenceReturn]=useState<GeofenceReturn|null>(null); const [returnClock,setReturnClock]=useState(Date.now());
+  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false);
 
   const me=players.find(p=>p.user_id===user?.id)??ownPlayer;
   const current=useMemo(()=>players.filter(p=>p.status==='current').sort(byPosition),[players]);
@@ -145,18 +147,22 @@ export default function App() {
     return()=>document.removeEventListener('click',closeDrawerFromBackdrop);
   },[]);
   useEffect(()=>{
-    if(!me||me.status==='left'||me.status==='rejoin'||admin||!config.geofence_enabled||!navigator.geolocation)return;
+    if(!me||me.status==='left'||me.status==='rejoin'||admin||config.mode==='teams'||!config.geofence_enabled||!navigator.geolocation)return;
     let active=true;
     const watch=navigator.geolocation.watchPosition(async position=>{
       if(!active)return;
       const result=await verifyLocation(position.coords.latitude,position.coords.longitude);
       if(!result)return;
-      if(result.inside){outsideSince.current=null;return;}
-      if(outsideSince.current===null){outsideSince.current=Date.now();setNotice({title:'You appear to have left the facility',message:'Return within one minute to remain in the waitlist. Keep this page open so your location can be rechecked.'});return;}
-      if(Date.now()-outsideSince.current>=60_000){outsideSince.current=null;await rpc('leave_waitlist',{},false);setNotice({title:'Removed from the waitlist',message:'Your phone remained outside the facility area for more than one minute.'});}
+      if(result.inside||geofenceRemovalInProgress.current)return;
+      geofenceRemovalInProgress.current=true;
+      const {data,error}=await supabase.rpc('remove_self_for_geofence');
+      geofenceRemovalInProgress.current=false;
+      if(error){setNotice({title:'Location update failed',message:error.message});return;}
+      setGeofenceReturn(data as GeofenceReturn);setReturnClock(Date.now());await refresh();
     },()=>{}, {enableHighAccuracy:true,maximumAge:15_000,timeout:20_000});
-    return()=>{active=false;navigator.geolocation.clearWatch(watch);outsideSince.current=null;};
-  },[me?.id,me?.status,admin,config.geofence_enabled]);
+    return()=>{active=false;navigator.geolocation.clearWatch(watch);geofenceRemovalInProgress.current=false;};
+  },[me?.id,me?.status,admin,config.mode,config.geofence_enabled]);
+  useEffect(()=>{if(!geofenceReturn)return;const timer=window.setInterval(()=>setReturnClock(Date.now()),1000);return()=>window.clearInterval(timer)},[geofenceReturn?.id]);
   useEffect(()=>{
     if(me?.status!=='rejoin'||rejoinResponse||!rejoinChecked){if(me?.status!=='rejoin')expiredRejoinHandled.current=false;return;}
     if(expiredRejoinHandled.current)return;
@@ -188,26 +194,28 @@ export default function App() {
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'past_games'},()=>void refresh())
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'waitlist_events'},payload=>{
         const event=payload.new as {actor_user_id?:string;event_type?:string;message?:string};
-        const quietEvents=new Set(['join','leave','add_player','admin_leave','admin_rejoin']);
+        const quietEvents=new Set(['join','leave','add_player','admin_leave','admin_rejoin','geofence_leave','geofence_return']);
         if(event.actor_user_id!==session?.user.id&&event.message&&!quietEvents.has(event.event_type??''))setNotice({title:'Waitlist update',message:event.message});
       }).subscribe();
     return()=>{void supabase.removeChannel(channel)};
   }
   async function refresh(activeUser?:User|null){
-    const [{data:p},{data:c},{data:g},{data:a},{data:r},{data:s},{data:rejoin,error:rejoinError}]=await Promise.all([
+    const [{data:p},{data:c},{data:g},{data:a},{data:r},{data:s},{data:rejoin,error:rejoinError},{data:geo}]=await Promise.all([
       supabase.from('waitlist_players').select('*').neq('status','left').order('queue_position'),
       supabase.from('waitlist_config').select('game_number,max_players,mode,geofence_enabled,geofence_radius_m').single(),
       supabase.from('past_games').select('*').order('game_number',{ascending:false}),
       supabase.from('admin_sessions').select('user_id').maybeSingle(),
       supabase.from('group_requests').select('*').eq('status','pending'),
       supabase.from('substitute_requests').select('*').eq('status','pending'),
-      supabase.from('rejoin_responses').select('id').is('choice',null).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false}).limit(1).maybeSingle()
+      supabase.from('rejoin_responses').select('id').is('choice',null).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false}).limit(1).maybeSingle(),
+      supabase.from('geofence_return_prompts').select('id,removed_at,saved_position_until,expires_at').is('resolved_at',null).gt('expires_at',new Date().toISOString()).order('removed_at',{ascending:false}).limit(1).maybeSingle()
     ]);
     const playerRows=(p??[]) as Player[];setPlayers(playerRows); if(c)setConfig(c as Config); setGames((g??[]) as Game[]);setAdmin(Boolean(a));
     if(a){const {data:offline}=await supabase.rpc('admin_list_offline_rejoins');setAdminRejoins((offline??[]) as AdminRejoin[]);}else setAdminRejoins([]);
     setGroupRequests(((r??[]) as GroupRequest[]).map(request=>({...request,requester:playerRows.find(player=>player.id===request.requester_id)})));
     setSubstituteRequests(((s??[]) as SubstituteRequest[]).map(request=>({...request,requester:playerRows.find(player=>player.id===request.requester_id)})));
     setRejoinResponse(rejoin?.id??null);setRejoinChecked(!rejoinError);
+    setGeofenceReturn((geo as GeofenceReturn|null)??null);
     const uid=(activeUser??user)?.id; let own=playerRows.find(item=>item.user_id===uid)??null;
     if(uid&&!own){const {data:storedOwn}=await supabase.from('waitlist_players').select('*').eq('user_id',uid).maybeSingle();own=(storedOwn as Player|null)??null;}
     setOwnPlayer(own);if(own)setScreen('queue');
@@ -430,6 +438,17 @@ export default function App() {
   }
   async function answerRejoin(choice:'stay'|'leave'){if(choice==='stay'&&!await requireOnSite())return;if(rejoinResponse)await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse,p_choice:choice});setRejoinResponse(null);}
   async function rejoinAtBack(){if(!me)return;if(!await requireOnSite())return;await rpc('join_waitlist',{p_first_name:me.first_name,p_last_name:me.last_name},false);}
+  async function returnToFacility(){
+    if(!geofenceReturn)return;setBusy(true);
+    try{
+      const position=await getPosition();
+      const {data,error}=await supabase.rpc('return_after_geofence',{p_prompt_id:geofenceReturn.id,p_latitude:position.coords.latitude,p_longitude:position.coords.longitude});
+      setBusy(false);
+      if(error){setNotice({title:'Could not rejoin',message:error.message});return;}
+      if(!data?.inside){setNotice({title:'You are still too far away',message:'Move back inside the OpenGym facility area, then press “I’m back!” again.'});return;}
+      setGeofenceReturn(null);await refresh();setNotice({title:'Welcome back',message:data.message});
+    }catch{setBusy(false);setNotice({title:'Location permission needed',message:'Allow location access so OpenGym can confirm that you are back at the facility.'});}
+  }
   async function advanceGame(){
     setBusy(true);const {data,error}=await supabase.rpc('end_current_game');
     if(error){setBusy(false);setNotice({title:'Could not start the next game',message:error.message});return;}
@@ -443,6 +462,7 @@ export default function App() {
   if(screen==='welcome')return <Shell><section className="auth-card"><Logo/><button className="hero-button" disabled={busy} onClick={()=>void startGuestFlow()}>{busy?'Starting guest mode…':'Continue as guest'}</button><button className="admin-link" onClick={()=>setScreen('admin')}>Admin</button><p className="fine">Join the live volleyball queue from your phone.</p></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
   if(screen==='email')return <Shell><section className="auth-card"><button className="back" onClick={()=>setScreen('welcome')}>← Go back</button><span className="kicker">{authMode==='signup'?'CREATE ACCOUNT':'ACCOUNT SIGN IN'}</span><h1>{authMode==='signup'?'Create your OpenGym account':'Welcome back'}</h1><p>We’ll email you a secure link—no password needed.</p><form onSubmit={emailSignIn}>{authMode==='signup'&&<><label>First name<input autoFocus value={first} onChange={e=>setFirst(e.target.value)} placeholder="First name" autoComplete="given-name" required/></label><label>Last name<input value={last} onChange={e=>setLast(e.target.value)} placeholder="Last name" autoComplete="family-name" required/></label></>}<label>Email address<input autoFocus={authMode==='signin'} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required/></label><button className="hero-button" disabled={busy}>{busy?'Sending…':'Email me a sign-in link'}</button></form><p className="fine">The link expires for your security.</p></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
   if(screen==='admin')return <Shell><section className="auth-card"><div className="admin-access-heading"><button className="back" onClick={()=>setScreen('welcome')}>← Go back</button><span className="kicker">ADMIN ACCESS</span></div><h1>Manage OpenGym</h1><p>Sign in to choose a waitlist mode and manage players.</p><form onSubmit={adminLogin}><label>Username<input autoFocus value={adminUser} onChange={e=>setAdminUser(e.target.value)} autoCapitalize="none"/></label><label>Password<input type="password" value={adminPassword} onChange={e=>setAdminPassword(e.target.value)}/></label><button className="hero-button" disabled={busy}>Sign in</button></form></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
+  if(!admin&&geofenceReturn){const remaining=Math.max(0,Math.ceil((new Date(geofenceReturn.expires_at).getTime()-returnClock)/1000));const saved=new Date(geofenceReturn.saved_position_until).getTime()>returnClock;return <Shell><section className="auth-card geofence-return-card"><Logo/><span className="kicker">RETURN TO THE GYM</span><h1>You’re too far away</h1><p>It seems you moved too far from the gym, so you were taken off the waitlist. Go back to the facility and press “I’m back!” below. If this looks like a mistake, please let an admin know.</p><div className="return-countdown"><strong>{formatCountdown(remaining)}</strong><span>left to return</span></div><p className="return-position-note">{saved?'Your previous position is saved for the first minute.':'Your saved-position minute has ended. You can still rejoin at the back.'}</p><button className="hero-button rejoin-at-back" disabled={busy||remaining===0} onClick={()=>void returnToFacility()}>{remaining===0?'Return window expired':busy?'Checking location…':"I’m back!"}</button></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>}
   if(me?.status==='rejoin'&&rejoinResponse)return <Shell><section className="auth-card rejoin-card"><Logo/><span className="kicker">REJOIN WAITLIST</span><h1>Do you want to rejoin?</h1><p>Your position is saved. Choose within five minutes or you’ll automatically leave the waitlist.</p><div className="rejoin-actions"><button className="next" onClick={()=>void answerRejoin('stay')}>Rejoin</button><button className="danger" onClick={()=>void answerRejoin('leave')}>Leave</button></div></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
   if(screen==='name')return <Shell><section className="auth-card"><button className="back" onClick={()=>setScreen('welcome')}>← Go back</button><h1>What should we call you?</h1><p>Your name is added to the waitlist as soon as you continue.</p><form onSubmit={join}><label>First name<input value={first} onChange={e=>setFirst(e.target.value)} placeholder="First name"/></label><label>Last initial or name<input value={last} onChange={e=>setLast(e.target.value)} placeholder="Optional: Last initial or name"/></label><button className="hero-button" disabled={busy}>Join waitlist</button></form></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
 
@@ -541,6 +561,7 @@ function setPlayerDragPreview(event:React.DragEvent<HTMLElement>,player:Player,p
  document.body.appendChild(preview);event.dataTransfer.setDragImage(preview,24,28);window.setTimeout(()=>preview.remove(),0);
 }
 
+function formatCountdown(totalSeconds:number){const minutes=Math.floor(totalSeconds/60);const seconds=totalSeconds%60;return `${minutes}:${String(seconds).padStart(2,'0')}`}
 type DropPlacement={status:'current'|'waiting';index:number;marker:string|null};
 function resolveDropPlacement(x:number,y:number):DropPlacement|null{
  const element=document.elementFromPoint(x,y);const row=element?.closest<HTMLElement>('[data-player-id]');const card=element?.closest<HTMLElement>('[data-drop-status]');

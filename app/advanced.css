@@ -3,6 +3,14 @@
 @media(max-width:520px){.my-actions .next.next-with-substitute{grid-column:auto}}
 .rejoin-actions button { min-height:54px; border:0; border-radius:14px; color:#fff; font-weight:800; }
 .rejoin-card { margin-top:12vh; }
+.geofence-return-card { margin-top:clamp(24px,8vh,90px); text-align:center; }
+.geofence-return-card>p { text-align:left; }
+.return-countdown { display:flex; flex-direction:column; align-items:center; margin:22px 0 12px; padding:18px; border:1px solid #3d4149; border-radius:17px; background:#23242a; }
+.return-countdown strong { font-size:2.35rem; line-height:1; letter-spacing:-.04em; }
+.return-countdown span { margin-top:6px; color:#9fa5b0; font-size:.7rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.geofence-return-card .return-position-note { margin:0 0 18px; color:#aeb4be; font-size:.8rem; text-align:center; }
+.theme-light .return-countdown { border-color:#dce2e8; background:#f4f7f9; }
+.theme-light .geofence-return-card .return-position-note { color:#66717e; }
 .player-row[draggable="true"] { cursor:grab; }
 .player-row.dragging { opacity:.28; transform:scale(.98); }
 .player-row.drop-space-before { transform:translateY(12px); box-shadow:0 -10px 22px rgba(117,100,245,.16); }

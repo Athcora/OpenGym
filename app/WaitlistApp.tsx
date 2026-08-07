@@ -290,11 +290,14 @@ export default function App() {
   async function removeGroupMember(player:Player){await rpc('remove_player_from_group',{p_target_id:player.id});}
   async function adminRemoveGroupMember(player:Player){await rpc('admin_remove_player_from_group',{p_target_id:player.id});}
   function confirmMySitOut(){
-    const groupIsPlaying=Boolean(me?.group_id&&players.some(player=>player.id!==me.id&&player.group_id===me.group_id&&player.status==='current'));
-    if(groupIsPlaying){
+    const groupMembers=me?.group_id?players.filter(player=>player.id!==me.id&&player.group_id===me.group_id):[];
+    const groupIsPlaying=groupMembers.some(player=>player.status==='current');
+    const groupPlaysNext=groupMembers.some(player=>projectedGames.get(player.id)===config.game_number+1);
+    if(groupIsPlaying||groupPlaysNext){
+      const groupTiming=groupIsPlaying?'in the current game':'scheduled for the next game';
       ask(
         'Sit out and leave your group?',
-        'Your group is in the current game. If you sit out, you will leave the group and continue as an individual. You will still have priority for the game after this one.',
+        `Your group is ${groupTiming}. If you sit out, you will leave the group and continue as an individual. You will still have priority for the game after that.`,
         'Continue',
         async()=>{await rpc('sit_out_and_leave_group');}
       );

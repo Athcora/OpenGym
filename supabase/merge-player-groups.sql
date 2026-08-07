@@ -94,6 +94,11 @@ begin
   from ranked
   where p.id=ranked.id;
 
+  -- Grouping can move a current-game player back to the later player's
+  -- position. Refill every open game spot from the front of the waitlist,
+  -- while keeping existing groups together.
+  perform public.normalize_active_waitlist();
+
   update public.group_requests set status='accepted',answered_at=now() where id=request.id;
 
   insert into public.group_notifications(user_id,message)

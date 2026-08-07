@@ -10,6 +10,8 @@
 .admin-drag-preview-row { display:flex; align-items:center; gap:12px; min-height:54px; padding:8px 14px; border-top:1px solid #34363d; }
 .admin-drag-preview-row span { width:24px; color:#8b8e97; font-size:.82rem; font-weight:750; }
 .admin-drag-preview-row strong { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.mobile-admin-drag-preview { position:fixed; top:0; left:0; width:min(280px,calc(100vw - 38px)); pointer-events:none; opacity:.96; transform:translate3d(-1000px,-1000px,0); }
+body.mobile-admin-dragging { overscroll-behavior:none; }
 .onboarding-backdrop { position:fixed; inset:0; z-index:80; display:grid; place-items:center; padding:20px; background:rgba(10,11,14,.76); backdrop-filter:blur(8px); }
 .onboarding-card { width:min(100%,410px); padding:27px; border:1px solid #444751; border-radius:22px; background:#292a30; color:#f6f7f9; box-shadow:0 30px 90px rgba(0,0,0,.58); }
 .onboarding-kicker { color:#9da3b0; font-size:.68rem; font-weight:850; letter-spacing:.13em; }
@@ -55,7 +57,7 @@
 .restricted-members-button:hover { background:#c85b67; box-shadow:0 0 18px rgba(185,79,91,.3); }
 .theme-dark .restricted-members-button { background:#8f4650; }
 .theme-dark .restricted-members-button:hover { background:#a6535e; box-shadow:0 0 18px rgba(166,83,94,.35); }
-@media (max-width:620px) { .admin-tools { display:grid; grid-template-columns:1fr 1fr; } .admin-tools select { grid-column:1/-1; } }
+@media (max-width:620px) { .admin-tools { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); } .admin-tools select { grid-column:1/-1; } .admin-tools .undo-redo-controls { grid-column:1/-1; width:100%; min-width:0; } .admin-tools .undo-redo-controls button { flex:1; min-width:0; } }
 .admin-tools .undo-redo-controls { display:flex; align-items:center; gap:4px; padding:3px; border:1px solid #3b3e47; border-radius:12px; background:#202126; }
 .admin-tools .undo-redo-controls button { min-width:58px; padding:8px 11px; font-size:.75rem; font-weight:800; line-height:1; }
 .admin-tools .undo-redo-controls button:hover { background:#343640; box-shadow:0 0 14px #7c66ff33; }
@@ -84,7 +86,7 @@
 .theme-light .restrict-button { background:#c94955; }
 .theme-light .admin-sitout-button:hover,.theme-light .admin-leave-button:hover { box-shadow:0 0 15px #55708d66; }
 .theme-light .restrict-button:hover { box-shadow:0 0 16px #c9495566; }
-@media (max-width:620px) { .admin-row { align-items:flex-start; flex-wrap:wrap; } .admin-row .player-name { min-height:34px; } .admin-player-actions { width:100%; margin:2px 0 2px 34px; gap:5px; } .admin-player-actions button { flex:1; padding:7px 6px; font-size:.63rem; } .theme-switch { left:8px; } }
+@media (max-width:620px) { .admin-row { align-items:flex-start; flex-wrap:wrap; touch-action:pan-y; -webkit-touch-callout:none; user-select:none; } .admin-row .player-name { min-height:34px; } .admin-player-actions { width:100%; margin:2px 0 2px 34px; gap:5px; } .admin-player-actions button { flex:1; padding:7px 6px; font-size:.63rem; } .theme-switch { left:8px; } body.mobile-admin-dragging .admin-row { touch-action:none; } }
 .app-shell.theme-light { background:radial-gradient(circle at 50% 0,#fff 0,#edf1f5 60%); color:#20242c; }
 .theme-light .auth-card,.theme-light .queue-card,.theme-light .drawer-card,.theme-light .modal { background:#fff; color:#20242c; border-color:#dde2e8; box-shadow:0 24px 60px #3440521c; }
 .theme-light .auth-card p,.theme-light .modal p { color:#5f6876; }

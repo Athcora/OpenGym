@@ -10,6 +10,9 @@ declare
   max_players integer;
   destination_index integer;
   moving_count integer;
+  current_count integer;
+  open_spots integer;
+  candidate record;
 begin
   if not public.is_waitlist_admin() then raise exception 'Admin access required.'; end if;
   if p_status not in ('current','waiting') then raise exception 'Invalid destination.'; end if;
@@ -91,6 +94,43 @@ begin
   set status='waiting',updated_at=now()
   from current_ranked
   where p.id=current_ranked.id and current_ranked.rn>max_players;
+
+  -- Moving someone out of the current game must not leave an empty game spot.
+  -- Fill vacancies from the front of the existing waitlist, excluding the
+  -- player/group that was deliberately moved out. Groups are promoted only
+  -- when the whole group fits, so an admin move can never split a group.
+  select count(*) into current_count
+  from public.waitlist_players
+  where status='current';
+
+  open_spots:=greatest(max_players-current_count,0);
+  if open_spots>0 and p_status='waiting' then
+    for candidate in
+      select
+        p.group_id,
+        case when p.group_id is null then p.id end as member_id,
+        count(*)::integer as member_count,
+        min(p.queue_position) as first_position
+      from public.waitlist_players p
+      where p.status='waiting'
+        and p.id<>player.id
+        and (player.group_id is null or p.group_id is distinct from player.group_id)
+      group by p.group_id,case when p.group_id is null then p.id end
+      order by min(p.queue_position)
+    loop
+      if candidate.member_count<=open_spots then
+        update public.waitlist_players p
+        set status='current',updated_at=now()
+        where p.status='waiting'
+          and (
+            (candidate.group_id is not null and p.group_id=candidate.group_id)
+            or (candidate.group_id is null and p.id=candidate.member_id)
+          );
+        open_spots:=open_spots-candidate.member_count;
+        exit when open_spots=0;
+      end if;
+    end loop;
+  end if;
 
   with ranked as (
     select id,row_number() over(order by case status when 'current' then 0 else 1 end,queue_position,id) rn

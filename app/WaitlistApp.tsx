@@ -279,7 +279,32 @@ export default function App() {
     return config.game_number+Math.floor(furthestIndex/config.max_players);
   }
   function projectedGameAfterGrouping(request:GroupRequest){return projectedGameForGrouping(request.requester_id,request.target_id);}
-  async function movePlayer(playerId:string,status:'current'|'waiting',index:number){setDragging(null);setDragOver(null);await rpc('admin_move_player',{p_player_id:playerId,p_status:status,p_index:index});}
+  async function movePlayer(playerId:string,status:'current'|'waiting',index:number){
+    setDragging(null);setDragOver(null);
+    const movingPlayer=players.find(player=>player.id===playerId);
+    const movingMembers=movingPlayer?.group_id
+      ? players.filter(player=>player.group_id===movingPlayer.group_id)
+      : movingPlayer?[movingPlayer]:[];
+    const movingOutOfGame=movingPlayer?.status==='current'&&status==='waiting';
+    const promotionIds:string[]=[];
+    if(movingOutOfGame){
+      let openSpots=Math.max(config.max_players-(current.length-movingMembers.length),0);
+      const seenGroups=new Set<string>();
+      for(const candidate of waiting){
+        if(candidate.id===playerId||candidate.group_id===movingPlayer?.group_id)continue;
+        const blockKey=candidate.group_id??candidate.id;
+        if(seenGroups.has(blockKey))continue;
+        seenGroups.add(blockKey);
+        const blockSize=candidate.group_id?waiting.filter(player=>player.group_id===candidate.group_id).length:1;
+        if(blockSize<=openSpots){promotionIds.push(candidate.id);openSpots-=blockSize;}
+        if(openSpots===0)break;
+      }
+    }
+    if(!await rpc('admin_move_player',{p_player_id:playerId,p_status:status,p_index:index},false))return;
+    for(const promotionId of promotionIds){
+      if(!await rpc('admin_move_player',{p_player_id:promotionId,p_status:'current',p_index:config.max_players},false))return;
+    }
+  }
   async function answerRejoin(choice:'stay'|'leave'){if(choice==='stay'&&!await requireOnSite())return;if(rejoinResponse)await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse,p_choice:choice});setRejoinResponse(null);}
   async function rejoinAtBack(){if(!me)return;if(!await requireOnSite())return;await rpc('join_waitlist',{p_first_name:me.first_name,p_last_name:me.last_name},false);}
   async function advanceGame(){

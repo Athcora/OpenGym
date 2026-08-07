@@ -35,6 +35,10 @@ begin
     queue_position=case when id=first_player.id then second_player.queue_position else first_player.queue_position end,
     updated_at=now()
   where id in(first_player.id,second_player.id);
+  insert into public.waitlist_events(actor_user_id,actor_name,event_type,message)
+  select p.user_id,p.display_name,'substitute',p.display_name||' swapped positions with '||case when p.id=first_player.id then second_player.display_name else first_player.display_name end||'.'
+  from public.waitlist_players p
+  where p.id in(first_player.id,second_player.id) and p.user_id is not null;
 end;
 $$;
 

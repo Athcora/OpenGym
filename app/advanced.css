@@ -92,6 +92,7 @@ body.mobile-admin-dragging { overscroll-behavior:none; }
 .rejoin-at-back:hover,.theme-dark .rejoin-at-back:hover { background:#39a17b; box-shadow:0 0 18px rgba(57,161,123,.35); }
 .theme-light .rejoin-at-back { background:#25845f; }
 .theme-light .rejoin-at-back:hover { background:#2d9870; box-shadow:0 0 18px rgba(45,152,112,.3); }
+.my-actions .top-rejoin-action { grid-column:1/-1; min-height:48px; border:0; border-radius:13px; color:#fff; font-weight:850; cursor:pointer; }
 @media(max-width:520px){.language-picker{width:60px;min-width:60px}}
 @media(max-width:520px){.auth-card input{font-size:16px}}
 .member-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }

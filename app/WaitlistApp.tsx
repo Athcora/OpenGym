@@ -12,6 +12,7 @@ type Player = { id:string; user_id:string|null; first_name:string; last_name:str
 type Game = { id:string; game_number:number; player_names:string[]; ended_at:string };
 type Config = { game_number:number; max_players:number; mode:'regular'|'rejoin'|'teams'; geofence_enabled:boolean; geofence_radius_m:number };
 type GroupRequest = { id:string; requester_id:string; target_id:string; status:string; requester?:Player };
+type SubstituteRequest = { id:string; requester_id:string; target_id:string; status:string; requester?:Player };
 type GroupNotification = { id:string; user_id:string; message:string; read_at:string|null };
 type Member = { user_id:string;email:string|null;phone:string|null;created_at:string;player_name:string|null };
 type AdminRejoin = { id:string;display_name:string;queue_position:number;expires_at:string };
@@ -66,6 +67,7 @@ export default function App() {
   );
   const [admin,setAdmin]=useState(false); const [adminUser,setAdminUser]=useState(''); const [adminPassword,setAdminPassword]=useState('');
   const [groupRequests,setGroupRequests]=useState<GroupRequest[]>([]);
+  const [substituteRequests,setSubstituteRequests]=useState<SubstituteRequest[]>([]);
   const [rejoinResponse,setRejoinResponse]=useState<string|null>(null); const [rejoinChecked,setRejoinChecked]=useState(false);
   const [dragging,setDragging]=useState<string|null>(null);const [dragOver,setDragOver]=useState<string|null>(null);
   const [members,setMembers]=useState<Member[]>([]);
@@ -75,6 +77,7 @@ export default function App() {
   const [onboarding,setOnboarding]=useState<OnboardingStage>('idle'); const [tutorialStep,setTutorialStep]=useState(0);
   const [facilityMenu,setFacilityMenu]=useState(false);
   const [adminGrouping,setAdminGrouping]=useState(false); const [adminGroupIds,setAdminGroupIds]=useState<string[]>([]);
+  const [adminSubstituting,setAdminSubstituting]=useState(false); const [playerSubstituting,setPlayerSubstituting]=useState(false); const [substituteIds,setSubstituteIds]=useState<string[]>([]);
   const [language,setLanguage]=useState<AppLanguage>('en'); const translationMemory=useRef(new WeakMap<Text,{original:string;applied:string}>());
   const outsideSince=useRef<number|null>(null); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false);
 
@@ -85,14 +88,17 @@ export default function App() {
 
   useEffect(()=>{ void boot(); },[]);
   useEffect(()=>{
-    document.body.classList.toggle('admin-group-selecting',adminGrouping);
+    const substituting=adminSubstituting||playerSubstituting;
+    const selecting=adminGrouping||substituting;
+    document.body.classList.toggle('admin-group-selecting',selecting);
     document.querySelectorAll<HTMLElement>('[data-player-id]').forEach(row=>row.classList.toggle('admin-group-selected',adminGroupIds.includes(row.dataset.playerId??'')));
-    if(!adminGrouping)return()=>document.body.classList.remove('admin-group-selecting');
+    document.querySelectorAll<HTMLElement>('[data-player-id]').forEach(row=>row.classList.toggle('substitute-selected',substituteIds.includes(row.dataset.playerId??'')));
+    if(!selecting)return()=>document.body.classList.remove('admin-group-selecting');
     const blockDrag=(event:PointerEvent)=>{const target=event.target as HTMLElement;if(target.closest('[data-player-id]')&&!target.closest('button,input'))event.preventDefault();};
-    const selectPlayer=(event:MouseEvent)=>{const target=event.target as HTMLElement;if(target.closest('button,input'))return;const row=target.closest<HTMLElement>('[data-player-id]');if(!row)return;event.preventDefault();event.stopPropagation();const player=players.find(item=>item.id===row.dataset.playerId);if(!player)return;const related=player.group_id?players.filter(item=>item.group_id===player.group_id):[player];setAdminGroupIds(currentIds=>{const removing=related.every(item=>currentIds.includes(item.id));const next=removing?currentIds.filter(id=>!related.some(item=>item.id===id)):[...new Set([...currentIds,...related.map(item=>item.id)])];if(next.length>6){setNotice({title:'Maximum group size',message:'A group can contain up to six players.'});return currentIds;}return next;});};
+    const selectPlayer=(event:MouseEvent)=>{const target=event.target as HTMLElement;if(target.closest('button,input'))return;const row=target.closest<HTMLElement>('[data-player-id]');if(!row)return;event.preventDefault();event.stopPropagation();const player=players.find(item=>item.id===row.dataset.playerId);if(!player)return;if(substituting){if(playerSubstituting&&player.id===me?.id)return;setSubstituteIds(currentIds=>currentIds.includes(player.id)?currentIds.filter(id=>id!==player.id):adminSubstituting?(currentIds.length>=2?currentIds:[...currentIds,player.id]):[player.id]);return;}const related=player.group_id?players.filter(item=>item.group_id===player.group_id):[player];setAdminGroupIds(currentIds=>{const removing=related.every(item=>currentIds.includes(item.id));const next=removing?currentIds.filter(id=>!related.some(item=>item.id===id)):[...new Set([...currentIds,...related.map(item=>item.id)])];if(next.length>6){setNotice({title:'Maximum group size',message:'A group can contain up to six players.'});return currentIds;}return next;});};
     document.addEventListener('pointerdown',blockDrag,true);document.addEventListener('click',selectPlayer,true);
     return()=>{document.body.classList.remove('admin-group-selecting');document.removeEventListener('pointerdown',blockDrag,true);document.removeEventListener('click',selectPlayer,true);};
-  },[adminGrouping,adminGroupIds,players]);
+  },[adminGrouping,adminSubstituting,playerSubstituting,adminGroupIds,substituteIds,players,me?.id]);
   useEffect(()=>{
     if(!user||!me||admin||config.mode==='teams'||onboarding!=='idle'||me.status==='left'||me.status==='rejoin')return;
     if(user.user_metadata?.opengym_tutorial_version!==TUTORIAL_VERSION)setOnboarding('disclaimer');
@@ -174,6 +180,7 @@ export default function App() {
       .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_players'},()=>{if(!adminMoveInProgress.current)void refresh()})
       .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_config'},()=>void refresh())
       .on('postgres_changes',{event:'*',schema:'public',table:'group_requests'},()=>void refresh())
+      .on('postgres_changes',{event:'*',schema:'public',table:'substitute_requests'},()=>void refresh())
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'group_notifications'},payload=>{
         const notification=payload.new as GroupNotification;
         if(notification.user_id===session?.user.id){setNotice({title:notification.message.includes('wants to group with you')?'Group request':'Group update',message:notification.message});void supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id);}
@@ -187,17 +194,19 @@ export default function App() {
     return()=>{void supabase.removeChannel(channel)};
   }
   async function refresh(activeUser?:User|null){
-    const [{data:p},{data:c},{data:g},{data:a},{data:r},{data:rejoin,error:rejoinError}]=await Promise.all([
+    const [{data:p},{data:c},{data:g},{data:a},{data:r},{data:s},{data:rejoin,error:rejoinError}]=await Promise.all([
       supabase.from('waitlist_players').select('*').neq('status','left').order('queue_position'),
       supabase.from('waitlist_config').select('game_number,max_players,mode,geofence_enabled,geofence_radius_m').single(),
       supabase.from('past_games').select('*').order('game_number',{ascending:false}),
       supabase.from('admin_sessions').select('user_id').maybeSingle(),
       supabase.from('group_requests').select('*').eq('status','pending'),
+      supabase.from('substitute_requests').select('*').eq('status','pending'),
       supabase.from('rejoin_responses').select('id').is('choice',null).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false}).limit(1).maybeSingle()
     ]);
     const playerRows=(p??[]) as Player[];setPlayers(playerRows); if(c)setConfig(c as Config); setGames((g??[]) as Game[]);setAdmin(Boolean(a));
     if(a){const {data:offline}=await supabase.rpc('admin_list_offline_rejoins');setAdminRejoins((offline??[]) as AdminRejoin[]);}else setAdminRejoins([]);
     setGroupRequests(((r??[]) as GroupRequest[]).map(request=>({...request,requester:playerRows.find(player=>player.id===request.requester_id)})));
+    setSubstituteRequests(((s??[]) as SubstituteRequest[]).map(request=>({...request,requester:playerRows.find(player=>player.id===request.requester_id)})));
     setRejoinResponse(rejoin?.id??null);setRejoinChecked(!rejoinError);
     const uid=(activeUser??user)?.id; let own=playerRows.find(item=>item.user_id===uid)??null;
     if(uid&&!own){const {data:storedOwn}=await supabase.from('waitlist_players').select('*').eq('user_id',uid).maybeSingle();own=(storedOwn as Player|null)??null;}
@@ -316,9 +325,22 @@ export default function App() {
     ask('Sit out one game?',"You’ll skip one game, then receive priority for the following game.",'Sit out',async()=>{await rpc('sit_out_one_game')});
   }
   function startAdminGrouping(){
-    setNotice({title:'Create a group',message:'Select between two and six players to become a team. Tap each player card, then choose Done.',onClose:()=>{setAdminGroupIds([]);setAdminGrouping(true);}});
+    cancelSubstitute();setNotice({title:'Create a group',message:'Select between two and six players to become a team. Tap each player card, then choose Done.',onClose:()=>{setAdminGroupIds([]);setAdminGrouping(true);}});
   }
   function cancelAdminGrouping(){setAdminGrouping(false);setAdminGroupIds([]);}
+  function startAdminSubstitute(){cancelAdminGrouping();setNotice({title:'Substitute players',message:'Choose exactly two players to swap positions. Each selected player will have a blue border.',onClose:()=>{setSubstituteIds([]);setAdminSubstituting(true);}});}
+  function cancelSubstitute(){setAdminSubstituting(false);setPlayerSubstituting(false);setSubstituteIds([]);}
+  function previewAdminSubstitute(){
+    if(substituteIds.length!==2){setNotice({title:'Choose two players',message:'Select exactly two players to swap positions.'});return;}
+    const selected=substituteIds.map(id=>players.find(player=>player.id===id)).filter((player):player is Player=>Boolean(player));
+    ask('Swap these players?',`${selected[0].display_name} and ${selected[1].display_name} will permanently swap positions. Either player will leave their existing group.`,'Continue',async()=>{if(await rpc('admin_substitute_players',{p_first_id:selected[0].id,p_second_id:selected[1].id})){cancelSubstitute();}},'success','danger');
+  }
+  function startPlayerSubstitute(){ask('Request a substitute?','Substituting sends a request to permanently swap your position with another player. If either player is grouped, that player will leave their group.','Continue',async()=>{setSubstituteIds([]);setPlayerSubstituting(true);},'success','danger');}
+  function previewPlayerSubstitute(){
+    const target=players.find(player=>player.id===substituteIds[0]);if(!target){setNotice({title:'Choose a player',message:'Select one player you want to swap positions with.'});return;}
+    ask(`Substitute with ${target.display_name}?`,`This will send ${target.display_name} a request to permanently swap positions with you.`,'Continue',async()=>{if(await rpc('request_player_substitute',{p_target_id:target.id},false)){cancelSubstitute();setNotice({title:'Substitute request sent',message:`Your request was sent to ${target.display_name}.`});}},'success','danger');
+  }
+  async function answerSubstitute(id:string,accept:boolean){await rpc('answer_player_substitute',{p_request_id:id,p_accept:accept});}
   function previewAdminGroup(){
     const selected=players.filter(player=>adminGroupIds.includes(player.id)).sort(byPosition);
     if(selected.length<2){setNotice({title:'Select more players',message:'Choose at least two players before creating the group.'});return;}
@@ -365,6 +387,10 @@ export default function App() {
       };
     });
   },[groupRequests,players,user?.id,config.game_number]);
+  useEffect(()=>{
+    const incoming=substituteRequests.find(request=>players.find(player=>player.id===request.target_id)?.user_id===user?.id);if(!incoming)return;
+    setNotice(existing=>{if(existing?.requestId===`substitute:${incoming.id}`)return existing;const requester=incoming.requester?.display_name??'A player';return{requestId:`substitute:${incoming.id}`,blocking:true,title:'Substitute request',message:`${requester} is requesting to permanently swap positions with you. Accepting will remove either of you from an existing group. Do you accept?`,confirm:'Yes',actionTone:'success',action:async()=>{await answerSubstitute(incoming.id,true)},cancelLabel:'No',cancelTone:'danger',cancelAction:async()=>{await answerSubstitute(incoming.id,false)}};});
+  },[substituteRequests,players,user?.id]);
   async function movePlayer(playerId:string,status:'current'|'waiting',index:number){
     setDragging(null);setDragOver(null);
     const movingPlayer=players.find(player=>player.id===playerId);
@@ -426,8 +452,9 @@ export default function App() {
       <section className="game-heading"><div><span className="kicker">LIVE QUEUE {admin?'· ADMIN':''}</span><h1>Game {config.game_number}</h1></div><span className="live-pill"><i/>Live</span></section>
       {admin&&facilityMenu&&<section className="facility-menu"><strong>Select facility</strong><p>Choose the affiliated recreation center for on-site check-in.</p><button className={config.geofence_enabled?'selected':''} onClick={()=>void chooseFacility('PHR')}><span>PHR</span><small>Pacific Highlands Ranch<br/>5977 Village Center Loop Rd, San Diego, CA 92130</small></button><button className={!config.geofence_enabled?'selected':''} onClick={()=>void chooseFacility('NA')}><span>N/A</span><small>No facility location requirement</small></button></section>}
       {adminGrouping&&<aside className="admin-group-toolbar"><span>{adminGroupIds.length}/6 selected</span><button className="group-cancel" onClick={cancelAdminGrouping}>Cancel</button><button className="group-done" onClick={previewAdminGroup}>Done</button></aside>}
-      {me&&me.status!=='left'&&<section className={`my-actions ${onboarding==='tutorial'&&tutorialStep===0&&me.status!=='current'?'tutorial-focus':''}`}><span>Your actions</span><div>{(me.status==='current'||(onboarding==='tutorial'&&tutorialStep===0))&&<button className={`next ${onboarding==='tutorial'&&tutorialStep===0?'tutorial-focus':''}`} disabled={busy||me.restricted} aria-disabled={me.status!=='current'} onClick={()=>{if(me.status!=='current')return;ask('Start the next game?',`This will notify all players that ${me.display_name} advanced the queue. This cannot be quietly undone.`,'Next game',advanceGame)}}>Next game</button>}<button className={`neutral ${onboarding==='tutorial'&&tutorialStep===1?'tutorial-focus':''}`} disabled={busy} onClick={confirmMySitOut}>Sit out</button><button className={`danger ${onboarding==='tutorial'&&tutorialStep===2?'tutorial-focus':''}`} disabled={busy} onClick={()=>ask('Leave the waitlist?','This removes you from the current game or queue. You can join again later.','Leave',async()=>{await rpc('leave_waitlist',{},false)})}>Leave</button></div></section>}
-      {admin&&<section className="admin-tools"><select value={config.mode} onChange={e=>void rpc('admin_set_mode',{p_mode:e.target.value})}><option value="regular">Regular waitlist</option><option value="rejoin">Rejoin waitlist</option><option value="teams">Teams mode</option></select><button className="next-game-tool" disabled={busy||current.length===0} onClick={()=>ask('Start the next game?','This will notify all players and advance the entire queue to the next game.','Next game',advanceGame)}>Next game</button><button className="add-player-tool" onClick={()=>setScreen('add-player')}>＋ Add player</button><button onClick={()=>void setFacilityLocation()}>{config.geofence_enabled?'Update facility location':'Set facility location'}</button><button className={adminRejoins.length?'rejoin-tool attention':'rejoin-tool'} onClick={()=>setScreen('offline-rejoin')}>Rejoin requests{adminRejoins.length?` (${adminRejoins.length})`:''}</button><button className="history-tool" onClick={()=>void openAdminHistory()}>History</button><button className="members-tool" onClick={()=>void openMembers()}>Members</button><div className="undo-redo-controls" aria-label="Undo and redo"><button aria-label="Undo last admin action" onClick={()=>void rpc('admin_undo_last')}>Undo</button><button aria-label="Redo last undone action" onClick={()=>void rpc('admin_redo_last')}>Redo</button></div><button className="reset-tool" onClick={()=>ask('Reset the entire waitlist?','This removes every player and clears past games. The admin can undo this action.','Reset waitlist',async()=>{await rpc('admin_reset_waitlist')})}>Reset waitlist</button><button className={`group-create-tool ${adminGrouping?'active':''}`} onClick={adminGrouping?cancelAdminGrouping:startAdminGrouping}>{adminGrouping?'Cancel Grouping':'Create Group'}</button></section>}
+      {(adminSubstituting||playerSubstituting)&&<aside className="admin-group-toolbar substitute-toolbar"><span>{substituteIds.length}/{adminSubstituting?2:1} selected</span><button className="group-cancel" onClick={cancelSubstitute}>Cancel</button><button className="group-done" onClick={adminSubstituting?previewAdminSubstitute:previewPlayerSubstitute}>Continue</button></aside>}
+      {me&&me.status!=='left'&&<section className={`my-actions ${onboarding==='tutorial'&&tutorialStep===0&&me.status!=='current'?'tutorial-focus':''}`}><span>Your actions</span><div>{(me.status==='current'||(onboarding==='tutorial'&&tutorialStep===0))&&<button className={`next ${me.status==='current'?'next-with-substitute':''} ${onboarding==='tutorial'&&tutorialStep===0?'tutorial-focus':''}`} disabled={busy||me.restricted} aria-disabled={me.status!=='current'} onClick={()=>{if(me.status!=='current')return;ask('Start the next game?',`This will notify all players that ${me.display_name} advanced the queue. This cannot be quietly undone.`,'Next game',advanceGame)}}>Next game</button>}{me.status==='current'&&<button className="substitute-action" disabled={busy} onClick={playerSubstituting?cancelSubstitute:startPlayerSubstitute}>{playerSubstituting?'Cancel substitute':'Substitute'}</button>}<button className={`neutral ${onboarding==='tutorial'&&tutorialStep===1?'tutorial-focus':''}`} disabled={busy} onClick={confirmMySitOut}>Sit out</button><button className={`danger ${onboarding==='tutorial'&&tutorialStep===2?'tutorial-focus':''}`} disabled={busy} onClick={()=>ask('Leave the waitlist?','This removes you from the current game or queue. You can join again later.','Leave',async()=>{await rpc('leave_waitlist',{},false)})}>Leave</button></div></section>}
+      {admin&&<section className="admin-tools"><select value={config.mode} onChange={e=>void rpc('admin_set_mode',{p_mode:e.target.value})}><option value="regular">Regular waitlist</option><option value="rejoin">Rejoin waitlist</option><option value="teams">Teams mode</option></select><button className="next-game-tool" disabled={busy||current.length===0} onClick={()=>ask('Start the next game?','This will notify all players and advance the entire queue to the next game.','Next game',advanceGame)}>Next game</button><button className="add-player-tool" onClick={()=>setScreen('add-player')}>＋ Add player</button><button className="facility-tool" onClick={()=>void setFacilityLocation()}>{config.geofence_enabled?'Update facility location':'Set facility location'}</button><button className={adminRejoins.length?'rejoin-tool attention':'rejoin-tool'} onClick={()=>setScreen('offline-rejoin')}>Rejoin requests{adminRejoins.length?` (${adminRejoins.length})`:''}</button><button className={`group-create-tool ${adminGrouping?'active':''}`} onClick={adminGrouping?cancelAdminGrouping:startAdminGrouping}>{adminGrouping?'Cancel Grouping':'Create Group'}</button><div className="undo-redo-controls" aria-label="Undo and redo"><button aria-label="Undo last admin action" onClick={()=>void rpc('admin_undo_last')}>Undo</button><button aria-label="Redo last undone action" onClick={()=>void rpc('admin_redo_last')}>Redo</button></div><button className={`substitute-tool ${adminSubstituting?'active':''}`} onClick={adminSubstituting?cancelSubstitute:startAdminSubstitute}>{adminSubstituting?'Cancel substitute':'Substitute'}</button><button className="history-tool" onClick={()=>void openAdminHistory()}>History</button><button className="members-tool" onClick={()=>void openMembers()}>Members</button><button className="reset-tool" onClick={()=>ask('Reset the entire waitlist?','This removes every player and clears past games. The admin can undo this action.','Reset waitlist',async()=>{await rpc('admin_reset_waitlist')})}>Reset waitlist</button></section>}
       <QueueCard title={`Game ${config.game_number}`} subtitle={`${current.length} playing`} status="current" players={current} start={1} me={me} admin={admin} spotlight={onboarding==='tutorial'&&tutorialStep===3} editing={editing} editName={editName} setEditing={setEditing} setEditName={setEditName} saveName={saveName} requestGroup={requestGroup} leaveGroup={removeGroupMember} adminLeaveGroup={adminRemoveGroupMember} restrict={confirmRestriction} adminSitOut={confirmAdminSitOut} adminLeave={confirmAdminLeave} dragging={dragging} dragOver={dragOver} setDragging={setDragging} setDragOver={setDragOver} movePlayer={movePlayer}/>
       <QueueCard title="Waitlist" subtitle={waiting.length?`${waiting.length} waiting`:'No one waiting'} status="waiting" players={waiting} start={current.length+1} me={me} admin={admin} spotlight={onboarding==='tutorial'&&tutorialStep===4} editing={editing} editName={editName} setEditing={setEditing} setEditName={setEditName} saveName={saveName} projections={projectedGames} requestGroup={requestGroup} leaveGroup={removeGroupMember} adminLeaveGroup={adminRemoveGroupMember} restrict={confirmRestriction} adminSitOut={confirmAdminSitOut} adminLeave={confirmAdminLeave} dragging={dragging} dragOver={dragOver} setDragging={setDragging} setDragOver={setDragOver} movePlayer={movePlayer}/>
       {me?.status==='left'&&<button className="hero-button join-again rejoin-at-back" onClick={()=>void rejoinAtBack()}>Rejoin</button>}

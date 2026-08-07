@@ -1,4 +1,6 @@
 .rejoin-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:22px; }
+.my-actions>div { grid-template-columns:repeat(2,minmax(0,1fr)); }
+@media(max-width:520px){.my-actions .next.next-with-substitute{grid-column:auto}}
 .rejoin-actions button { min-height:54px; border:0; border-radius:14px; color:#fff; font-weight:800; }
 .rejoin-card { margin-top:12vh; }
 .player-row[draggable="true"] { cursor:grab; }
@@ -13,15 +15,20 @@
 .admin-drag-preview-row strong { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
 .mobile-admin-drag-preview { position:fixed; top:0; left:0; width:min(280px,calc(100vw - 38px)); pointer-events:none; opacity:.96; transform:translate3d(-1000px,-1000px,0); }
 body.mobile-admin-dragging { overscroll-behavior:none; }
-.admin-tools { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); }
+.admin-tools { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); }
 .admin-tools select,.admin-tools>button,.admin-tools .undo-redo-controls { min-width:0; width:100%; }
 .admin-tools select,.admin-tools>button { padding:10px 8px; font-size:.78rem; white-space:normal; }
 .admin-tools .group-create-tool,.theme-light .admin-tools .group-create-tool,.theme-dark .admin-tools .group-create-tool { background:#2f8b69; border-color:#45aa83; color:#fff; font-weight:850; }
 .admin-tools .group-create-tool { grid-column:auto; }
 .admin-tools .group-create-tool:hover { background:#399b77; box-shadow:0 0 16px rgba(57,155,119,.35); }
 .admin-tools .group-create-tool.active { background:#a64f59; border-color:#bd626c; }
+.admin-tools .undo-redo-controls { grid-column:1/3; }
+.admin-tools .substitute-tool,.substitute-action { background:#2878c8!important; border-color:#3b8fe1!important; color:#fff!important; font-weight:850; }
+.admin-tools .substitute-tool:hover,.substitute-action:hover { background:#3289de!important; box-shadow:0 0 16px rgba(50,137,222,.38); }
+.admin-tools .history-tool { grid-column:4; }.admin-tools .members-tool { grid-column:5; }.admin-tools .reset-tool { grid-column:6; }
 .admin-group-selecting .player-row { cursor:pointer!important; }
 .player-row.admin-group-selected { position:relative; z-index:2; border:3px solid #45b987!important; border-radius:13px; background:rgba(69,185,135,.13)!important; box-shadow:0 0 0 4px rgba(69,185,135,.14),0 10px 28px rgba(25,105,74,.2)!important; }
+.player-row.substitute-selected { position:relative; z-index:3; border:3px solid #3b91df!important; border-radius:13px; background:rgba(47,132,207,.14)!important; box-shadow:0 0 0 4px rgba(59,145,223,.15),0 10px 28px rgba(30,91,151,.22)!important; }
 .admin-group-toolbar { position:fixed; right:max(18px,env(safe-area-inset-right)); bottom:max(18px,env(safe-area-inset-bottom)); z-index:75; display:grid; grid-template-columns:auto auto; gap:8px; min-width:230px; padding:13px; border:1px solid #3d4149; border-radius:16px; background:#26272c; color:#fff; box-shadow:0 22px 58px rgba(0,0,0,.5); }
 .admin-group-toolbar span { grid-column:1/-1; color:#aeb4be; font-size:.75rem; font-weight:800; text-align:center; }
 .admin-group-toolbar button { min-height:42px; border:0; border-radius:11px; color:#fff; font-weight:850; cursor:pointer; }
@@ -85,7 +92,7 @@ body.mobile-admin-dragging { overscroll-behavior:none; }
 .restricted-members-button:hover { background:#c85b67; box-shadow:0 0 18px rgba(185,79,91,.3); }
 .theme-dark .restricted-members-button { background:#8f4650; }
 .theme-dark .restricted-members-button:hover { background:#a6535e; box-shadow:0 0 18px rgba(166,83,94,.35); }
-@media (max-width:620px) { .admin-tools { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); } .admin-tools select { grid-column:1/-1; } .admin-tools .history-tool { grid-column:1; } .admin-tools .members-tool { grid-column:2; } .admin-tools .undo-redo-controls { grid-column:1; width:100%; min-width:0; min-height:44px; } .admin-tools .reset-tool { grid-column:2; } .admin-tools .group-create-tool { grid-column:1/-1; } .admin-tools .undo-redo-controls button { flex:1; min-width:0; padding:8px 5px; } }
+@media (max-width:620px) { .admin-tools { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); } .admin-tools select { grid-column:1/-1;grid-row:1; } .admin-tools .next-game-tool{grid-column:1;grid-row:2}.admin-tools .add-player-tool{grid-column:2;grid-row:2}.admin-tools .facility-tool{grid-column:1;grid-row:3}.admin-tools .rejoin-tool{grid-column:2;grid-row:3}.admin-tools .history-tool { grid-column:1;grid-row:4 } .admin-tools .members-tool { grid-column:2;grid-row:4 } .admin-tools .undo-redo-controls { grid-column:1;grid-row:5; width:100%; min-width:0; min-height:44px; } .admin-tools .reset-tool { grid-column:2;grid-row:5 } .admin-tools .group-create-tool { grid-column:1;grid-row:6 } .admin-tools .substitute-tool{grid-column:2;grid-row:6}.admin-tools .undo-redo-controls button { flex:1; min-width:0; padding:8px 5px; } }
 .admin-tools .undo-redo-controls { display:flex; align-items:center; gap:4px; padding:3px; border:1px solid #3b3e47; border-radius:12px; background:#202126; }
 .admin-tools .undo-redo-controls button { min-width:58px; padding:8px 11px; font-size:.75rem; font-weight:800; line-height:1; }
 .admin-tools .undo-redo-controls button:hover { background:#343640; box-shadow:0 0 14px #7c66ff33; }

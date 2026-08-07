@@ -76,7 +76,7 @@ export default function App() {
   const [facilityMenu,setFacilityMenu]=useState(false);
   const [adminGrouping,setAdminGrouping]=useState(false); const [adminGroupIds,setAdminGroupIds]=useState<string[]>([]);
   const [language,setLanguage]=useState<AppLanguage>('en'); const translationMemory=useRef(new WeakMap<Text,{original:string;applied:string}>());
-  const outsideSince=useRef<number|null>(null); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0);
+  const outsideSince=useRef<number|null>(null); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false);
 
   const me=players.find(p=>p.user_id===user?.id)??ownPlayer;
   const current=useMemo(()=>players.filter(p=>p.status==='current').sort(byPosition),[players]);
@@ -171,7 +171,7 @@ export default function App() {
       if(unread){const notification=unread as GroupNotification;setNotice({title:notification.message.includes('wants to group with you')?'Group request':'Group update',message:notification.message});await supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id);}
     }
     const channel=supabase.channel('live-waitlist')
-      .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_players'},()=>void refresh())
+      .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_players'},()=>{if(!adminMoveInProgress.current)void refresh()})
       .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_config'},()=>void refresh())
       .on('postgres_changes',{event:'*',schema:'public',table:'group_requests'},()=>void refresh())
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'group_notifications'},payload=>{
@@ -372,11 +372,16 @@ export default function App() {
       ? players.filter(player=>player.group_id===movingPlayer.group_id)
       : movingPlayer?[movingPlayer]:[];
     const movingOutOfGame=movingPlayer?.status==='current'&&status==='waiting';
-    if(!await rpc('admin_move_player',{p_player_id:playerId,p_status:status,p_index:index},false))return;
+    if(!movingPlayer||movingMembers.length===0)return;
+    const beforeMove=players;
+    setPlayers(previewAdminMove(players,playerId,status,index,config.max_players));
+    adminMoveInProgress.current=true;setBusy(true);
+    const {error:moveError}=await supabase.rpc('admin_move_player',{p_player_id:playerId,p_status:status,p_index:index});
+    if(moveError){adminMoveInProgress.current=false;setBusy(false);setPlayers(beforeMove);setNotice({title:'Could not move that player',message:moveError.message});await refresh();return;}
     if(movingOutOfGame){
       const excludedIds=new Set(movingMembers.map(player=>player.id));
       const {data:freshRows,error:freshError}=await supabase.from('waitlist_players').select('*').in('status',['current','waiting']).order('queue_position');
-      if(freshError){setNotice({title:'The player moved, but the game could not refill',message:freshError.message});return;}
+      if(freshError){adminMoveInProgress.current=false;setBusy(false);setNotice({title:'The player moved, but the game could not refill',message:freshError.message});await refresh();return;}
       const freshPlayers=(freshRows??[]) as Player[];
       let openSpots=Math.max(config.max_players-freshPlayers.filter(player=>player.status==='current').length,0);
       const freshWaiting=freshPlayers.filter(player=>player.status==='waiting');
@@ -388,12 +393,14 @@ export default function App() {
         seenBlocks.add(blockKey);
         const blockSize=candidate.group_id?freshWaiting.filter(player=>player.group_id===candidate.group_id).length:1;
         if(blockSize<=openSpots){
-          if(!await rpc('admin_move_player',{p_player_id:candidate.id,p_status:'current',p_index:config.max_players},false))return;
+          const {error:fillError}=await supabase.rpc('admin_move_player',{p_player_id:candidate.id,p_status:'current',p_index:config.max_players});
+          if(fillError){adminMoveInProgress.current=false;setBusy(false);setNotice({title:'The player moved, but the game could not refill',message:fillError.message});await refresh();return;}
           openSpots-=blockSize;
         }
         if(openSpots===0)break;
       }
     }
+    adminMoveInProgress.current=false;setBusy(false);await refresh();
   }
   async function answerRejoin(choice:'stay'|'leave'){if(choice==='stay'&&!await requireOnSite())return;if(rejoinResponse)await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse,p_choice:choice});setRejoinResponse(null);}
   async function rejoinAtBack(){if(!me)return;if(!await requireOnSite())return;await rpc('join_waitlist',{p_first_name:me.first_name,p_last_name:me.last_name},false);}
@@ -442,6 +449,29 @@ export default function App() {
     {notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
 }
 
+function previewAdminMove(source:Player[],playerId:string,targetStatus:'current'|'waiting',targetIndex:number,maxPlayers:number){
+  const moving=source.find(player=>player.id===playerId);if(!moving)return source;
+  const movingMembers=(moving.group_id?source.filter(player=>player.group_id===moving.group_id):[moving]).sort(byPosition);
+  const movingIds=new Set(movingMembers.map(player=>player.id));
+  let current=source.filter(player=>player.status==='current'&&!movingIds.has(player.id)).sort(byPosition);
+  let waiting=source.filter(player=>(player.status==='waiting'||player.status==='sitout')&&!movingIds.has(player.id)).sort(byPosition);
+  const originalTarget=source.filter(player=>player.status===targetStatus||(targetStatus==='waiting'&&player.status==='sitout')).sort(byPosition);
+  const removedBefore=originalTarget.slice(0,targetIndex).filter(player=>movingIds.has(player.id)).length;
+  const insertion=Math.max(0,Math.min(targetIndex-removedBefore,targetStatus==='current'?current.length:waiting.length));
+  const movedBlock=movingMembers.map(player=>({...player,status:targetStatus,queue_position:null}));
+  if(targetStatus==='current')current.splice(insertion,0,...movedBlock);else waiting.splice(insertion,0,...movedBlock);
+  if(current.length>maxPlayers){const overflow=current.splice(maxPlayers);waiting=[...overflow.map(player=>({...player,status:'waiting' as PlayerStatus})),...waiting];}
+  if(current.length<maxPlayers){
+    const excluded=moving.status==='current'&&targetStatus==='waiting'?movingIds:new Set<string>();
+    for(let cursor=0;cursor<waiting.length&&current.length<maxPlayers;){
+      const candidate=waiting[cursor];const block=candidate.group_id?waiting.filter(player=>player.group_id===candidate.group_id):[candidate];
+      if(block.some(player=>excluded.has(player.id))||block.length>maxPlayers-current.length){cursor+=block.length;continue;}
+      const blockIds=new Set(block.map(player=>player.id));waiting=waiting.filter(player=>!blockIds.has(player.id));current.push(...block.map(player=>({...player,status:'current' as PlayerStatus})));cursor=0;
+    }
+  }
+  const active=[...current,...waiting].map((player,index)=>({...player,queue_position:index+1}));
+  const activeIds=new Set(active.map(player=>player.id));return [...active,...source.filter(player=>!activeIds.has(player.id)&&!movingIds.has(player.id))];
+}
 function projectQueueGames(players:Player[],currentGame:number,maxPlayers:number){
   const blocks:Array<{members:Player[]}>=[];const blockById=new Map<string,{members:Player[]}>();
   for(const player of players){const key=player.group_id??player.id;let block=blockById.get(key);if(!block){block={members:[]};blockById.set(key,block);blocks.push(block)}block.members.push(player)}

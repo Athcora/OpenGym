@@ -38,13 +38,12 @@ declare
   active_count integer;
   old_group uuid;
   new_group uuid:=gen_random_uuid();
+  anchor_player_id uuid;
+  anchor_group_id uuid;
+  anchor_player_ids uuid[];
   anchor_position bigint;
   first_position bigint;
   last_position bigint;
-  max_allowed integer;
-  current_count integer;
-  open_spots integer;
-  candidate record;
 begin
   if not public.is_waitlist_admin() then raise exception 'Admin access required.'; end if;
   perform pg_advisory_xact_lock(7429102);
@@ -66,23 +65,44 @@ begin
   ) then raise exception 'Select every member of an existing group.'; end if;
 
   perform public.save_admin_undo('group players');
-  select max(queue_position) into anchor_position from public.waitlist_players where id=any(p_player_ids);
-  select config.max_players into max_allowed
-  from public.waitlist_config config
-  where config.id;
+  select id,group_id
+    into anchor_player_id,anchor_group_id
+    from public.waitlist_players
+    where id=any(p_player_ids)
+    order by queue_position desc,id desc
+    limit 1;
 
+  if anchor_group_id is not null then
+    select array_agg(id),max(queue_position)
+      into anchor_player_ids,anchor_position
+      from public.waitlist_players
+      where group_id=anchor_group_id and status in ('current','waiting','sitout');
+  else
+    anchor_player_ids:=array[anchor_player_id];
+    select queue_position into anchor_position
+      from public.waitlist_players where id=anchor_player_id;
+  end if;
   update public.waitlist_players set queue_position=queue_position*1000 where status in ('current','waiting','sitout');
 
+  -- Keep the furthest selected player/group exactly where it is. Append the
+  -- other selected players immediately behind that anchor instead of sending
+  -- the newly combined group to the back of the entire waitlist.
   with selected as (
     select id,row_number() over(order by queue_position,id) rn
-    from public.waitlist_players where id=any(p_player_ids)
+    from public.waitlist_players
+    where id=any(p_player_ids) and not(id=any(anchor_player_ids))
   )
   update public.waitlist_players p set
-    group_id=new_group,
     status='waiting',
     queue_position=anchor_position*1000+selected.rn,
     updated_at=now()
   from selected where p.id=selected.id;
+
+  update public.waitlist_players set
+    group_id=new_group,
+    status='waiting',
+    updated_at=now()
+  where id=any(p_player_ids);
 
   for old_group in
     select distinct group_id from public.waitlist_players
@@ -98,30 +118,7 @@ begin
   )
   update public.waitlist_players p set queue_position=ranked.rn from ranked where p.id=ranked.id;
 
-  select count(*) into current_count from public.waitlist_players where status='current';
-  open_spots:=greatest(max_allowed-current_count,0);
-  if open_spots>0 then
-    for candidate in
-      select group_id,case when group_id is null then id end member_id,count(*)::integer member_count,min(queue_position) first_queue
-      from public.waitlist_players
-      where status='waiting' and group_id is distinct from new_group
-      group by group_id,case when group_id is null then id end
-      order by min(queue_position)
-    loop
-      if candidate.member_count<=open_spots then
-        update public.waitlist_players set status='current',updated_at=now()
-        where status='waiting' and ((candidate.group_id is not null and group_id=candidate.group_id) or (candidate.group_id is null and id=candidate.member_id));
-        open_spots:=open_spots-candidate.member_count;
-        exit when open_spots=0;
-      end if;
-    end loop;
-  end if;
-
-  with ranked as (
-    select id,row_number() over(order by case status when 'current' then 0 else 1 end,queue_position,id) rn
-    from public.waitlist_players where status in ('current','waiting','sitout')
-  )
-  update public.waitlist_players p set queue_position=ranked.rn from ranked where p.id=ranked.id;
+  perform public.normalize_active_waitlist();
 
   select min(queue_position),max(queue_position) into first_position,last_position
   from public.waitlist_players where group_id=new_group;

@@ -16,15 +16,25 @@ $$;
 
 create or replace function public.admin_leave_player(p_player_id uuid)
 returns jsonb language plpgsql security definer set search_path=public as $$
-declare player public.waitlist_players;
+declare player public.waitlist_players; remaining_group_members integer;
 begin
   if not public.is_waitlist_admin() then raise exception 'Admin access required.'; end if;
   select * into player from public.waitlist_players where id=p_player_id and status<>'left' for update;
   if player.id is null then raise exception 'This player has already left.'; end if;
   perform public.save_admin_undo('remove player');
   update public.waitlist_players
-    set status='left',queue_position=null,rejoin_expires_at=null,updated_at=now()
+    set status='left',queue_position=null,group_id=null,rejoin_expires_at=null,updated_at=now()
     where id=player.id;
+  if player.group_id is not null then
+    select count(*) into remaining_group_members
+    from public.waitlist_players
+    where group_id=player.group_id and status in ('current','waiting','sitout');
+    if remaining_group_members<2 then
+      update public.waitlist_players set group_id=null,updated_at=now()
+      where group_id=player.group_id;
+    end if;
+  end if;
+  perform public.normalize_active_waitlist();
   insert into public.waitlist_events(actor_user_id,actor_name,event_type,message)
     values(auth.uid(),'Admin','admin_leave','The admin removed '||player.display_name||' from the waitlist.');
   return jsonb_build_object('message',player.display_name||' left the waitlist.');

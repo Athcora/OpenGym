@@ -16,7 +16,7 @@ body.mobile-admin-dragging { overscroll-behavior:none; }
 .admin-tools select,.admin-tools>button,.admin-tools .undo-redo-controls { min-width:0; width:100%; }
 .admin-tools select,.admin-tools>button { padding:10px 8px; font-size:.78rem; white-space:normal; }
 .admin-tools .group-create-tool,.theme-light .admin-tools .group-create-tool,.theme-dark .admin-tools .group-create-tool { background:#2f8b69; border-color:#45aa83; color:#fff; font-weight:850; }
-.admin-tools .group-create-tool { grid-column:3/5; }
+.admin-tools .group-create-tool { grid-column:auto; }
 .admin-tools .group-create-tool:hover { background:#399b77; box-shadow:0 0 16px rgba(57,155,119,.35); }
 .admin-tools .group-create-tool.active { background:#a64f59; border-color:#bd626c; }
 .admin-group-selecting .player-row { cursor:pointer!important; }

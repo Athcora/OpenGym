@@ -302,7 +302,7 @@ export default function App() {
     const range=firstPosition===lastPosition?`${firstPosition}`:`${firstPosition}-${lastPosition}`;
     ask(
       'Create this group?',
-      `These players will move together to positions ${range} and are projected to play in Game ${projectedGame}. They may skip an earlier game so every group member can play together. (Current Game: Game ${config.game_number})`,
+      `These players will move together to positions ${range} and are projected to play in Game ${projectedGame}. (Current Game: Game ${config.game_number})`,
       'Continue',
       async()=>{if(await rpc('admin_group_players',{p_player_ids:selected.map(player=>player.id)},false)){cancelAdminGrouping();}},
       'success',

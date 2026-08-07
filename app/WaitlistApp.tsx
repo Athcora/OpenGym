@@ -345,7 +345,7 @@ export default function App() {
     const selected=substituteIds.map(id=>players.find(player=>player.id===id)).filter((player):player is Player=>Boolean(player));
     ask('Swap these players?',`${selected[0].display_name} and ${selected[1].display_name} will permanently swap positions. Either player will leave their existing group.`,'Continue',async()=>{if(await rpc('admin_substitute_players',{p_first_id:selected[0].id,p_second_id:selected[1].id})){cancelSubstitute();}},'success','danger');
   }
-  function startPlayerSubstitute(){ask('Request a substitute?','Substituting sends a request to permanently swap your position with another player. If either player is grouped, that player will leave their group.','Continue',async()=>{setSubstituteIds([]);setPlayerSubstituting(true);},'success','danger');}
+  function startPlayerSubstitute(){ask('Request a substitute?','Substituting sends a request to permanently swap your position with another player.','Continue',async()=>{setSubstituteIds([]);setPlayerSubstituting(true);},'success','danger');}
   function previewPlayerSubstitute(){
     const target=players.find(player=>player.id===substituteIds[0]);if(!target){setNotice({title:'Choose a player',message:'Select one player you want to swap positions with.'});return;}
     ask(`Substitute with ${target.display_name}?`,`This will send ${target.display_name} a request to permanently swap positions with you.`,'Continue',async()=>{if(await rpc('request_player_substitute',{p_target_id:target.id},false)){cancelSubstitute();setNotice({title:'Substitute request sent',message:`Your request was sent to ${target.display_name}.`});}},'success','danger');
@@ -399,7 +399,7 @@ export default function App() {
   },[groupRequests,players,user?.id,config.game_number]);
   useEffect(()=>{
     const incoming=substituteRequests.find(request=>players.find(player=>player.id===request.target_id)?.user_id===user?.id);if(!incoming)return;
-    setNotice(existing=>{if(existing?.requestId===`substitute:${incoming.id}`)return existing;const requester=incoming.requester?.display_name??'A player';return{requestId:`substitute:${incoming.id}`,blocking:true,title:'Substitute request',message:`${requester} is requesting to permanently swap positions with you. Accepting will remove either of you from an existing group. Do you accept?`,confirm:'Yes',actionTone:'success',action:async()=>{await answerSubstitute(incoming.id,true)},cancelLabel:'No',cancelTone:'danger',cancelAction:async()=>{await answerSubstitute(incoming.id,false)}};});
+    setNotice(existing=>{if(existing?.requestId===`substitute:${incoming.id}`)return existing;const requester=incoming.requester?.display_name??'A player';return{requestId:`substitute:${incoming.id}`,blocking:true,title:'Substitute request',message:`${requester} is requesting to permanently swap positions with you. Do you accept?`,confirm:'Yes',actionTone:'success',action:async()=>{await answerSubstitute(incoming.id,true)},cancelLabel:'No',cancelTone:'danger',cancelAction:async()=>{await answerSubstitute(incoming.id,false)}};});
   },[substituteRequests,players,user?.id]);
   async function movePlayer(playerId:string,status:'current'|'waiting',index:number){
     setDragging(null);setDragOver(null);

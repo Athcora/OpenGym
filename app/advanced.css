@@ -32,6 +32,8 @@ body.mobile-admin-dragging { overscroll-behavior:none; }
 .theme-light .tutorial-scrim { background:rgba(44,51,63,.55); }
 @media(max-width:520px){.tutorial-coach{bottom:max(10px,env(safe-area-inset-bottom));padding:17px}.tutorial-focus{scroll-margin-bottom:230px}}
 .top-actions { flex-direction:column; align-items:stretch; }
+.logo>span { overflow:hidden; padding:0; background:#0756ce; box-shadow:0 7px 20px rgba(0,68,183,.28); }
+.logo>span img { display:block; width:100%; height:100%; object-fit:cover; }
 .admin-access-heading { display:flex; align-items:center; justify-content:space-between; gap:24px; }
 .admin-access-heading .kicker { margin-left:auto; text-align:right; }
 .language-picker { position:relative; display:flex; align-items:center; justify-content:center; align-self:flex-end; width:64px; min-width:64px; min-height:38px; border:1px solid #3b3e47; border-radius:11px; background:#25262b; color:#ccd0d8; cursor:pointer; overflow:hidden; }

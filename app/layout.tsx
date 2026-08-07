@@ -16,6 +16,7 @@ export const metadata: Metadata = {
   title: "OpenGym Volleyball Waitlist",
   description: "Join the live OpenGym volleyball queue from your phone.",
   manifest: "/manifest.webmanifest",
+  icons: { icon: "/open-gym-app-icon.png", apple: "/open-gym-app-icon.png" },
 };
 
 export default function RootLayout({

@@ -16,6 +16,7 @@ body.mobile-admin-dragging { overscroll-behavior:none; }
 .admin-tools select,.admin-tools>button,.admin-tools .undo-redo-controls { min-width:0; width:100%; }
 .admin-tools select,.admin-tools>button { padding:10px 8px; font-size:.78rem; white-space:normal; }
 .admin-tools .group-create-tool,.theme-light .admin-tools .group-create-tool,.theme-dark .admin-tools .group-create-tool { background:#2f8b69; border-color:#45aa83; color:#fff; font-weight:850; }
+.admin-tools .group-create-tool { grid-column:3/5; }
 .admin-tools .group-create-tool:hover { background:#399b77; box-shadow:0 0 16px rgba(57,155,119,.35); }
 .admin-tools .group-create-tool.active { background:#a64f59; border-color:#bd626c; }
 .admin-group-selecting .player-row { cursor:pointer!important; }
@@ -91,6 +92,8 @@ body.mobile-admin-dragging { overscroll-behavior:none; }
 .admin-tools .reset-tool:hover { background:#ce4b59; box-shadow:0 0 16px #c7485555; }
 .theme-light .admin-tools .undo-redo-controls { background:#f4f6f8; border-color:#dbe0e6; }
 .admin-player-actions { display:flex; align-items:center; gap:5px; margin-left:8px; }
+.admin-leave-group-button { flex:0 0 auto; margin-left:8px; border:0; border-radius:9px; padding:7px 9px; background:#9a4a55; color:#fff; cursor:pointer; font-size:.66rem; font-weight:800; transition:transform .16s,box-shadow .16s,filter .16s; }
+.admin-leave-group-button:hover { transform:translateY(-1px); filter:brightness(1.08); box-shadow:0 0 16px rgba(181,82,95,.4); }
 .admin-player-actions button { border:0; border-radius:9px; padding:7px 9px; color:#fff; cursor:pointer; font-size:.66rem; font-weight:800; transition:transform .16s,box-shadow .16s,filter .16s; }
 .admin-sitout-button,.admin-leave-button { background:#6b6478; }
 .admin-player-actions .admin-leave-button { font-size:0; }
@@ -112,7 +115,7 @@ body.mobile-admin-dragging { overscroll-behavior:none; }
 .theme-light .restrict-button { background:#c94955; }
 .theme-light .admin-sitout-button:hover,.theme-light .admin-leave-button:hover { box-shadow:0 0 15px #55708d66; }
 .theme-light .restrict-button:hover { box-shadow:0 0 16px #c9495566; }
-@media (max-width:620px) { .admin-row { align-items:flex-start; flex-wrap:wrap; touch-action:pan-y; -webkit-touch-callout:none; user-select:none; } .admin-row .player-name { min-height:34px; } .admin-player-actions { width:100%; margin:2px 0 2px 34px; gap:5px; } .admin-player-actions button { flex:1; padding:7px 6px; font-size:.63rem; } .theme-switch { left:8px; } body.mobile-admin-dragging .admin-row { touch-action:none; } }
+@media (max-width:620px) { .admin-row { align-items:flex-start; flex-wrap:wrap; touch-action:pan-y; -webkit-touch-callout:none; user-select:none; } .admin-row .player-name { min-height:34px; } .admin-leave-group-button { margin:3px 0 0 5px; padding:7px 8px; font-size:.62rem; } .admin-player-actions { width:100%; margin:2px 0 2px 34px; gap:5px; } .admin-player-actions button { flex:1; padding:7px 6px; font-size:.63rem; } .theme-switch { left:8px; } body.mobile-admin-dragging .admin-row { touch-action:none; } }
 .app-shell.theme-light { background:radial-gradient(circle at 50% 0,#fff 0,#edf1f5 60%); color:#20242c; }
 .theme-light .auth-card,.theme-light .queue-card,.theme-light .drawer-card,.theme-light .modal { background:#fff; color:#20242c; border-color:#dde2e8; box-shadow:0 24px 60px #3440521c; }
 .theme-light .auth-card p,.theme-light .modal p { color:#5f6876; }

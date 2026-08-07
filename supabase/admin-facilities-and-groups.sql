@@ -41,7 +41,7 @@ declare
   anchor_position bigint;
   first_position bigint;
   last_position bigint;
-  max_players integer;
+  max_allowed integer;
   current_count integer;
   open_spots integer;
   candidate record;
@@ -67,7 +67,9 @@ begin
 
   perform public.save_admin_undo('group players');
   select max(queue_position) into anchor_position from public.waitlist_players where id=any(p_player_ids);
-  select max_players into max_players from public.waitlist_config where id;
+  select config.max_players into max_allowed
+  from public.waitlist_config config
+  where config.id;
 
   update public.waitlist_players set queue_position=queue_position*1000 where status in ('current','waiting','sitout');
 
@@ -97,7 +99,7 @@ begin
   update public.waitlist_players p set queue_position=ranked.rn from ranked where p.id=ranked.id;
 
   select count(*) into current_count from public.waitlist_players where status='current';
-  open_spots:=greatest(max_players-current_count,0);
+  open_spots:=greatest(max_allowed-current_count,0);
   if open_spots>0 then
     for candidate in
       select group_id,case when group_id is null then id end member_id,count(*)::integer member_count,min(queue_position) first_queue
@@ -129,3 +131,37 @@ end;
 $$;
 
 grant execute on function public.admin_group_players(uuid[]) to authenticated;
+
+create or replace function public.admin_remove_player_from_group(p_target_id uuid)
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare
+  target public.waitlist_players;
+  previous_group uuid;
+  remaining_count integer;
+begin
+  if not public.is_waitlist_admin() then raise exception 'Admin access required.'; end if;
+  perform pg_advisory_xact_lock(7429102);
+
+  select * into target from public.waitlist_players where id=p_target_id for update;
+  if target.id is null then raise exception 'Player not found.'; end if;
+  if target.group_id is null then raise exception 'This player is not in a group.'; end if;
+
+  perform public.save_admin_undo('remove player from group');
+  previous_group:=target.group_id;
+
+  insert into public.group_notifications(user_id,message)
+  select user_id,target.display_name||' was removed from the group by an admin.'
+  from public.waitlist_players
+  where group_id=previous_group and user_id is not null;
+
+  update public.waitlist_players set group_id=null,updated_at=now() where id=target.id;
+  select count(*) into remaining_count from public.waitlist_players where group_id=previous_group;
+  if remaining_count<=1 then
+    update public.waitlist_players set group_id=null,updated_at=now() where group_id=previous_group;
+  end if;
+
+  return jsonb_build_object('message',target.display_name||' left the group.');
+end;
+$$;
+
+grant execute on function public.admin_remove_player_from_group(uuid) to authenticated;

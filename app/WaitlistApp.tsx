@@ -597,7 +597,7 @@ const tutorialSteps=[
 ];
 
 const hostTutorialSteps=[
- {title:'Add Player',message:'Use Add Player to check in someone who does not have their phone. You can add several walk-in players without leaving that screen.',target:'.add-player-tool'},
+ {title:'Add Player',message:'Use Add Player to check in someone who does not have their phone.',target:'.add-player-tool'},
  {title:'Rejoin Requests',message:'Rejoin Requests are usually for players without a phone who joined through you. After they play, they can return to you and ask you to help them rejoin the waitlist.',target:'.rejoin-tool'},
  {title:'Create Group',message:'Use Create Group to select players who want to play together.',target:'.group-create-tool'},
  {title:'Substitute',message:'Use Substitute to select two players and permanently swap their positions.',target:'.substitute-tool'},

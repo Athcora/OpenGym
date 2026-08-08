@@ -95,7 +95,7 @@ export default function App() {
   useEffect(()=>{ void boot(); },[]);
   useEffect(()=>{
     if(!user||admin)return;let stopped=false;
-    const check=async()=>{const {data}=await supabase.from('waitlist_players').select('is_host').eq('user_id',user.id).maybeSingle();if(!stopped&&data)syncOwnHostStatus(Boolean(data.is_host),user.id)};
+    const check=async()=>{const {data}=await supabase.from('waitlist_players').select('is_host').eq('user_id',user.id).neq('status','left').order('updated_at',{ascending:false}).limit(1).maybeSingle();if(!stopped&&data)syncOwnHostStatus(Boolean(data.is_host),user.id)};
     const timer=window.setInterval(()=>void check(),1500);return()=>{stopped=true;window.clearInterval(timer)};
   },[user?.id,admin]);
   useEffect(()=>{

@@ -140,6 +140,9 @@ body.mobile-admin-dragging { overscroll-behavior:none; }
 .host-tools { grid-template-columns:repeat(4,minmax(0,1fr)); }
 .host-tools .undo-redo-controls,.host-tools .history-tool { grid-column:auto; }
 .host-tutorial { max-width:540px; }
+.host-tutorial.host-tutorial-top { top:max(14px,env(safe-area-inset-top)); bottom:auto; }
+.host-tutorial.host-tutorial-bottom { top:auto; bottom:max(14px,env(safe-area-inset-bottom)); }
+.host-tutorial-focus { position:relative; z-index:62!important; border-radius:13px; outline:4px solid #e5ad24; outline-offset:4px; box-shadow:0 0 0 9px rgba(229,173,36,.2),0 0 24px rgba(229,173,36,.55)!important; }
 .player-name strong { display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px; }
 .theme-switch { position:fixed; top:max(12px,env(safe-area-inset-top)); left:14px; z-index:30; display:block; width:58px; height:32px; padding:0; border:0; border-radius:999px; background:transparent; cursor:pointer; }
 .theme-switch:hover { transform:translateY(-1px); }
@@ -168,7 +171,7 @@ body.mobile-admin-dragging { overscroll-behavior:none; }
 .theme-light .admin-tools .add-player-tool { background:#2f8b69; border-color:#2f8b69; color:#fff; }
 .theme-light .admin-tools .next-game-tool { background:#2878c8; border-color:#2878c8; color:#fff; }
 .theme-light .past-game { background:#f5f7f9; border-color:#e0e5ea; }
-@media (max-width:620px) { .host-tools .next-game-tool{grid-column:1;grid-row:1}.host-tools .add-player-tool{grid-column:2;grid-row:1}.host-tools .rejoin-tool{grid-column:1;grid-row:2}.host-tools .group-create-tool{grid-column:2;grid-row:2}.host-tools .undo-redo-controls{grid-column:1;grid-row:3}.host-tools .substitute-tool{grid-column:2;grid-row:3}.host-tools .history-tool{grid-column:1/-1;grid-row:4} }
+@media (max-width:620px) { .host-tools{width:100%;gap:9px}.host-tools>button,.host-tools .undo-redo-controls{width:100%;min-height:48px;padding:10px 7px;font-size:.74rem}.host-tools .next-game-tool{grid-column:1;grid-row:1}.host-tools .add-player-tool{grid-column:2;grid-row:1}.host-tools .rejoin-tool{grid-column:1;grid-row:2}.host-tools .group-create-tool{grid-column:2;grid-row:2}.host-tools .undo-redo-controls{grid-column:1;grid-row:3}.host-tools .substitute-tool{grid-column:2;grid-row:3}.host-tools .history-tool{grid-column:1/-1;grid-row:4}.host-tutorial{width:min(calc(100% - 20px),540px);max-height:42vh;overflow:auto;padding:16px}.host-tutorial-focus{scroll-margin-top:190px;scroll-margin-bottom:240px} }
 .theme-light .past-game p,.theme-light .add-player-card>p,.theme-light .add-player-card label { color:#5f6876; }
 .theme-light .drawer { background:#29303a77; }
 .theme-light .modal-backdrop { background:#3b43557a; }

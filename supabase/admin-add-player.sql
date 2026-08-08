@@ -37,8 +37,7 @@ begin
   insert into public.waitlist_players(user_id,first_name,last_name,display_name,status,queue_position,updated_at)
   values(null,clean_first,clean_last,shown_name,new_status,next_position,now()) returning id into player_id;
 
-  insert into public.waitlist_events(actor_user_id,actor_name,event_type,message)
-  values(auth.uid(),'Admin','add_player','The admin added '||shown_name||' to the '||case when new_status='current' then 'current game.' else 'waitlist.' end);
+  perform public.log_waitlist_operator_action('add_player','added '||shown_name||' to the '||case when new_status='current' then 'current game.' else 'waitlist.' end);
 
   return jsonb_build_object('message',shown_name||case when new_status='current' then ' joined the current game.' else ' joined the waitlist.' end,'player_id',player_id);
 end;

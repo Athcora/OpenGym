@@ -24,8 +24,8 @@ declare item jsonb;
 begin
   delete from public.waitlist_players where true;
   for item in select * from jsonb_array_elements(p_state->'players') loop
-    insert into public.waitlist_players(id,user_id,first_name,last_name,display_name,status,queue_position,restricted,rejoin_expires_at,created_at,updated_at,group_id)
-    values((item->>'id')::uuid,(item->>'user_id')::uuid,item->>'first_name',item->>'last_name',item->>'display_name',item->>'status',nullif(item->>'queue_position','')::bigint,coalesce((item->>'restricted')::boolean,false),nullif(item->>'rejoin_expires_at','')::timestamptz,(item->>'created_at')::timestamptz,now(),nullif(item->>'group_id','')::uuid);
+    insert into public.waitlist_players(id,user_id,first_name,last_name,display_name,status,queue_position,restricted,rejoin_expires_at,created_at,updated_at,group_id,is_host)
+    values((item->>'id')::uuid,(item->>'user_id')::uuid,item->>'first_name',item->>'last_name',item->>'display_name',item->>'status',nullif(item->>'queue_position','')::bigint,coalesce((item->>'restricted')::boolean,false),nullif(item->>'rejoin_expires_at','')::timestamptz,(item->>'created_at')::timestamptz,now(),nullif(item->>'group_id','')::uuid,coalesce((item->>'is_host')::boolean,false));
   end loop;
   update public.waitlist_config set game_number=(p_state->'config'->>'game_number')::int,max_players=(p_state->'config'->>'max_players')::int,mode=p_state->'config'->>'mode',updated_at=now() where id;
   delete from public.past_games where true;
@@ -56,6 +56,7 @@ begin
   delete from public.admin_redo where admin_user_id=auth.uid() and id not in(select id from public.admin_redo where admin_user_id=auth.uid() order by id desc limit 5);
   perform public.restore_waitlist_state(entry.snapshot);
   delete from public.admin_undo where id=entry.id;
+  perform public.log_waitlist_operator_action('admin_undo','undid: '||entry.label||'.');
   return jsonb_build_object('message','Undid: '||entry.label||'.');
 end;
 $$;
@@ -71,6 +72,7 @@ begin
   delete from public.admin_undo where admin_user_id=auth.uid() and id not in(select id from public.admin_undo where admin_user_id=auth.uid() order by id desc limit 5);
   perform public.restore_waitlist_state(entry.snapshot);
   delete from public.admin_redo where id=entry.id;
+  perform public.log_waitlist_operator_action('admin_redo','redid: '||entry.label||'.');
   return jsonb_build_object('message','Redid: '||entry.label||'.');
 end;
 $$;

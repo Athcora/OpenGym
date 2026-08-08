@@ -8,8 +8,7 @@ begin
   if player.id is null then raise exception 'This player is no longer active.'; end if;
   perform public.save_admin_undo('sit out player');
   update public.waitlist_players set status='sitout',updated_at=now() where id=player.id;
-  insert into public.waitlist_events(actor_user_id,actor_name,event_type,message)
-    values(auth.uid(),'Admin','admin_sitout','The admin sat out '||player.display_name||' for one game.');
+  perform public.log_waitlist_operator_action('admin_sitout','sat out '||player.display_name||' for one game.');
   return jsonb_build_object('message',player.display_name||' will sit out the next game.');
 end;
 $$;
@@ -35,8 +34,7 @@ begin
     end if;
   end if;
   perform public.normalize_active_waitlist();
-  insert into public.waitlist_events(actor_user_id,actor_name,event_type,message)
-    values(auth.uid(),'Admin','admin_leave','The admin removed '||player.display_name||' from the waitlist.');
+  perform public.log_waitlist_operator_action('admin_leave','removed '||player.display_name||' from the waitlist.');
   return jsonb_build_object('message',player.display_name||' left the waitlist.');
 end;
 $$;

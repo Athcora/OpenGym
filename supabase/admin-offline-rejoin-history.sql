@@ -51,8 +51,7 @@ begin
   update public.waitlist_players set status=case when p_stay then new_status else 'left' end,
     queue_position=case when p_stay then player.queue_position else null end,rejoin_expires_at=null,updated_at=now() where id=player.id;
   if p_stay then
-    insert into public.waitlist_events(actor_user_id,actor_name,event_type,message)
-    values(auth.uid(),'Admin','admin_rejoin','The admin returned '||player.display_name||case when new_status='current' then ' directly to the current game.' else ' to their saved queue position.' end);
+    perform public.log_waitlist_operator_action('admin_rejoin','returned '||player.display_name||case when new_status='current' then ' directly to the current game.' else ' to their saved queue position.' end);
   end if;
   return jsonb_build_object('message',case when p_stay and new_status='current' then player.display_name||' rejoined the current game.' when p_stay then player.display_name||' rejoined at their saved position.' else player.display_name||' was removed.' end);
 end;

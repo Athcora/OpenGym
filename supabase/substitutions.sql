@@ -44,9 +44,13 @@ $$;
 
 create or replace function public.admin_substitute_players(p_first_id uuid,p_second_id uuid)
 returns jsonb language plpgsql security definer set search_path=public as $$
+declare first_name text;second_name text;
 begin
   if not public.is_waitlist_operator() then raise exception 'Admin or host access required.';end if;
+  select display_name into first_name from public.waitlist_players where id=p_first_id;
+  select display_name into second_name from public.waitlist_players where id=p_second_id;
   perform pg_advisory_xact_lock(7429102);perform public.save_admin_undo('substitute players');perform public.swap_waitlist_players(p_first_id,p_second_id);
+  perform public.log_waitlist_operator_action('admin_substitute','substituted '||coalesce(first_name,'a player')||' with '||coalesce(second_name,'another player')||'.');
   return jsonb_build_object('message','The players successfully swapped positions.');
 end;
 $$;

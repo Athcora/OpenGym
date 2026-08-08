@@ -142,6 +142,11 @@ begin
   from ranked
   where p.id=ranked.id;
 
+  perform public.log_waitlist_operator_action(
+    'admin_move',
+    case when moving_count>1 then 'moved a group of '||moving_count||' players.' else 'moved '||player.display_name||'.' end
+  );
+
   return jsonb_build_object(
     'message',
     case when moving_count>1

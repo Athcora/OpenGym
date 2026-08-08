@@ -123,6 +123,8 @@ begin
   select min(queue_position),max(queue_position) into first_position,last_position
   from public.waitlist_players where group_id=new_group;
 
+  perform public.log_waitlist_operator_action('admin_group','created a group with '||selected_count||' players.');
+
   return jsonb_build_object('message','The group was created.','first_position',first_position,'last_position',last_position);
 end;
 $$;
@@ -156,6 +158,8 @@ begin
   if remaining_count<=1 then
     update public.waitlist_players set group_id=null,updated_at=now() where group_id=previous_group;
   end if;
+
+  perform public.log_waitlist_operator_action('admin_group_remove','removed '||target.display_name||' from a group.');
 
   return jsonb_build_object('message',target.display_name||' left the group.');
 end;

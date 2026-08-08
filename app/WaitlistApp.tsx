@@ -81,7 +81,7 @@ export default function App() {
   const [adminSubstituting,setAdminSubstituting]=useState(false); const [playerSubstituting,setPlayerSubstituting]=useState(false); const [substituteIds,setSubstituteIds]=useState<string[]>([]);
   const [language,setLanguage]=useState<AppLanguage>('en'); const translationMemory=useRef(new WeakMap<Text,{original:string;applied:string}>());
   const [geofenceReturn,setGeofenceReturn]=useState<GeofenceReturn|null>(null); const [returnClock,setReturnClock]=useState(Date.now());
-  const [permissionPlayer,setPermissionPlayer]=useState<Player|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialPending,setHostTutorialPending]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0);
+  const [permissionPlayer,setPermissionPlayer]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0);
   const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false);
 
   const me=players.find(p=>p.user_id===user?.id)??ownPlayer;
@@ -93,10 +93,6 @@ export default function App() {
   const tutorialWaiting=tutorialNeedsDemo?[...waiting,{id:'tutorial-demo-player',user_id:null,first_name:'Demo',last_name:'Player',display_name:'Demo Player',status:'waiting' as PlayerStatus,queue_position:(waiting.at(-1)?.queue_position??current.length)+1,restricted:false,group_id:null,is_host:false}]:waiting;
 
   useEffect(()=>{ void boot(); },[]);
-  useEffect(()=>{
-    if(!hostTutorialPending||notice||!host)return;
-    setHostTutorialPending(false);setHostTutorialStep(0);setHostTutorial(true);
-  },[hostTutorialPending,notice,host]);
   useEffect(()=>{
     const substituting=adminSubstituting||playerSubstituting;
     const selecting=adminGrouping||substituting;
@@ -262,8 +258,8 @@ export default function App() {
   }
   function ask(title:string,message:string,confirm:string,action:()=>Promise<void>,actionTone:'danger'|'success'='danger',cancelTone:'neutral'|'danger'='neutral'){setNotice({title,message,confirm,action,actionTone,cancelTone});}
   function showPlayerNotification(notification:GroupNotification,activeUserId=user?.id){
-    if(notification.message.startsWith('HOST_APPOINTED|')){setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:true}:player));setHostTutorialPending(true);setNotice({title:'You are now a Session Host',message:notification.message.split('|')[1]||'The admin appointed you as a Session Host.'});return;}
-    if(notification.message.startsWith('HOST_REMOVED|')){setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:false}:player));setHostTutorialPending(false);setHostTutorial(false);setNotice({title:'Host permissions removed',message:notification.message.split('|')[1]||'Your Session Host permissions were removed.'});return;}
+    if(notification.message.startsWith('HOST_APPOINTED|')){setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:true}:player));setHostAppointmentNotice(notification.message.split('|')[1]||'The admin appointed you as a Session Host.');return;}
+    if(notification.message.startsWith('HOST_REMOVED|')){setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:false}:player));setHostAppointmentNotice(null);setHostTutorial(false);setNotice({title:'Host permissions removed',message:notification.message.split('|')[1]||'Your Session Host permissions were removed.'});return;}
     setNotice({title:notification.message.includes('wants to group with you')?'Group request':'Group update',message:notification.message});
   }
   async function turnOnNotifications(){setBusy(true);try{await enablePush();setNotifications(true);setNotice({title:'Notifications are on',message:"We’ll alert you when your game starts or needs a response."});}catch(error){setNotice({title:'Notifications unavailable',message:error instanceof Error?error.message:'Could not enable notifications.'});}setBusy(false);}
@@ -516,6 +512,7 @@ export default function App() {
     {screen==='members'&&<div className="drawer"><div className="drawer-card"><button className="back" onClick={()=>setScreen('queue')}>← Back to waitlist</button><h2>Members</h2><button className="restricted-members-button" onClick={()=>setScreen('restricted')}>Restricted Members</button>{members.length===0?<p>No accounts have been created yet.</p>:members.map(member=><article className="past-game" key={member.user_id}><strong>{member.player_name??member.email??member.phone??'Member'}</strong><p>{member.email??member.phone??'Verified account'} · Joined {new Date(member.created_at).toLocaleDateString()}</p></article>)}</div></div>}
     {permissionPlayer&&<PermissionsModal player={permissionPlayer} close={()=>setPermissionPlayer(null)} hostAction={()=>confirmHostChange(permissionPlayer)} restrictAction={()=>chooseRestriction(permissionPlayer)}/>}
     {hostTutorial&&<HostTutorial step={hostTutorialStep} next={()=>hostTutorialStep<hostTutorialSteps.length-1?setHostTutorialStep(value=>value+1):setHostTutorial(false)} back={()=>setHostTutorialStep(value=>Math.max(0,value-1))} skip={()=>setHostTutorial(false)}/>}
+    {hostAppointmentNotice&&<Modal notice={{title:'You are now a Session Host',message:hostAppointmentNotice,blocking:true}} close={()=>{setHostAppointmentNotice(null);setHostTutorialStep(0);setHostTutorial(true)}} busy={busy}/>}
     {notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
 }
 

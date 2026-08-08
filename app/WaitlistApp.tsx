@@ -184,7 +184,7 @@ export default function App() {
     setUser(session?.user??null); await refresh(session?.user??null);
     if(session?.user){
       const {data:unread}=await supabase.from('group_notifications').select('id,user_id,message,read_at').eq('user_id',session.user.id).is('read_at',null).order('created_at',{ascending:true}).limit(1).maybeSingle();
-      if(unread){const notification=unread as GroupNotification;showPlayerNotification(notification);await supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id);}
+      if(unread){const notification=unread as GroupNotification;showPlayerNotification(notification,session.user.id);await supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id);}
     }
     const channel=supabase.channel('live-waitlist')
       .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_players'},()=>{if(!adminMoveInProgress.current)void refresh()})
@@ -193,7 +193,7 @@ export default function App() {
       .on('postgres_changes',{event:'*',schema:'public',table:'substitute_requests'},()=>void refresh())
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'group_notifications'},payload=>{
         const notification=payload.new as GroupNotification;
-        if(notification.user_id===session?.user.id){showPlayerNotification(notification);void supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id);}
+        if(notification.user_id===session?.user.id){showPlayerNotification(notification,session.user.id);void supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id);}
       })
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'past_games'},()=>void refresh())
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'waitlist_events'},payload=>{
@@ -257,9 +257,9 @@ export default function App() {
     }
   }
   function ask(title:string,message:string,confirm:string,action:()=>Promise<void>,actionTone:'danger'|'success'='danger',cancelTone:'neutral'|'danger'='neutral'){setNotice({title,message,confirm,action,actionTone,cancelTone});}
-  function showPlayerNotification(notification:GroupNotification){
-    if(notification.message.startsWith('HOST_APPOINTED|')){setPlayers(items=>items.map(player=>player.user_id===user?.id?{...player,is_host:true}:player));setNotice({title:'You are now a Session Host',message:notification.message.split('|')[1]||'The admin appointed you as a Session Host.',onClose:()=>{setHostTutorialStep(0);setHostTutorial(true)}});return;}
-    if(notification.message.startsWith('HOST_REMOVED|')){setPlayers(items=>items.map(player=>player.user_id===user?.id?{...player,is_host:false}:player));setHostTutorial(false);setNotice({title:'Host permissions removed',message:notification.message.split('|')[1]||'Your Session Host permissions were removed.'});return;}
+  function showPlayerNotification(notification:GroupNotification,activeUserId=user?.id){
+    if(notification.message.startsWith('HOST_APPOINTED|')){setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:true}:player));setNotice({title:'You are now a Session Host',message:notification.message.split('|')[1]||'The admin appointed you as a Session Host.',onClose:()=>{setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:true}:player));setHostTutorialStep(0);setHostTutorial(true)}});return;}
+    if(notification.message.startsWith('HOST_REMOVED|')){setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:false}:player));setHostTutorial(false);setNotice({title:'Host permissions removed',message:notification.message.split('|')[1]||'Your Session Host permissions were removed.'});return;}
     setNotice({title:notification.message.includes('wants to group with you')?'Group request':'Group update',message:notification.message});
   }
   async function turnOnNotifications(){setBusy(true);try{await enablePush();setNotifications(true);setNotice({title:'Notifications are on',message:"We’ll alert you when your game starts or needs a response."});}catch(error){setNotice({title:'Notifications unavailable',message:error instanceof Error?error.message:'Could not enable notifications.'});}setBusy(false);}

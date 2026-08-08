@@ -131,6 +131,8 @@ body.mobile-admin-dragging { overscroll-behavior:none; }
 .restrict-button { background:#b98212; color:#fff8dc; }
 .admin-player-actions button:hover { transform:translateY(-1px); filter:brightness(1.08); }
 .admin-sitout-button:hover,.admin-leave-button:hover { box-shadow:0 0 15px #80768e70; }
+.admin-player-actions .admin-leave-button { background:#8f2d38; color:#fff; }
+.admin-player-actions .admin-leave-button:hover { background:#a83945; box-shadow:0 0 15px #c44b5870; }
 .restrict-button:hover { background:#c99118; box-shadow:0 0 16px #e9b94970; }
 .permission-actions { display:grid; grid-template-columns:1fr; gap:9px; margin-top:18px; }
 .permission-actions button { min-height:45px; border:0; border-radius:12px; color:#fff; font-weight:850; cursor:pointer; }
@@ -151,6 +153,8 @@ body.mobile-admin-dragging { overscroll-behavior:none; }
 .theme-light .admin-sitout-button,.theme-light .admin-leave-button { background:#55708d; }
 .theme-light .restrict-button { background:#e5ad24; color:#493400; }
 .theme-light .admin-sitout-button:hover,.theme-light .admin-leave-button:hover { box-shadow:0 0 15px #55708d66; }
+.theme-light .admin-player-actions .admin-leave-button { background:#c93745; color:#fff; }
+.theme-light .admin-player-actions .admin-leave-button:hover { background:#d94754; box-shadow:0 0 15px #c9374566; }
 .theme-light .restrict-button:hover { background:#f0bc37; box-shadow:0 0 16px #e5ad2466; }
 @media (max-width:620px) { .admin-row { align-items:flex-start; flex-wrap:wrap; touch-action:pan-y; -webkit-touch-callout:none; user-select:none; } .admin-row .player-name { min-height:34px; } .admin-leave-group-button { margin:3px 0 0 5px; padding:7px 8px; font-size:.62rem; } .admin-player-actions { width:100%; margin:2px 0 2px 34px; gap:5px; } .admin-player-actions button { flex:1; padding:7px 6px; font-size:.63rem; } .theme-switch { left:8px; } body.mobile-admin-dragging .admin-row { touch-action:none; } }
 .app-shell.theme-light { background:radial-gradient(circle at 50% 0,#fff 0,#edf1f5 60%); color:#20242c; }

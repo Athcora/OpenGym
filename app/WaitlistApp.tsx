@@ -262,6 +262,10 @@ export default function App() {
     if(notification.message.startsWith('HOST_REMOVED|')){setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:false}:player));setHostAppointmentNotice(null);setHostTutorial(false);setNotice({title:'Host permissions removed',message:notification.message.split('|')[1]||'Your Session Host permissions were removed.'});return;}
     setNotice({title:notification.message.includes('wants to group with you')?'Group request':'Group update',message:notification.message});
   }
+  function acknowledgeHostAppointment(){
+    setHostAppointmentNotice(null);setNotice(null);setOnboarding('idle');setScreen('queue');
+    window.setTimeout(()=>{setHostTutorialStep(0);setHostTutorial(true)},120);
+  }
   async function turnOnNotifications(){setBusy(true);try{await enablePush();setNotifications(true);setNotice({title:'Notifications are on',message:"We’ll alert you when your game starts or needs a response."});}catch(error){setNotice({title:'Notifications unavailable',message:error instanceof Error?error.message:'Could not enable notifications.'});}setBusy(false);}
   async function saveName(player:Player){if(isInappropriateName(editName)){setNotice(inappropriateNameNotice);return;}const parts=cleanName(editName).split(' ');const f=parts.shift()??'';const l=parts.join(' ');if(await rpc('rename_waitlist_player',{p_player_id:player.id,p_first_name:f,p_last_name:l}))setEditing(null);}
   async function logout(){await supabase.auth.signOut();setPlayers([]);setUser(null);setScreen('welcome');await boot();}
@@ -512,7 +516,7 @@ export default function App() {
     {screen==='members'&&<div className="drawer"><div className="drawer-card"><button className="back" onClick={()=>setScreen('queue')}>← Back to waitlist</button><h2>Members</h2><button className="restricted-members-button" onClick={()=>setScreen('restricted')}>Restricted Members</button>{members.length===0?<p>No accounts have been created yet.</p>:members.map(member=><article className="past-game" key={member.user_id}><strong>{member.player_name??member.email??member.phone??'Member'}</strong><p>{member.email??member.phone??'Verified account'} · Joined {new Date(member.created_at).toLocaleDateString()}</p></article>)}</div></div>}
     {permissionPlayer&&<PermissionsModal player={permissionPlayer} close={()=>setPermissionPlayer(null)} hostAction={()=>confirmHostChange(permissionPlayer)} restrictAction={()=>chooseRestriction(permissionPlayer)}/>}
     {hostTutorial&&<HostTutorial step={hostTutorialStep} next={()=>hostTutorialStep<hostTutorialSteps.length-1?setHostTutorialStep(value=>value+1):setHostTutorial(false)} back={()=>setHostTutorialStep(value=>Math.max(0,value-1))} skip={()=>setHostTutorial(false)}/>}
-    {hostAppointmentNotice&&<Modal notice={{title:'You are now a Session Host',message:hostAppointmentNotice,blocking:true}} close={()=>{setHostAppointmentNotice(null);setHostTutorialStep(0);setHostTutorial(true)}} busy={busy}/>}
+    {hostAppointmentNotice&&<Modal notice={{title:'You are now a Session Host',message:hostAppointmentNotice,blocking:true}} close={acknowledgeHostAppointment} busy={busy}/>}
     {notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
 }
 

@@ -62,6 +62,10 @@ begin
   if requester.id=target.id then raise exception 'Choose another player.';end if;
   if exists(select 1 from public.substitute_requests where requester_id=requester.id and status='pending') then raise exception 'You already have a pending substitute request.';end if;
   insert into public.substitute_requests(requester_id,target_id) values(requester.id,target.id) returning id into request_id;
+  insert into public.waitlist_events(actor_user_id,actor_name,event_type,message)
+  values(requester.user_id,requester.display_name,'substitute_request',requester.display_name||' requested a permanent substitute swap with '||target.display_name||'.');
+  insert into public.waitlist_events(actor_user_id,actor_name,event_type,message)
+  values(target.user_id,target.display_name,'substitute_request',target.display_name||' received a permanent substitute request from '||requester.display_name||'.');
   return jsonb_build_object('message','Your substitute request was sent to '||target.display_name||'.','request_id',request_id);
 end;
 $$;

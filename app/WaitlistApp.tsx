@@ -82,7 +82,7 @@ export default function App() {
   const [language,setLanguage]=useState<AppLanguage>('en'); const translationMemory=useRef(new WeakMap<Text,{original:string;applied:string}>());
   const [geofenceReturn,setGeofenceReturn]=useState<GeofenceReturn|null>(null); const [returnClock,setReturnClock]=useState(Date.now());
   const [permissionPlayer,setPermissionPlayer]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0);
-  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>());
+  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const hostTransitionHandledAt=useRef(0);
 
   const me=players.find(p=>p.user_id===user?.id)??ownPlayer;
   const host=Boolean(me?.is_host&&!admin); const operator=admin||host;
@@ -187,7 +187,14 @@ export default function App() {
       if(unread){const notification=unread as GroupNotification;showPlayerNotification(notification,session.user.id);await supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id);}
     }
     const channel=supabase.channel('live-waitlist')
-      .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_players'},()=>{if(!adminMoveInProgress.current)void refresh()})
+      .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_players'},payload=>{
+        const changed=payload.new as Player;const isOwnPlayer=changed.user_id===session.user.id;
+        if(isOwnPlayer){const wasHost=ownHostStatus.current;const isHost=Boolean(changed.is_host);ownHostStatus.current=isHost;
+          if(!wasHost&&isHost){hostTransitionHandledAt.current=Date.now();setPlayers(items=>items.map(player=>player.user_id===session.user.id?{...player,is_host:true}:player));setHostAppointmentNotice('The admin appointed you as a Session Host.');window.setTimeout(()=>void clearUnreadHostNotifications(session.user.id,'HOST_APPOINTED|'),250);}
+          if(wasHost&&!isHost){setHostAppointmentNotice(null);setHostTutorial(false);setNotice({title:'Host permissions removed',message:'The admin removed your Session Host permissions.'});window.setTimeout(()=>void clearUnreadHostNotifications(session.user.id,'HOST_REMOVED|'),250);}
+        }
+        if(!adminMoveInProgress.current)void refresh();
+      })
       .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_config'},()=>void refresh())
       .on('postgres_changes',{event:'*',schema:'public',table:'group_requests'},()=>void refresh())
       .on('postgres_changes',{event:'*',schema:'public',table:'substitute_requests'},()=>void refresh())
@@ -198,7 +205,7 @@ export default function App() {
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'past_games'},()=>void refresh())
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'waitlist_events'},payload=>{
         const event=payload.new as {actor_user_id?:string;event_type?:string;message?:string};
-        if(event.event_type==='host_appointed'||event.event_type==='host_removed'){void deliverHostNotification(session.user.id);return;}
+        if(event.event_type==='host_appointed'||event.event_type==='host_removed')return;
         const quietEvents=new Set(['join','leave','add_player','admin_leave','admin_rejoin','geofence_leave','geofence_return']);
         if(event.actor_user_id!==session?.user.id&&event.message&&!quietEvents.has(event.event_type??''))setNotice({title:'Waitlist update',message:event.message});
       }).subscribe();
@@ -216,7 +223,7 @@ export default function App() {
       supabase.from('geofence_return_prompts').select('id,removed_at,saved_position_until,expires_at').is('resolved_at',null).gt('expires_at',new Date().toISOString()).order('removed_at',{ascending:false}).limit(1).maybeSingle()
     ]);
     const playerRows=(p??[]) as Player[];setPlayers(playerRows); if(c)setConfig(c as Config); setGames((g??[]) as Game[]);setAdmin(Boolean(a));
-    const activeUid=(activeUser??user)?.id;const activeHost=Boolean(playerRows.find(item=>item.user_id===activeUid)?.is_host);
+    const activeUid=(activeUser??user)?.id;const activeHost=Boolean(playerRows.find(item=>item.user_id===activeUid)?.is_host);ownHostStatus.current=activeHost;
     if(a||activeHost){const {data:offline}=await supabase.rpc('admin_list_offline_rejoins');setAdminRejoins((offline??[]) as AdminRejoin[]);}else setAdminRejoins([]);
     setGroupRequests(((r??[]) as GroupRequest[]).map(request=>({...request,requester:playerRows.find(player=>player.id===request.requester_id)})));
     setSubstituteRequests(((s??[]) as SubstituteRequest[]).map(request=>({...request,requester:playerRows.find(player=>player.id===request.requester_id)})));
@@ -260,14 +267,15 @@ export default function App() {
   function ask(title:string,message:string,confirm:string,action:()=>Promise<void>,actionTone:'danger'|'success'='danger',cancelTone:'neutral'|'danger'='neutral'){setNotice({title,message,confirm,action,actionTone,cancelTone});}
   function showPlayerNotification(notification:GroupNotification,activeUserId=user?.id){
     if(handledNotificationIds.current.has(notification.id))return;handledNotificationIds.current.add(notification.id);
+    if(notification.message.startsWith('HOST_APPOINTED|')&&Date.now()-hostTransitionHandledAt.current<10000)return;
     if(notification.message.startsWith('HOST_APPOINTED|')){setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:true}:player));setHostAppointmentNotice(notification.message.split('|')[1]||'The admin appointed you as a Session Host.');return;}
     if(notification.message.startsWith('HOST_REMOVED|')){setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:false}:player));setHostAppointmentNotice(null);setHostTutorial(false);setNotice({title:'Host permissions removed',message:notification.message.split('|')[1]||'Your Session Host permissions were removed.'});return;}
     setNotice({title:notification.message.includes('wants to group with you')?'Group request':'Group update',message:notification.message});
   }
-  async function deliverHostNotification(activeUserId:string){
-    const {data}=await supabase.from('group_notifications').select('id,user_id,message,read_at').eq('user_id',activeUserId).is('read_at',null).order('created_at',{ascending:false}).limit(10);
-    const notification=((data??[]) as GroupNotification[]).find(item=>item.message.startsWith('HOST_APPOINTED|')||item.message.startsWith('HOST_REMOVED|'));
-    if(!notification)return;showPlayerNotification(notification,activeUserId);await supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id);
+  async function clearUnreadHostNotifications(activeUserId:string,prefix:string){
+    const {data}=await supabase.from('group_notifications').select('id,message').eq('user_id',activeUserId).is('read_at',null).order('created_at',{ascending:false}).limit(10);
+    const ids=((data??[]) as Pick<GroupNotification,'id'|'message'>[]).filter(item=>item.message.startsWith(prefix)).map(item=>item.id);
+    await Promise.all(ids.map(id=>supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',id)));
   }
   function acknowledgeHostAppointment(){
     setHostAppointmentNotice(null);setNotice(null);setOnboarding('idle');setScreen('queue');

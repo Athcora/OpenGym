@@ -3,7 +3,7 @@ create or replace function public.admin_set_player_sitout(p_player_id uuid)
 returns jsonb language plpgsql security definer set search_path=public as $$
 declare player public.waitlist_players;
 begin
-  if not public.is_waitlist_admin() then raise exception 'Admin access required.'; end if;
+  if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
   select * into player from public.waitlist_players where id=p_player_id and status in('current','waiting') for update;
   if player.id is null then raise exception 'This player is no longer active.'; end if;
   perform public.save_admin_undo('sit out player');
@@ -18,7 +18,7 @@ create or replace function public.admin_leave_player(p_player_id uuid)
 returns jsonb language plpgsql security definer set search_path=public as $$
 declare player public.waitlist_players; remaining_group_members integer;
 begin
-  if not public.is_waitlist_admin() then raise exception 'Admin access required.'; end if;
+  if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
   select * into player from public.waitlist_players where id=p_player_id and status<>'left' for update;
   if player.id is null then raise exception 'This player has already left.'; end if;
   perform public.save_admin_undo('remove player');

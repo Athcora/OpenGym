@@ -12,7 +12,7 @@ declare
   new_status text;
   player_id uuid;
 begin
-  if not public.is_waitlist_admin() then raise exception 'Admin access required.'; end if;
+  if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
   if clean_first='' then raise exception 'Enter a name containing letters.'; end if;
   if not public.name_is_allowed(clean_first,clean_last) then
     raise exception 'This name is not allowed. Choose a different one.';

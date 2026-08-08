@@ -14,7 +14,7 @@ declare
   open_spots integer;
   candidate record;
 begin
-  if not public.is_waitlist_admin() then raise exception 'Admin access required.'; end if;
+  if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
   if p_status not in ('current','waiting') then raise exception 'Invalid destination.'; end if;
 
   select c.max_players into max_players

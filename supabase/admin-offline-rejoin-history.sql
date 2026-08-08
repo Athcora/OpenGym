@@ -24,7 +24,7 @@ create or replace function public.admin_list_offline_rejoins()
 returns table(id uuid,display_name text,queue_position bigint,expires_at timestamptz)
 language plpgsql security definer set search_path=public as $$
 begin
-  if not public.is_waitlist_admin() then raise exception 'Admin access required.'; end if;
+  if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
   update public.waitlist_players set status='left',queue_position=null,rejoin_expires_at=null,updated_at=now()
     where user_id is null and status='rejoin' and rejoin_expires_at<=now();
   return query select p.id,p.display_name,p.queue_position,p.rejoin_expires_at
@@ -37,7 +37,7 @@ create or replace function public.admin_answer_offline_rejoin(p_player_id uuid,p
 returns jsonb language plpgsql security definer set search_path=public as $$
 declare player public.waitlist_players;declare active_count integer;declare max_players integer;declare new_status text;
 begin
-  if not public.is_waitlist_admin() then raise exception 'Admin access required.'; end if;
+  if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
   select * into player from public.waitlist_players where id=p_player_id and user_id is null and status='rejoin' for update;
   if player.id is null then raise exception 'This rejoin request is no longer available.'; end if;
   if player.rejoin_expires_at<=now() then
@@ -62,7 +62,7 @@ create or replace function public.admin_list_waitlist_history()
 returns table(id bigint,actor_name text,event_type text,message text,created_at timestamptz)
 language plpgsql security definer set search_path=public as $$
 begin
-  if not public.is_waitlist_admin() then raise exception 'Admin access required.'; end if;
+  if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
   return query select e.id,e.actor_name,e.event_type,e.message,e.created_at
     from public.waitlist_events e order by e.created_at desc limit 250;
 end;
@@ -99,10 +99,10 @@ begin
   perform pg_advisory_xact_lock(7429101);
   select * into config from public.waitlist_config where id for update;
   select * into caller from public.waitlist_players where user_id=auth.uid();
-  if not public.is_waitlist_admin() and(caller.id is null or caller.status<>'current' or caller.restricted)then
+  if not public.is_waitlist_operator() and(caller.id is null or caller.status<>'current' or caller.restricted)then
     raise exception 'Only an unrestricted current-game player or admin can start the next game.';
   end if;
-  if public.is_waitlist_admin() then perform public.save_admin_undo('start next game');end if;
+  if public.is_waitlist_operator() then perform public.save_admin_undo('start next game');end if;
   insert into public.past_games(game_number,player_names)
     select config.game_number,coalesce(jsonb_agg(display_name order by queue_position),'[]'::jsonb) from public.waitlist_players where status='current'
     on conflict(game_number)do nothing;

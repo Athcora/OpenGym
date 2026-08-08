@@ -38,7 +38,7 @@ $$;
 create or replace function public.save_admin_undo(p_label text)
 returns void language plpgsql security definer set search_path=public as $$
 begin
-  if not public.is_waitlist_admin() then raise exception 'Admin access required.'; end if;
+  if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
   insert into public.admin_undo(admin_user_id,label,snapshot) values(auth.uid(),p_label,public.capture_waitlist_state());
   delete from public.admin_undo where admin_user_id=auth.uid() and id not in(select id from public.admin_undo where admin_user_id=auth.uid() order by id desc limit 5);
   delete from public.admin_redo where admin_user_id=auth.uid();
@@ -49,7 +49,7 @@ create or replace function public.admin_undo_last()
 returns jsonb language plpgsql security definer set search_path=public as $$
 declare entry public.admin_undo;
 begin
-  if not public.is_waitlist_admin() then raise exception 'Admin access required.'; end if;
+  if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
   select * into entry from public.admin_undo where admin_user_id=auth.uid() order by id desc limit 1 for update;
   if entry.id is null then return jsonb_build_object('message','There are no actions to undo.'); end if;
   insert into public.admin_redo(admin_user_id,label,snapshot) values(auth.uid(),entry.label,public.capture_waitlist_state());
@@ -64,7 +64,7 @@ create or replace function public.admin_redo_last()
 returns jsonb language plpgsql security definer set search_path=public as $$
 declare entry public.admin_redo;
 begin
-  if not public.is_waitlist_admin() then raise exception 'Admin access required.'; end if;
+  if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
   select * into entry from public.admin_redo where admin_user_id=auth.uid() order by id desc limit 1 for update;
   if entry.id is null then return jsonb_build_object('message','There are no actions to redo.'); end if;
   insert into public.admin_undo(admin_user_id,label,snapshot) values(auth.uid(),entry.label,public.capture_waitlist_state());

@@ -45,7 +45,7 @@ declare
   first_position bigint;
   last_position bigint;
 begin
-  if not public.is_waitlist_admin() then raise exception 'Admin access required.'; end if;
+  if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
   perform pg_advisory_xact_lock(7429102);
 
   select count(distinct player_id)
@@ -136,7 +136,7 @@ declare
   previous_group uuid;
   remaining_count integer;
 begin
-  if not public.is_waitlist_admin() then raise exception 'Admin access required.'; end if;
+  if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
   perform pg_advisory_xact_lock(7429102);
 
   select * into target from public.waitlist_players where id=p_target_id for update;

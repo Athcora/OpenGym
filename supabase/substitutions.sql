@@ -55,9 +55,9 @@ create or replace function public.request_player_substitute(p_target_id uuid)
 returns jsonb language plpgsql security definer set search_path=public as $$
 declare requester public.waitlist_players;target public.waitlist_players;request_id uuid;
 begin
-  select * into requester from public.waitlist_players where user_id=auth.uid() and status='current';
+  select * into requester from public.waitlist_players where user_id=auth.uid() and status in ('current','waiting');
   select * into target from public.waitlist_players where id=p_target_id and status in ('current','waiting');
-  if requester.id is null then raise exception 'Only a current-game player can request a substitute.';end if;
+  if requester.id is null then raise exception 'You must be in the current game or waitlist to request a substitute.';end if;
   if target.id is null or target.user_id is null then raise exception 'That player cannot receive a substitute request.';end if;
   if requester.id=target.id then raise exception 'Choose another player.';end if;
   if exists(select 1 from public.substitute_requests where requester_id=requester.id and status='pending') then raise exception 'You already have a pending substitute request.';end if;

@@ -598,11 +598,10 @@ const tutorialSteps=[
 
 const hostTutorialSteps=[
  {title:'Add Player',message:'Use Add Player to check in someone who does not have their phone. You can add several walk-in players without leaving that screen.',target:'.add-player-tool'},
- {title:'Rejoin Requests',message:'Use Rejoin Requests when a walk-in player returns after a game. Approving them restores their saved place in line.',target:'.rejoin-tool'},
- {title:'Create Group',message:'Use Create Group to select players who want to play together. The queue will keep the group together when games are formed.',target:'.group-create-tool'},
- {title:'Substitute',message:'Use Substitute to select two players and permanently swap their positions. A grouped player leaves their group when swapped.',target:'.substitute-tool'},
+ {title:'Rejoin Requests',message:'Rejoin Requests are usually for players without a phone who joined through you. After they play, they can return to you and ask you to help them rejoin the waitlist.',target:'.rejoin-tool'},
+ {title:'Create Group',message:'Use Create Group to select players who want to play together.',target:'.group-create-tool'},
+ {title:'Substitute',message:'Use Substitute to select two players and permanently swap their positions.',target:'.substitute-tool'},
  {title:'Sit Out and Remove',message:'Use Sit Out beside a player to skip only that player for one game. Use Remove to take that player off the waitlist.',target:'.admin-player-actions'},
- {title:'Undo and Redo',message:'Undo and Redo let you correct up to five recent session actions.',target:'.undo-redo-controls'},
  {title:'History',message:'History shows when players joined, left, sat out, grouped, substituted, or changed games during this waitlist.',target:'.history-tool'},
 ];
 

@@ -240,7 +240,7 @@ export default function App() {
     setGeofenceReturn((geo as GeofenceReturn|null)??null);
     const uid=(activeUser??user)?.id; let own=playerRows.find(item=>item.user_id===uid)??null;
     if(uid&&!own){const {data:storedOwn}=await supabase.from('waitlist_players').select('*').eq('user_id',uid).maybeSingle();own=(storedOwn as Player|null)??null;}
-    setOwnPlayer(own);if(own)setScreen('queue');
+    setOwnPlayer(previous=>own??(previous?{...previous,status:'left'}:null));if(own)setScreen('queue');
   }
   async function rpc(name:string,args:Record<string,unknown>={},showSuccess=true){
     setBusy(true); const {data,error}=await supabase.rpc(name,args); setBusy(false);

@@ -204,6 +204,7 @@ body.mobile-admin-dragging { overscroll-behavior:none; }
 .theme-light .your-group-label { color:#197950; }
 .leave-own-group-button { flex:0 0 auto; margin-right:7px; border:0; border-radius:9px; padding:7px 9px; background:#d95763; color:#fff; cursor:pointer; font-size:.64rem; font-weight:800; transition:transform .16s,box-shadow .16s,filter .16s; }
 .leave-own-group-button:hover { transform:translateY(-1px); filter:brightness(1.08); box-shadow:0 0 16px rgba(217,87,99,.38); }
+.admin-row.own .leave-own-group-button { display:none; }
 .theme-dark .leave-own-group-button { background:#a94350; }
 .theme-dark .leave-own-group-button:hover { background:#bd5260; box-shadow:0 0 16px rgba(189,82,96,.42); }
 .group-projection-warning { display:block; margin:10px 0 15px; padding:12px 14px; border-radius:11px; background:#dff8ec; color:#175c42; font-size:.92rem; line-height:1.4; }

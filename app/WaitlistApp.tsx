@@ -106,9 +106,20 @@ export default function App() {
   },[user?.id,admin]);
   useEffect(()=>{
     if(!user||admin)return;let stopped=false;
-    const check=async()=>{const {data}=await supabase.from('group_notifications').select('id,user_id,message,read_at').eq('user_id',user.id).is('read_at',null).like('message','HOST_%').order('created_at',{ascending:true}).limit(1).maybeSingle();if(stopped||!data)return;const notification=data as GroupNotification;showPlayerNotification(notification,user.id);await supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id)};
+    // Realtime is the fastest path, but mobile browsers can suspend or miss a
+    // channel event. Poll every unread player notification as a reliable
+    // fallback so host, group, substitute, and operator messages appear
+    // without requiring a refresh.
+    const check=async()=>{const {data}=await supabase.from('group_notifications').select('id,user_id,message,read_at').eq('user_id',user.id).is('read_at',null).order('created_at',{ascending:true}).limit(1).maybeSingle();if(stopped||!data)return;const notification=data as GroupNotification;showPlayerNotification(notification,user.id);await supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id)};
     void check();const timer=window.setInterval(()=>void check(),800);return()=>{stopped=true;window.clearInterval(timer)};
   },[user?.id,admin]);
+  useEffect(()=>{
+    if(!user)return;let stopped=false;let refreshing=false;
+    // Keep pending group/substitute requests synchronized even when a device's
+    // realtime connection has been paused by the operating system.
+    const sync=async()=>{if(stopped||refreshing)return;refreshing=true;try{await refresh(user)}finally{refreshing=false}};
+    const timer=window.setInterval(()=>void sync(),1000);return()=>{stopped=true;window.clearInterval(timer)};
+  },[user?.id]);
   useEffect(()=>{
     const substituting=adminSubstituting||playerSubstituting;
     const selecting=adminGrouping||substituting;

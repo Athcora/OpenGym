@@ -84,7 +84,8 @@ export default function App() {
   const [permissionPlayer,setPermissionPlayer]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0);
   const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false);
 
-  const me=players.find(p=>p.user_id===user?.id)??ownPlayer;
+  const activeMe=players.find(p=>p.user_id===user?.id)??null;
+  const me=ownPlayer&&!['current','waiting','sitout'].includes(ownPlayer.status)?ownPlayer:(activeMe??ownPlayer);
   ownPlayerIdRef.current=me?.id??ownPlayer?.id??null;
   const host=Boolean(me?.is_host&&!admin); const operator=admin||host;
   const current=useMemo(()=>players.filter(p=>p.status==='current').sort(byPosition),[players]);

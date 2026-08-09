@@ -104,6 +104,11 @@ export default function App() {
     const timer=window.setInterval(()=>void check(),1500);return()=>{stopped=true;window.clearInterval(timer)};
   },[user?.id,admin]);
   useEffect(()=>{
+    if(!user||admin)return;let stopped=false;
+    const check=async()=>{const {data}=await supabase.from('group_notifications').select('id,user_id,message,read_at').eq('user_id',user.id).is('read_at',null).like('message','HOST_%').order('created_at',{ascending:true}).limit(1).maybeSingle();if(stopped||!data)return;const notification=data as GroupNotification;showPlayerNotification(notification,user.id);await supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id)};
+    void check();const timer=window.setInterval(()=>void check(),800);return()=>{stopped=true;window.clearInterval(timer)};
+  },[user?.id,admin]);
+  useEffect(()=>{
     const substituting=adminSubstituting||playerSubstituting;
     const selecting=adminGrouping||substituting;
     document.body.classList.toggle('admin-group-selecting',selecting);

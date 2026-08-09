@@ -1,4 +1,15 @@
 -- Admin controls for placing any active player on sit-out or removing them.
+create or replace function public.notify_waitlist_operator_player(p_user_id uuid,p_action text)
+returns void language plpgsql security definer set search_path=public as $$
+declare actor_label text;
+begin
+  if p_user_id is null then return; end if;
+  actor_label:=case when exists(select 1 from public.waitlist_players where user_id=auth.uid() and is_host and status in('current','waiting','sitout','rejoin')) then 'A host' else 'An admin' end;
+  insert into public.group_notifications(user_id,message)
+  values(p_user_id,'OPERATOR_ACTION|'||actor_label||' '||p_action);
+end;
+$$;
+
 create or replace function public.admin_set_player_sitout(p_player_id uuid)
 returns jsonb language plpgsql security definer set search_path=public as $$
 declare player public.waitlist_players;
@@ -8,6 +19,7 @@ begin
   if player.id is null then raise exception 'This player is no longer active.'; end if;
   perform public.save_admin_undo('sit out player');
   update public.waitlist_players set status='sitout',updated_at=now() where id=player.id;
+  perform public.notify_waitlist_operator_player(player.user_id,'made you sit out for one game.');
   perform public.log_waitlist_operator_action('admin_sitout','sat out '||player.display_name||' for one game.');
   return jsonb_build_object('message',player.display_name||' will sit out the next game.');
 end;
@@ -24,6 +36,7 @@ begin
   update public.waitlist_players
     set status='left',queue_position=null,group_id=null,rejoin_expires_at=null,updated_at=now()
     where id=player.id;
+  perform public.notify_waitlist_operator_player(player.user_id,'removed you from the waitlist.');
   if player.group_id is not null then
     select count(*) into remaining_group_members
     from public.waitlist_players

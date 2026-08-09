@@ -124,6 +124,8 @@ begin
   from public.waitlist_players where group_id=new_group;
 
   perform public.log_waitlist_operator_action('admin_group','created a group with '||selected_count||' players.');
+  perform public.notify_waitlist_operator_player(p.user_id,'added you to a group.')
+  from public.waitlist_players p where p.id=any(p_player_ids);
 
   return jsonb_build_object('message','The group was created.','first_position',first_position,'last_position',last_position);
 end;
@@ -154,6 +156,7 @@ begin
   where group_id=previous_group and user_id is not null;
 
   update public.waitlist_players set group_id=null,updated_at=now() where id=target.id;
+  perform public.notify_waitlist_operator_player(target.user_id,'removed you from your group.');
   select count(*) into remaining_count from public.waitlist_players where group_id=previous_group;
   if remaining_count<=1 then
     update public.waitlist_players set group_id=null,updated_at=now() where group_id=previous_group;

@@ -146,6 +146,12 @@ begin
     'admin_move',
     case when moving_count>1 then 'moved a group of '||moving_count||' players.' else 'moved '||player.display_name||'.' end
   );
+  perform public.notify_waitlist_operator_player(
+    moved.user_id,
+    'moved your position in the waitlist.'
+  )
+  from public.waitlist_players moved
+  where moved.id=player.id or (player.group_id is not null and moved.group_id=player.group_id);
 
   return jsonb_build_object(
     'message',

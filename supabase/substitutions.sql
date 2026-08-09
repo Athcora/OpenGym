@@ -50,6 +50,7 @@ begin
   select display_name into first_name from public.waitlist_players where id=p_first_id;
   select display_name into second_name from public.waitlist_players where id=p_second_id;
   perform pg_advisory_xact_lock(7429102);perform public.save_admin_undo('substitute players');perform public.swap_waitlist_players(p_first_id,p_second_id);
+  perform public.notify_waitlist_operator_player(p.user_id,'substituted your position with another player.') from public.waitlist_players p where p.id in(p_first_id,p_second_id);
   perform public.log_waitlist_operator_action('admin_substitute','substituted '||coalesce(first_name,'a player')||' with '||coalesce(second_name,'another player')||'.');
   return jsonb_build_object('message','The players successfully swapped positions.');
 end;

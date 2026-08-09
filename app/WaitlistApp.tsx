@@ -86,7 +86,9 @@ export default function App() {
   const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false);
 
   const activeMe=players.find(p=>p.user_id===user?.id)??null;
-  const me=forceRejoin?(ownPlayer??activeMe):(activeMe??ownPlayer);
+  // The live queue is authoritative. A cached inactive record must never hide
+  // the normal controls when this user is already back in the game or waitlist.
+  const me=activeMe??ownPlayer;
   ownPlayerIdRef.current=me?.id??ownPlayer?.id??null;
   const host=Boolean(me?.is_host&&!admin); const operator=admin||host;
   const current=useMemo(()=>players.filter(p=>p.status==='current').sort(byPosition),[players]);

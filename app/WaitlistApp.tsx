@@ -84,6 +84,7 @@ export default function App() {
   const [geofenceReturn,setGeofenceReturn]=useState<GeofenceReturn|null>(null); const [returnClock,setReturnClock]=useState(Date.now());
   const [permissionPlayer,setPermissionPlayer]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0);
   const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false);
+  const rejoinLookupAttempts=useRef(0);
 
   const activeMe=players.find(p=>p.user_id===user?.id)??null;
   // The live queue is authoritative. A cached inactive record must never hide
@@ -184,6 +185,12 @@ export default function App() {
   useEffect(()=>{if(!geofenceReturn)return;const timer=window.setInterval(()=>setReturnClock(Date.now()),1000);return()=>window.clearInterval(timer)},[geofenceReturn?.id]);
   useEffect(()=>{
     if(me?.status!=='rejoin'||rejoinResponse||!rejoinChecked){if(me?.status!=='rejoin')expiredRejoinHandled.current=false;return;}
+    if(rejoinLookupAttempts.current<5){
+      rejoinLookupAttempts.current+=1;
+      setRejoinChecked(false);
+      const retry=window.setTimeout(()=>void refresh(),250);
+      return()=>window.clearTimeout(retry);
+    }
     if(expiredRejoinHandled.current)return;
     expiredRejoinHandled.current=true;
     void (async()=>{
@@ -204,7 +211,7 @@ export default function App() {
     const channel=supabase.channel('live-waitlist')
       .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_players'},payload=>{
         const changed=payload.new as Player;const isOwnChange=changed.user_id===session.user.id||changed.id===ownPlayerIdRef.current;
-        if(isOwnChange){setOwnPlayer(changed);setForceRejoin(!['current','waiting','sitout'].includes(changed.status));ownPlayerIdRef.current=changed.id;syncOwnHostStatus(Boolean(changed.is_host),session.user.id);}
+        if(isOwnChange){setOwnPlayer(changed);setForceRejoin(!['current','waiting','sitout'].includes(changed.status));ownPlayerIdRef.current=changed.id;syncOwnHostStatus(Boolean(changed.is_host),session.user.id);if(changed.status==='rejoin'){rejoinLookupAttempts.current=0;setRejoinChecked(false);window.setTimeout(()=>void refresh(),150);}}
         setPlayers(items=>{
           const affectsOwn=changed.user_id===session.user.id||items.some(player=>player.id===changed.id&&player.user_id===session.user.id);
           if(affectsOwn&&changed.status==='left')return items.filter(player=>player.id!==changed.id);
@@ -245,7 +252,7 @@ export default function App() {
     if(a||activeHost){const {data:offline}=await supabase.rpc('admin_list_offline_rejoins');setAdminRejoins((offline??[]) as AdminRejoin[]);}else setAdminRejoins([]);
     setGroupRequests(((r??[]) as GroupRequest[]).map(request=>({...request,requester:playerRows.find(player=>player.id===request.requester_id)})));
     setSubstituteRequests(((s??[]) as SubstituteRequest[]).map(request=>({...request,requester:playerRows.find(player=>player.id===request.requester_id)})));
-    setRejoinResponse(rejoin?.id??null);setRejoinChecked(!rejoinError);
+    setRejoinResponse(rejoin?.id??null);setRejoinChecked(!rejoinError);if(rejoin?.id)rejoinLookupAttempts.current=0;
     setGeofenceReturn((geo as GeofenceReturn|null)??null);
     const uid=(activeUser??user)?.id; let own=playerRows.find(item=>item.user_id===uid)??null;
     if(uid&&!own){const {data:storedOwn}=await supabase.from('waitlist_players').select('*').eq('user_id',uid).maybeSingle();own=(storedOwn as Player|null)??null;}

@@ -4,6 +4,7 @@ declare
   caller public.waitlist_players;
   previous_group uuid;
   remaining_count integer;
+  current_game integer;
 begin
   perform pg_advisory_xact_lock(7429102);
 
@@ -20,13 +21,16 @@ begin
   ) then raise exception 'Your group is not currently playing.'; end if;
 
   previous_group:=caller.group_id;
+  select game_number into current_game from public.waitlist_config where id;
   insert into public.group_notifications(user_id,message)
   select user_id,caller.display_name||' left your group to sit out one game.'
   from public.waitlist_players
   where group_id=previous_group and id<>caller.id and user_id is not null;
 
   update public.waitlist_players
-  set group_id=null,status='sitout',updated_at=now()
+  set group_id=null,status='sitout',sitout_priority=true,
+      sitout_from_game=case when caller.status='current' then current_game else null end,
+      updated_at=now()
   where id=caller.id;
 
   select count(*) into remaining_count
@@ -35,6 +39,8 @@ begin
     update public.waitlist_players set group_id=null,updated_at=now()
     where group_id=previous_group;
   end if;
+
+  perform public.normalize_active_waitlist();
 
   return jsonb_build_object(
     'message','You left the group and will sit out one game. You will have priority for the following game.'

@@ -75,6 +75,7 @@ export default function App() {
   const [adminFirst,setAdminFirst]=useState(''); const [adminLast,setAdminLast]=useState('');
   const [adminRejoins,setAdminRejoins]=useState<AdminRejoin[]>([]); const [adminEvents,setAdminEvents]=useState<AdminEvent[]>([]); const [playerEvents,setPlayerEvents]=useState<AdminEvent[]>([]); const [historySearch,setHistorySearch]=useState('');
   const [ownPlayer,setOwnPlayer]=useState<Player|null>(null);
+  const [forceRejoin,setForceRejoin]=useState(false);
   const [onboarding,setOnboarding]=useState<OnboardingStage>('idle'); const [tutorialStep,setTutorialStep]=useState(0);
   const [facilityMenu,setFacilityMenu]=useState(false);
   const [adminGrouping,setAdminGrouping]=useState(false); const [adminGroupIds,setAdminGroupIds]=useState<string[]>([]);
@@ -85,7 +86,7 @@ export default function App() {
   const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false);
 
   const activeMe=players.find(p=>p.user_id===user?.id)??null;
-  const me=ownPlayer&&!['current','waiting','sitout'].includes(ownPlayer.status)?ownPlayer:(activeMe??ownPlayer);
+  const me=forceRejoin?(ownPlayer??activeMe):(activeMe??ownPlayer);
   ownPlayerIdRef.current=me?.id??ownPlayer?.id??null;
   const host=Boolean(me?.is_host&&!admin); const operator=admin||host;
   const current=useMemo(()=>players.filter(p=>p.status==='current').sort(byPosition),[players]);
@@ -196,7 +197,7 @@ export default function App() {
     const channel=supabase.channel('live-waitlist')
       .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_players'},payload=>{
         const changed=payload.new as Player;const isOwnChange=changed.user_id===session.user.id||changed.id===ownPlayerIdRef.current;
-        if(isOwnChange){setOwnPlayer(changed);ownPlayerIdRef.current=changed.id;syncOwnHostStatus(Boolean(changed.is_host),session.user.id);}
+        if(isOwnChange){setOwnPlayer(changed);setForceRejoin(!['current','waiting','sitout'].includes(changed.status));ownPlayerIdRef.current=changed.id;syncOwnHostStatus(Boolean(changed.is_host),session.user.id);}
         setPlayers(items=>{
           const affectsOwn=changed.user_id===session.user.id||items.some(player=>player.id===changed.id&&player.user_id===session.user.id);
           if(affectsOwn&&changed.status==='left')return items.filter(player=>player.id!==changed.id);
@@ -241,7 +242,8 @@ export default function App() {
     setGeofenceReturn((geo as GeofenceReturn|null)??null);
     const uid=(activeUser??user)?.id; let own=playerRows.find(item=>item.user_id===uid)??null;
     if(uid&&!own){const {data:storedOwn}=await supabase.from('waitlist_players').select('*').eq('user_id',uid).maybeSingle();own=(storedOwn as Player|null)??null;}
-    setOwnPlayer(previous=>own??(previous?{...previous,status:'left'}:null));if(own)setScreen('queue');
+    if(own){setOwnPlayer(own);setForceRejoin(false);setScreen('queue');}
+    else if(ownPlayerIdRef.current){setOwnPlayer(previous=>previous?{...previous,status:'left'}:previous);setForceRejoin(true);}
   }
   async function rpc(name:string,args:Record<string,unknown>={},showSuccess=true){
     setBusy(true); const {data,error}=await supabase.rpc(name,args); setBusy(false);
@@ -489,10 +491,10 @@ export default function App() {
     }
     adminMoveInProgress.current=false;setBusy(false);await refresh();
   }
-  function showRejoinOnly(){setOwnPlayer(previous=>previous?{...previous,status:'left'}:previous);setPlayers(items=>items.filter(player=>player.user_id!==user?.id));}
+  function showRejoinOnly(){setOwnPlayer(previous=>previous?{...previous,status:'left'}:previous);setForceRejoin(true);setPlayers(items=>items.filter(player=>player.user_id!==user?.id));}
   async function answerRejoin(choice:'stay'|'leave'){if(choice==='stay'&&!await requireOnSite())return;if(rejoinResponse&&await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse,p_choice:choice})&&choice==='leave')showRejoinOnly();setRejoinResponse(null);}
   async function leaveOwnWaitlist(){if(await rpc('leave_waitlist',{},false))showRejoinOnly();}
-  async function rejoinAtBack(){if(!me)return;if(!await requireOnSite())return;await rpc('join_waitlist',{p_first_name:me.first_name,p_last_name:me.last_name},false);}
+  async function rejoinAtBack(){if(!me)return;if(!await requireOnSite())return;if(await rpc('join_waitlist',{p_first_name:me.first_name,p_last_name:me.last_name},false))setForceRejoin(false);}
   async function returnToFacility(){
     if(!geofenceReturn)return;setBusy(true);
     try{

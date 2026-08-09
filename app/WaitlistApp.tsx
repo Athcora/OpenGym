@@ -538,7 +538,7 @@ export default function App() {
       <QueueCard title={`Game ${config.game_number}`} subtitle={`${current.length} playing`} status="current" players={current} start={1} me={me} admin={admin} operator={operator} spotlight={onboarding==='tutorial'&&tutorialStep===3} editing={editing} editName={editName} setEditing={setEditing} setEditName={setEditName} saveName={saveName} requestGroup={requestGroup} leaveGroup={removeGroupMember} leaveOwnGroup={confirmLeaveOwnGroup} adminLeaveGroup={adminRemoveGroupMember} permissions={setPermissionPlayer} adminSitOut={confirmAdminSitOut} adminLeave={confirmAdminLeave} dragging={dragging} dragOver={dragOver} setDragging={setDragging} setDragOver={setDragOver} movePlayer={movePlayer}/>
       <QueueCard title="Waitlist" subtitle={tutorialWaiting.length?`${tutorialWaiting.length} waiting`:'No one waiting'} status="waiting" players={tutorialWaiting} start={current.length+1} me={me} admin={admin} operator={operator} spotlight={onboarding==='tutorial'&&tutorialStep===4} groupSpotlight={onboarding==='tutorial'&&tutorialStep===5} editing={editing} editName={editName} setEditing={setEditing} setEditName={setEditName} saveName={saveName} projections={projectedGames} requestGroup={requestGroup} leaveGroup={removeGroupMember} leaveOwnGroup={confirmLeaveOwnGroup} adminLeaveGroup={adminRemoveGroupMember} permissions={setPermissionPlayer} adminSitOut={confirmAdminSitOut} adminLeave={confirmAdminLeave} dragging={dragging} dragOver={dragOver} setDragging={setDragging} setDragOver={setDragOver} movePlayer={movePlayer}/>
       {!admin&&<button className={`history-button your-history-button ${host?'history-tool':''}`} onClick={()=>void openPlayerHistory()}>{host?'Action History':'Your history'} <span>→</span></button>}
-      <button className={`history-button ${onboarding==='tutorial'&&tutorialStep===5?'tutorial-focus':''}`} onClick={()=>setScreen('history')}>Past games <span>→</span></button>
+      <button className="history-button" onClick={()=>setScreen('history')}>Past games <span>→</span></button>
       <p className="projection-note">Queue positions update live on every connected phone.</p>
     </main>
     {onboarding==='disclaimer'&&<WaitlistDisclaimer mode={config.mode} language={language} acknowledge={()=>{setTutorialStep(0);setOnboarding('tutorial')}}/>}
@@ -608,7 +608,7 @@ const tutorialSteps=[
  {title:'Leave removes only you',message:'Leave removes only your name from the current game or waitlist. Other players remain in order, and you can join again later.'},
  {title:'Who is playing now',message:'The players in this card are in the current game. Only they—and admins—can start the next game.'},
  {title:'Your place in line',message:'Your number is your queue position. When you are waiting, your projected game appears beside your name.'},
- {title:'Groups and past games',message:'Use Group Up beside another player to play together. Past Games shows who has already played.'},
+ {title:'Group Up',message:'Use Group Up beside another player when you want to play together.'},
 ];
 
 const hostTutorialSteps=[

@@ -160,6 +160,23 @@ begin
       from public.rejoin_responses r where r.game_number=config.game_number+1 and r.choice is null;
   end if;
 
+  -- A player whose skipped game just ended is now the first eligible block
+  -- for the following game. Move their whole group ahead of ordinary waiting
+  -- players before filling the new current game.
+  with priority_blocks as(
+    select distinct coalesce(group_id,id) block_id
+    from public.waitlist_players
+    where status='waiting' and sitout_priority
+  ),ranked as(
+    select p.id,row_number()over(order by
+      case when coalesce(p.group_id,p.id) in(select block_id from priority_blocks) then 0 else 1 end,
+      p.queue_position,p.id) rn
+    from public.waitlist_players p
+    where p.status in('current','waiting') and p.queue_position is not null
+  )
+  update public.waitlist_players p set queue_position=ranked.rn,updated_at=now()
+    from ranked where p.id=ranked.id;
+
   select count(*) into total_active from public.waitlist_players where status in('current','waiting','sitout');
   if total_active>config.max_players then
     if config.mode<>'rejoin' then update public.waitlist_players set status='waiting',updated_at=now() where status='current'; end if;

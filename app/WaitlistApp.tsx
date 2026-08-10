@@ -373,7 +373,13 @@ export default function App() {
     ask(`Appoint ${player.display_name} as host?`,'This gives them temporary permission to advance games, add and move players, manage groups, substitutions, rejoin requests, and session history.','Yes',async()=>{await rpc('admin_set_session_host',{p_player_id:player.id,p_is_host:true})},'success');
   }
   function chooseRestriction(player:Player){setPermissionPlayer(null);confirmRestriction(player)}
-  function confirmAdminSitOut(player:Player){ask(`Sit out ${player.display_name}?`,`${player.display_name} will skip one game and then return with priority for the following game.`,'Sit out',async()=>{await rpc('admin_set_player_sitout',{p_player_id:player.id})})}
+  function confirmAdminSitOut(player:Player){
+    const skippedGame=player.status==='current'?config.game_number:(projectedGames.get(player.id)??config.game_number+1);
+    const detail=player.status==='current'
+      ?`${player.display_name} will leave Game ${config.game_number} now. That counts as the sit-out, and they will have priority for Game ${config.game_number+1}.`
+      :`${player.display_name} will skip Game ${skippedGame} and have priority for Game ${skippedGame+1}.`;
+    ask(`Sit out ${player.display_name}?`,detail,'Sit out',async()=>{await rpc('admin_set_player_sitout',{p_player_id:player.id,p_skip_game:skippedGame})});
+  }
   function confirmAdminLeave(player:Player){ask(`Remove ${player.display_name}?`,`${player.display_name} will leave the current game or waitlist. The admin can undo this action.`,'Remove',async()=>{await rpc('admin_leave_player',{p_player_id:player.id},false)})}
   async function adminLogin(event:FormEvent){event.preventDefault();if(await rpc('sign_in_waitlist_admin',{p_username:adminUser,p_password:adminPassword})){setAdmin(true);setScreen('queue');}}
   async function adminAddPlayer(event:FormEvent){
@@ -406,6 +412,7 @@ export default function App() {
   function confirmLeaveOwnGroup(){ask('Leave your group?','You will keep your current queue position and become an individual player.','Leave Group',async()=>{await rpc('leave_player_group')});}
   async function adminRemoveGroupMember(player:Player){await rpc('admin_remove_player_from_group',{p_target_id:player.id});}
   function confirmMySitOut(){
+    const skippedGame=me?.status==='current'?config.game_number:(me?projectedGames.get(me.id):null)??config.game_number+1;
     const groupMembers=me?.group_id?players.filter(player=>player.id!==me.id&&player.group_id===me.group_id):[];
     const groupIsPlaying=groupMembers.some(player=>player.status==='current');
     const groupPlaysNext=groupMembers.some(player=>projectedGames.get(player.id)===config.game_number+1);
@@ -413,13 +420,18 @@ export default function App() {
       const groupTiming=groupIsPlaying?'in the current game':'scheduled for the next game';
       ask(
         'Sit out and leave your group?',
-        `Your group is ${groupTiming}. If you sit out, you will leave the group and continue as an individual. You will still have priority for the game after that.`,
+        me?.status==='current'
+          ?`Your group is ${groupTiming}. You will leave the group and Game ${config.game_number}. That counts as your sit-out, and you will have priority for Game ${config.game_number+1}.`
+          :`Your group is ${groupTiming}. You will leave the group, skip Game ${skippedGame}, and have priority for Game ${skippedGame+1}.`,
         'Continue',
-        async()=>{await rpc('sit_out_and_leave_group');}
+        async()=>{await rpc('sit_out_and_leave_group',{p_skip_game:skippedGame});}
       );
       return;
     }
-    ask('Sit out one game?',"You’ll skip one game, then receive priority for the following game.",'Sit out',async()=>{await rpc('sit_out_one_game')});
+    const detail=me?.status==='current'
+      ?`Leaving Game ${config.game_number} now counts as your sit-out. You will have priority for Game ${config.game_number+1}.`
+      :`You will skip Game ${skippedGame} and have priority for Game ${skippedGame+1}.`;
+    ask('Sit out one game?',detail,'Sit out',async()=>{await rpc('sit_out_one_game',{p_skip_game:skippedGame})});
   }
   function startAdminGrouping(){
     cancelSubstitute();setNotice({title:'Create a group',message:'Select between two and six players to become a team. Tap each player card, then choose Done.',onClose:()=>{setAdminGroupIds([]);setAdminGrouping(true);}});

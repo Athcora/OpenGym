@@ -80,7 +80,7 @@ export default function App() {
   const [facilityMenu,setFacilityMenu]=useState(false);
   const [adminGrouping,setAdminGrouping]=useState(false); const [adminGroupIds,setAdminGroupIds]=useState<string[]>([]);
   const [adminSubstituting,setAdminSubstituting]=useState(false); const [playerSubstituting,setPlayerSubstituting]=useState(false); const [substituteIds,setSubstituteIds]=useState<string[]>([]);
-  const [language,setLanguage]=useState<AppLanguage>('en'); const translationMemory=useRef(new WeakMap<Text,{original:string;applied:string}>());
+  const [language,setLanguage]=useState<AppLanguage>('en'); const translationMemory=useRef(new WeakMap<Text,{original:string;applied:string}>()); const translationAttributeMemory=useRef(new WeakMap<Element,Map<string,{original:string;applied:string}>>());
   const [geofenceReturn,setGeofenceReturn]=useState<GeofenceReturn|null>(null); const [returnClock,setReturnClock]=useState(Date.now());
   const [permissionPlayer,setPermissionPlayer]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0);
   const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false);
@@ -145,10 +145,15 @@ export default function App() {
       if(!state){state={original:node.data,applied:node.data};translationMemory.current.set(node,state)}else if(node.data!==state.applied)state.original=node.data;
       const translated=translateUiText(state.original,language);state.applied=translated;if(node.data!==translated)node.data=translated;
     };
-    const scan=(root:Node)=>{if(root.nodeType===Node.TEXT_NODE){applyText(root as Text);return}const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node=walker.nextNode();while(node){applyText(node as Text);node=walker.nextNode()}};
+    const applyAttributes=(element:Element)=>{
+      const attributes=['placeholder','aria-label','title'];
+      let states=translationAttributeMemory.current.get(element);if(!states){states=new Map();translationAttributeMemory.current.set(element,states);}
+      for(const attribute of attributes){const value=element.getAttribute(attribute);if(value===null)continue;let state=states.get(attribute);if(!state){state={original:value,applied:value};states.set(attribute,state)}else if(value!==state.applied)state.original=value;const translated=translateUiText(state.original,language);state.applied=translated;if(value!==translated)element.setAttribute(attribute,translated);}
+    };
+    const scan=(root:Node)=>{if(root.nodeType===Node.TEXT_NODE){applyText(root as Text);return}if(root instanceof Element)applyAttributes(root);const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT|NodeFilter.SHOW_ELEMENT);let node=walker.nextNode();while(node){if(node.nodeType===Node.TEXT_NODE)applyText(node as Text);else applyAttributes(node as Element);node=walker.nextNode()}};
     scan(document.body);
-    const observer=new MutationObserver(records=>{for(const record of records){if(record.type==='characterData')applyText(record.target as Text);for(const node of record.addedNodes)scan(node)}});
-    observer.observe(document.body,{subtree:true,childList:true,characterData:true});return()=>observer.disconnect();
+    const observer=new MutationObserver(records=>{for(const record of records){if(record.type==='characterData')applyText(record.target as Text);else if(record.type==='attributes')applyAttributes(record.target as Element);for(const node of record.addedNodes)scan(node)}});
+    observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['placeholder','aria-label','title']});return()=>observer.disconnect();
   },[language]);
   useEffect(()=>{
     const refreshAfterReturn=()=>{

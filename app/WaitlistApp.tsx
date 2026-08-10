@@ -87,6 +87,12 @@ export default function App() {
   const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false);
   const rejoinLookupAttempts=useRef(0);
 
+  useEffect(()=>{
+    const className='next-game-reversal-modal';
+    document.body.classList.toggle(className,notice?.title==='Next game started');
+    return()=>document.body.classList.remove(className);
+  },[notice?.title]);
+
   const activeMe=players.find(p=>p.user_id===user?.id)??null;
   // The live queue is authoritative. A cached inactive record must never hide
   // the normal controls when this user is already back in the game or waitlist.

@@ -261,7 +261,7 @@ export default function App() {
         const quietEvents=new Set(['join','leave','add_player','admin_leave','admin_rejoin','admin_sitout','admin_move','admin_group','admin_group_remove','admin_substitute','admin_undo','admin_redo','geofence_leave','geofence_return']);
         if(event.event_type==='next_game'&&event.message){
           const ownPlayerStarted=event.actor_user_id===session?.user.id&&!adminAccess.current&&activeStatusRef.current!==null;
-          if(ownPlayerStarted){
+          if(ownPlayerStarted&&waitlistModeRef.current==='rejoin'){
             setNotice({title:'Next game started',message:`${event.message} Don’t forget to rejoin the queue if you plan to stay.`,confirm:'Continue',actionTone:'success',action:async()=>{},cancelLabel:'Reverse',cancelTone:'danger',cancelAction:reverseNextGame});
             return;
           }

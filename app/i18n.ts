@@ -11,6 +11,7 @@ const zh:TranslationMap={
 };
 
 Object.assign(es,{
+  'LIVE QUEUE':'COLA EN VIVO','· ADMIN':'· ADMINISTRADOR','Game':'Juego','＋ Add player':'＋ Agregar jugador',
   'LIVE QUEUE · ADMIN':'COLA EN VIVO · ADMINISTRADOR','LIVE QUEUE · HOST':'COLA EN VIVO · ANFITRIÓN','LIVE QUEUE · PLAYER':'COLA EN VIVO · JUGADOR',
   'Host Actions':'Acciones del anfitrión','Create Group':'Crear grupo','Cancel Grouping':'Cancelar agrupación','Substitute':'Sustituir','Cancel substitute':'Cancelar sustitución',
   'Undo and redo':'Deshacer y rehacer','Undo last session action':'Deshacer la última acción','Redo last undone session action':'Rehacer la última acción deshecha',
@@ -40,6 +41,7 @@ Object.assign(es,{
 });
 
 Object.assign(zh,{
+  'LIVE QUEUE':'实时队列','· ADMIN':'· 管理员','Game':'第','＋ Add player':'＋ 添加球员',
   'LIVE QUEUE · ADMIN':'实时队列 · 管理员','LIVE QUEUE · HOST':'实时队列 · 主持人','LIVE QUEUE · PLAYER':'实时队列 · 球员',
   'Host Actions':'主持人操作','Create Group':'创建小组','Cancel Grouping':'取消组队','Substitute':'替换','Cancel substitute':'取消替换',
   'Undo and redo':'撤销与重做','Undo last session action':'撤销上一个操作','Redo last undone session action':'重做上一个撤销的操作',

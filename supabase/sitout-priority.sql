@@ -118,7 +118,9 @@ begin
   if not public.is_waitlist_operator() and(caller.id is null or caller.status<>'current' or caller.restricted)then
     raise exception 'Only an unrestricted current-game player or admin can start the next game.';
   end if;
-  if public.is_waitlist_operator() then perform public.save_admin_undo('start next game');end if;
+  -- Every next-game action receives a reversible snapshot. Operators can
+  -- reverse any latest advance; the player who pressed it can reverse theirs.
+  perform public.save_admin_undo('start next game');
 
   insert into public.past_games(game_number,player_names)
     select config.game_number,coalesce(jsonb_agg(

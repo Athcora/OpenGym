@@ -249,6 +249,11 @@ export default function App() {
         const event=payload.new as {actor_user_id?:string;event_type?:string;message?:string};
         if(event.event_type==='host_appointed'||event.event_type==='host_removed')return;
         const quietEvents=new Set(['join','leave','add_player','admin_leave','admin_rejoin','admin_sitout','admin_move','admin_group','admin_group_remove','admin_substitute','admin_undo','admin_redo','geofence_leave','geofence_return']);
+        if(event.event_type==='next_game'&&event.message){
+          const canReverse=admin||ownHostStatus.current||event.actor_user_id===session?.user.id;
+          setNotice(canReverse?{title:'Next game started',message:event.message,confirm:'Reverse',actionTone:'danger',cancelLabel:'OK',action:reverseNextGame}:{title:'Waitlist update',message:event.message});
+          return;
+        }
         if(event.actor_user_id!==session?.user.id&&event.message&&!quietEvents.has(event.event_type??''))setNotice({title:'Waitlist update',message:event.message});
       }).subscribe();
     return()=>{void supabase.removeChannel(channel)};
@@ -374,12 +379,14 @@ export default function App() {
   }
   function chooseRestriction(player:Player){setPermissionPlayer(null);confirmRestriction(player)}
   function confirmAdminSitOut(player:Player){
+    if(player.status==='sitout'){void adminUnsit(player);return;}
     const skippedGame=player.status==='current'?config.game_number:(projectedGames.get(player.id)??config.game_number+1);
     const detail=player.status==='current'
       ?`${player.display_name} will leave Game ${config.game_number} now. That counts as the sit-out, and they will have priority for Game ${config.game_number+1}.`
       :`${player.display_name} will skip Game ${skippedGame} and have priority for Game ${skippedGame+1}.`;
     ask(`Sit out ${player.display_name}?`,detail,'Sit out',async()=>{await rpc('admin_set_player_sitout',{p_player_id:player.id,p_skip_game:skippedGame})});
   }
+  async function adminUnsit(player:Player){await rpc('admin_unsit_player',{p_player_id:player.id},false)}
   function confirmAdminLeave(player:Player){ask(`Remove ${player.display_name}?`,`${player.display_name} will leave the current game or waitlist. The admin can undo this action.`,'Remove',async()=>{await rpc('admin_leave_player',{p_player_id:player.id},false)})}
   async function adminLogin(event:FormEvent){event.preventDefault();if(await rpc('sign_in_waitlist_admin',{p_username:adminUser,p_password:adminPassword})){setAdmin(true);setScreen('queue');}}
   async function adminAddPlayer(event:FormEvent){
@@ -561,6 +568,11 @@ export default function App() {
     for(const prompt of data.rejoin_prompts??[]){await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.response_id}}});}
     setBusy(false);await refresh();
   }
+  async function reverseNextGame(){
+    setBusy(true);const {data,error}=await supabase.rpc('reverse_next_game');setBusy(false);
+    if(error){setNotice({title:'Could not reverse the game',message:error.message});return;}
+    await refresh();setNotice({title:'Next game reversed',message:data?.message??'The previous game and queue order have been restored.'});
+  }
 
   if(screen==='welcome')return <Shell><section className="auth-card"><Logo/><button className="hero-button" disabled={busy} onClick={()=>void startGuestFlow()}>{busy?'Starting guest mode…':'Continue as guest'}</button><button className="admin-link" onClick={()=>setScreen('admin')}>Admin</button><p className="fine">Join the live volleyball queue from your phone.</p></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
   if(screen==='email')return <Shell><section className="auth-card"><button className="back" onClick={()=>setScreen('welcome')}>← Go back</button><span className="kicker">{authMode==='signup'?'CREATE ACCOUNT':'ACCOUNT SIGN IN'}</span><h1>{authMode==='signup'?'Create your OpenGym account':'Welcome back'}</h1><p>We’ll email you a secure link—no password needed.</p><form onSubmit={emailSignIn}>{authMode==='signup'&&<><label>First name<input autoFocus value={first} onChange={e=>setFirst(e.target.value)} placeholder="First name" autoComplete="given-name" required/></label><label>Last name<input value={last} onChange={e=>setLast(e.target.value)} placeholder="Last name" autoComplete="family-name" required/></label></>}<label>Email address<input autoFocus={authMode==='signin'} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required/></label><button className="hero-button" disabled={busy}>{busy?'Sending…':'Email me a sign-in link'}</button></form><p className="fine">The link expires for your security.</p></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
@@ -697,6 +709,7 @@ function resolveDropPlacement(x:number,y:number):DropPlacement|null{
 
 function QueueCard({title,subtitle,status,players,start,me,admin=false,operator=false,spotlight=false,groupSpotlight=false,editing,editName,setEditing,setEditName,saveName,requestGroup,leaveGroup,leaveOwnGroup,adminLeaveGroup,permissions,adminSitOut,adminLeave,dragging,dragOver,setDragging,setDragOver,movePlayer,projections}:{title:string;subtitle:string;status:'current'|'waiting';players:Player[];start:number;me?:Player;admin?:boolean;operator?:boolean;spotlight?:boolean;groupSpotlight?:boolean;editing:string|null;editName:string;setEditing:(v:string|null)=>void;setEditName:(v:string)=>void;saveName:(p:Player)=>void;requestGroup:(p:Player)=>Promise<void>;leaveGroup:(p:Player)=>Promise<void>;leaveOwnGroup:()=>void;adminLeaveGroup:(p:Player)=>Promise<void>;permissions:(p:Player)=>void;adminSitOut:(p:Player)=>void;adminLeave:(p:Player)=>void;dragging:string|null;dragOver:string|null;setDragging:(v:string|null)=>void;setDragOver:(v:string|null)=>void;movePlayer:(id:string,status:'current'|'waiting',index:number)=>Promise<void>;projections?:Map<string,number>}){
  const draggingPlayer=players.find(player=>player.id===dragging);
+ useEffect(()=>{if(!operator)return;for(const player of players){const button=document.querySelector<HTMLButtonElement>(`[data-player-id="${player.id}"] .admin-sitout-button`);if(button)button.textContent=player.status==='sitout'?'Unsit':'Sit out';}},[operator,players]);
  useEffect(()=>{if(!groupSpotlight)return;const button=document.querySelector<HTMLElement>('[data-drop-status="waiting"] .group-button');if(!button)return;button.classList.add('tutorial-focus','tutorial-group-target');return()=>button.classList.remove('tutorial-focus','tutorial-group-target')},[groupSpotlight,players.length]);
  const mobileDrag=useRef<{timer:number|null;active:boolean;preview:HTMLElement|null;startX:number;startY:number;lastX:number;lastY:number;frame:number|null}>({timer:null,active:false,preview:null,startX:0,startY:0,lastX:0,lastY:0,frame:null});
  const updateMobileTarget=(x:number,y:number)=>{setDragOver(resolveDropPlacement(x,y)?.marker??null);};

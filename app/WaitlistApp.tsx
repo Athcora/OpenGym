@@ -266,6 +266,7 @@ export default function App() {
             return;
           }
           if(waitlistModeRef.current==='rejoin'&&(activeStatusRef.current==='current'||activeStatusRef.current==='rejoin')){
+            setNotice(null);
             setPendingNextGameEvent({message:event.message});
             return;
           }
@@ -529,6 +530,7 @@ export default function App() {
   useEffect(()=>{
     if(!pendingNextGameEvent)return;
     if(me?.status==='rejoin'&&rejoinResponse){
+      setNotice(null);
       return;
     }
     if(me?.status!=='current'&&me?.status!=='rejoin'){

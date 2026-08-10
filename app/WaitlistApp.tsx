@@ -649,8 +649,11 @@ function projectQueueGames(players:Player[],currentGame:number,maxPlayers:number
   for(const player of players){const key=player.group_id??player.id;let block=blockById.get(key);if(!block){block={members:[]};blockById.set(key,block);blocks.push(block)}block.members.push(player)}
   const projections=new Map<string,number>();let remaining=[...blocks];let game=currentGame+1;
   while(remaining.length){let spots=maxPlayers;const deferred:typeof remaining=[];let selected=0;
-    for(const block of remaining){if(block.members.length<=spots){for(const player of block.members)projections.set(player.id,game);spots-=block.members.length;selected+=block.members.length}else deferred.push(block)}
-    if(selected===0){for(const player of deferred[0].members)projections.set(player.id,game);deferred.shift()}
+    const eligible=remaining.filter(block=>block.members.every(player=>player.status!=='sitout'||game>(player.sitout_from_game??currentGame)));
+    const eligibleIds=new Set(eligible);const ordered=[...eligible].sort((a,b)=>Number(b.members.some(player=>player.sitout_priority))-Number(a.members.some(player=>player.sitout_priority)));
+    for(const block of ordered){if(block.members.length<=spots){for(const player of block.members)projections.set(player.id,game);spots-=block.members.length;selected+=block.members.length}else deferred.push(block)}
+    for(const block of remaining)if(!eligibleIds.has(block))deferred.push(block);
+    if(selected===0&&eligible.length){const block=eligible[0];for(const player of block.members)projections.set(player.id,game);const index=deferred.indexOf(block);if(index>=0)deferred.splice(index,1)}
     remaining=deferred;game++;
   }
   return projections;

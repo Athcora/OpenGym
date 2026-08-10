@@ -84,12 +84,14 @@ export default function App() {
   const [language,setLanguage]=useState<AppLanguage>('en'); const translationMemory=useRef(new WeakMap<Text,{original:string;applied:string}>()); const translationAttributeMemory=useRef(new WeakMap<Element,Map<string,{original:string;applied:string}>>());
   const [geofenceReturn,setGeofenceReturn]=useState<GeofenceReturn|null>(null); const [returnClock,setReturnClock]=useState(Date.now());
   const [permissionPlayer,setPermissionPlayer]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0);
+  const [pendingNextGameEvent,setPendingNextGameEvent]=useState<{message:string}|null>(null);
   const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false);
+  const activeStatusRef=useRef<PlayerStatus|null>(null); const waitlistModeRef=useRef<Config['mode']>('regular');
   const rejoinLookupAttempts=useRef(0);
 
   useEffect(()=>{
     const className='next-game-reversal-modal';
-    document.body.classList.toggle(className,notice?.title==='Next game started');
+    document.body.classList.toggle(className,notice?.confirm==='Reverse');
     return()=>document.body.classList.remove(className);
   },[notice?.title]);
 
@@ -100,6 +102,7 @@ export default function App() {
   ownPlayerIdRef.current=me?.id??ownPlayer?.id??null;
   const host=Boolean(me?.is_host&&!admin); const operator=admin||host;
   adminAccess.current=admin;
+  activeStatusRef.current=activeMe?.status??null;waitlistModeRef.current=config.mode;
   const current=useMemo(()=>players.filter(p=>p.status==='current').sort(byPosition),[players]);
   const waiting=useMemo(()=>players.filter(p=>p.status==='waiting'||p.status==='sitout').sort(byPosition),[players]);
   const projectedGames=useMemo(()=>projectQueueGames(waiting,config.game_number,config.max_players),[waiting,config.game_number,config.max_players]);
@@ -257,6 +260,15 @@ export default function App() {
         if(event.event_type==='host_appointed'||event.event_type==='host_removed')return;
         const quietEvents=new Set(['join','leave','add_player','admin_leave','admin_rejoin','admin_sitout','admin_move','admin_group','admin_group_remove','admin_substitute','admin_undo','admin_redo','geofence_leave','geofence_return']);
         if(event.event_type==='next_game'&&event.message){
+          const ownPlayerStarted=event.actor_user_id===session?.user.id&&!adminAccess.current&&activeStatusRef.current!==null;
+          if(ownPlayerStarted){
+            setNotice({title:'Next game started',message:`${event.message} Don’t forget to rejoin the queue if you plan to stay.`,confirm:'Continue',actionTone:'success',action:async()=>{},cancelLabel:'Reverse',cancelTone:'danger',cancelAction:reverseNextGame});
+            return;
+          }
+          if(waitlistModeRef.current==='rejoin'&&(activeStatusRef.current==='current'||activeStatusRef.current==='rejoin')){
+            setPendingNextGameEvent({message:event.message});
+            return;
+          }
           const canReverse=adminAccess.current||ownHostStatus.current||event.actor_user_id===session?.user.id;
           setNotice(canReverse?{title:'Next game started',message:event.message,confirm:'Reverse',actionTone:'danger',cancelLabel:'OK',action:reverseNextGame}:{title:'Waitlist update',message:event.message});
           return;
@@ -514,6 +526,17 @@ export default function App() {
     const incoming=substituteRequests.find(request=>players.find(player=>player.id===request.target_id)?.user_id===user?.id);if(!incoming)return;
     setNotice(existing=>{if(existing?.requestId===`substitute:${incoming.id}`)return existing;const requester=incoming.requester?.display_name??'A player';return{requestId:`substitute:${incoming.id}`,blocking:true,title:'Permanent substitute request',message:`${requester} wants to substitute with you. Accepting permanently swaps your positions.`,confirm:'Accept',actionTone:'success',action:async()=>{await answerSubstitute(incoming.id,true)},cancelLabel:'Decline',cancelTone:'danger',cancelAction:async()=>{await answerSubstitute(incoming.id,false)}};});
   },[substituteRequests,players,user?.id]);
+  useEffect(()=>{
+    if(!pendingNextGameEvent)return;
+    if(me?.status==='rejoin'&&rejoinResponse){
+      const remaining=Math.max(0,Math.ceil((new Date(rejoinResponse.expires_at).getTime()-returnClock)/1000));
+      setNotice({requestId:`rejoin-next-game:${rejoinResponse.id}`,blocking:true,title:'Rejoin the waitlist?',message:`${pendingNextGameEvent.message} Do you want to rejoin? You have ${formatCountdown(remaining)} remaining.`,confirm:'Rejoin',actionTone:'success',action:async()=>{setPendingNextGameEvent(null);await answerRejoin('stay')},cancelLabel:'Leave',cancelTone:'danger',cancelAction:async()=>{setPendingNextGameEvent(null);await answerRejoin('leave')}});
+      return;
+    }
+    if(me?.status!=='current'&&me?.status!=='rejoin'){
+      setNotice({title:'Waitlist update',message:pendingNextGameEvent.message});setPendingNextGameEvent(null);
+    }
+  },[pendingNextGameEvent,rejoinResponse?.id,rejoinResponse?.expires_at,me?.status,returnClock]);
   async function movePlayer(playerId:string,status:'current'|'waiting',index:number){
     setDragging(null);setDragOver(null);
     const movingPlayer=players.find(player=>player.id===playerId);
@@ -552,7 +575,7 @@ export default function App() {
     adminMoveInProgress.current=false;setBusy(false);await refresh();
   }
   function showRejoinOnly(){setOwnPlayer(previous=>previous?{...previous,status:'left'}:previous);setForceRejoin(true);setPlayers(items=>items.filter(player=>player.user_id!==user?.id));}
-  async function answerRejoin(choice:'stay'|'leave'){if(choice==='stay'&&!await requireOnSite())return;if(rejoinResponse&&await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse.id,p_choice:choice})&&choice==='leave')showRejoinOnly();setRejoinResponse(null);}
+  async function answerRejoin(choice:'stay'|'leave'){if(choice==='stay'&&!await requireOnSite())return;if(rejoinResponse&&await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse.id,p_choice:choice},false)&&choice==='leave')showRejoinOnly();setRejoinResponse(null);}
   async function leaveOwnWaitlist(){if(await rpc('leave_waitlist',{},false))showRejoinOnly();}
   async function rejoinAtBack(){if(!me)return;if(!await requireOnSite())return;if(await rpc('join_waitlist',{p_first_name:me.first_name,p_last_name:me.last_name},false))setForceRejoin(false);}
   async function returnToFacility(){

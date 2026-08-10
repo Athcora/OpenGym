@@ -2,6 +2,12 @@
   flex-wrap: wrap;
 }
 
+/* Priority is a waiting-list state. Once promoted into the current game, the
+   player has received that priority and the label should disappear. */
+.player-row[data-player-status="current"] .sitout-priority-label {
+  display: none;
+}
+
 .admin-tools select {
   min-width: 180px;
 }

@@ -84,7 +84,7 @@ export default function App() {
   const [language,setLanguage]=useState<AppLanguage>('en'); const translationMemory=useRef(new WeakMap<Text,{original:string;applied:string}>()); const translationAttributeMemory=useRef(new WeakMap<Element,Map<string,{original:string;applied:string}>>());
   const [geofenceReturn,setGeofenceReturn]=useState<GeofenceReturn|null>(null); const [returnClock,setReturnClock]=useState(Date.now());
   const [permissionPlayer,setPermissionPlayer]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0);
-  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false);
+  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false);
   const rejoinLookupAttempts=useRef(0);
 
   const activeMe=players.find(p=>p.user_id===user?.id)??null;
@@ -93,6 +93,7 @@ export default function App() {
   const me=activeMe??ownPlayer;
   ownPlayerIdRef.current=me?.id??ownPlayer?.id??null;
   const host=Boolean(me?.is_host&&!admin); const operator=admin||host;
+  adminAccess.current=admin;
   const current=useMemo(()=>players.filter(p=>p.status==='current').sort(byPosition),[players]);
   const waiting=useMemo(()=>players.filter(p=>p.status==='waiting'||p.status==='sitout').sort(byPosition),[players]);
   const projectedGames=useMemo(()=>projectQueueGames(waiting,config.game_number,config.max_players),[waiting,config.game_number,config.max_players]);
@@ -250,7 +251,7 @@ export default function App() {
         if(event.event_type==='host_appointed'||event.event_type==='host_removed')return;
         const quietEvents=new Set(['join','leave','add_player','admin_leave','admin_rejoin','admin_sitout','admin_move','admin_group','admin_group_remove','admin_substitute','admin_undo','admin_redo','geofence_leave','geofence_return']);
         if(event.event_type==='next_game'&&event.message){
-          const canReverse=admin||ownHostStatus.current||event.actor_user_id===session?.user.id;
+          const canReverse=adminAccess.current||ownHostStatus.current||event.actor_user_id===session?.user.id;
           setNotice(canReverse?{title:'Next game started',message:event.message,confirm:'Reverse',actionTone:'danger',cancelLabel:'OK',action:reverseNextGame}:{title:'Waitlist update',message:event.message});
           return;
         }

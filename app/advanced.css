@@ -19,6 +19,10 @@
 .return-countdown { display:flex; flex-direction:column; align-items:center; margin:22px 0 12px; padding:18px; border:1px solid #3d4149; border-radius:17px; background:#23242a; }
 .return-countdown strong { font-size:2.35rem; line-height:1; letter-spacing:-.04em; }
 .return-countdown span { margin-top:6px; color:#9fa5b0; font-size:.7rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.rejoin-countdown { border-color:#9a7131; background:linear-gradient(135deg,#332b20,#26242a); box-shadow:0 0 0 4px rgba(181,137,67,.08); }
+.rejoin-countdown strong { color:#f1c878; }
+.theme-light .rejoin-countdown { border-color:#d6ad69; background:linear-gradient(135deg,#fff7e8,#f8f5ef); box-shadow:0 0 0 4px rgba(181,137,67,.1); }
+.theme-light .rejoin-countdown strong { color:#9b651a; }
 .geofence-return-card .return-position-note { margin:0 0 18px; color:#aeb4be; font-size:.8rem; text-align:center; }
 .theme-light .return-countdown { border-color:#dce2e8; background:#f4f7f9; }
 .theme-light .geofence-return-card .return-position-note { color:#66717e; }

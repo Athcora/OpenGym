@@ -11,6 +11,8 @@ const zh:TranslationMap={
 };
 
 Object.assign(es,{
+  'Your position is saved. Choose before the timer reaches zero or you’ll automatically leave the waitlist.':'Tu posición está guardada. Elige antes de que el contador llegue a cero o saldrás automáticamente de la lista.',
+  'left to rejoin':'restante para reingresar',
   'LIVE QUEUE':'COLA EN VIVO','· ADMIN':'· ADMINISTRADOR','Game':'Juego','＋ Add player':'＋ Agregar jugador','← Back to waitlist':'← Volver a la lista','← Go back':'← Volver',
   'LIVE QUEUE · ADMIN':'COLA EN VIVO · ADMINISTRADOR','LIVE QUEUE · HOST':'COLA EN VIVO · ANFITRIÓN','LIVE QUEUE · PLAYER':'COLA EN VIVO · JUGADOR',
   'Host Actions':'Acciones del anfitrión','Create Group':'Crear grupo','Cancel Grouping':'Cancelar agrupación','Substitute':'Sustituir','Cancel substitute':'Cancelar sustitución',
@@ -41,6 +43,8 @@ Object.assign(es,{
 });
 
 Object.assign(zh,{
+  'Your position is saved. Choose before the timer reaches zero or you’ll automatically leave the waitlist.':'你的位置已保留。请在倒计时归零前选择，否则你将自动离开等候名单。',
+  'left to rejoin':'重新加入剩余时间',
   'LIVE QUEUE':'实时队列','· ADMIN':'· 管理员','Game':'第','＋ Add player':'＋ 添加球员','← Back to waitlist':'← 返回等候名单','← Go back':'← 返回',
   'LIVE QUEUE · ADMIN':'实时队列 · 管理员','LIVE QUEUE · HOST':'实时队列 · 主持人','LIVE QUEUE · PLAYER':'实时队列 · 球员',
   'Host Actions':'主持人操作','Create Group':'创建小组','Cancel Grouping':'取消组队','Substitute':'替换','Cancel substitute':'取消替换',

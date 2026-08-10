@@ -18,6 +18,7 @@ type Member = { user_id:string;email:string|null;phone:string|null;created_at:st
 type AdminRejoin = { id:string;display_name:string;queue_position:number;expires_at:string };
 type AdminEvent = { id:number;actor_name:string;event_type:string;message:string;created_at:string };
 type GeofenceReturn = { id:string;removed_at:string;saved_position_until:string;expires_at:string };
+type RejoinResponse = { id:string;expires_at:string };
 type Notice = { title:string; message:string; confirm?:string; action?:()=>Promise<void>; onClose?:()=>void; actionTone?:'danger'|'success'; cancelTone?:'neutral'|'danger'; cancelLabel?:string; cancelAction?:()=>Promise<void>; blocking?:boolean; requestId?:string } | null;
 type OnboardingStage = 'idle'|'disclaimer'|'tutorial';
 const TUTORIAL_VERSION = 2;
@@ -69,7 +70,7 @@ export default function App() {
   const [admin,setAdmin]=useState(false); const [adminUser,setAdminUser]=useState(''); const [adminPassword,setAdminPassword]=useState('');
   const [groupRequests,setGroupRequests]=useState<GroupRequest[]>([]);
   const [substituteRequests,setSubstituteRequests]=useState<SubstituteRequest[]>([]);
-  const [rejoinResponse,setRejoinResponse]=useState<string|null>(null); const [rejoinChecked,setRejoinChecked]=useState(false);
+  const [rejoinResponse,setRejoinResponse]=useState<RejoinResponse|null>(null); const [rejoinChecked,setRejoinChecked]=useState(false);
   const [dragging,setDragging]=useState<string|null>(null);const [dragOver,setDragOver]=useState<string|null>(null);
   const [members,setMembers]=useState<Member[]>([]);
   const [adminFirst,setAdminFirst]=useState(''); const [adminLast,setAdminLast]=useState('');
@@ -198,7 +199,7 @@ export default function App() {
     },()=>{}, {enableHighAccuracy:true,maximumAge:15_000,timeout:20_000});
     return()=>{active=false;navigator.geolocation.clearWatch(watch);geofenceRemovalInProgress.current=false;};
   },[me?.id,me?.status,admin,config.mode,config.geofence_enabled]);
-  useEffect(()=>{if(!geofenceReturn)return;const timer=window.setInterval(()=>setReturnClock(Date.now()),1000);return()=>window.clearInterval(timer)},[geofenceReturn?.id]);
+  useEffect(()=>{if(!geofenceReturn&&!rejoinResponse)return;setReturnClock(Date.now());const timer=window.setInterval(()=>setReturnClock(Date.now()),1000);return()=>window.clearInterval(timer)},[geofenceReturn?.id,rejoinResponse?.id]);
   useEffect(()=>{
     if(me?.status!=='rejoin'||rejoinResponse||!rejoinChecked){if(me?.status!=='rejoin')expiredRejoinHandled.current=false;return;}
     if(rejoinLookupAttempts.current<5){
@@ -260,7 +261,7 @@ export default function App() {
       supabase.from('admin_sessions').select('user_id').maybeSingle(),
       supabase.from('group_requests').select('*').eq('status','pending'),
       supabase.from('substitute_requests').select('*').eq('status','pending'),
-      supabase.from('rejoin_responses').select('id').is('choice',null).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false}).limit(1).maybeSingle(),
+      supabase.from('rejoin_responses').select('id,expires_at').is('choice',null).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false}).limit(1).maybeSingle(),
       supabase.from('geofence_return_prompts').select('id,removed_at,saved_position_until,expires_at').is('resolved_at',null).gt('expires_at',new Date().toISOString()).order('removed_at',{ascending:false}).limit(1).maybeSingle()
     ]);
     const playerRows=(p??[]) as Player[];setPlayers(playerRows); if(c)setConfig(c as Config); setGames((g??[]) as Game[]);setAdmin(Boolean(a));
@@ -268,7 +269,7 @@ export default function App() {
     if(a||activeHost){const {data:offline}=await supabase.rpc('admin_list_offline_rejoins');setAdminRejoins((offline??[]) as AdminRejoin[]);}else setAdminRejoins([]);
     setGroupRequests(((r??[]) as GroupRequest[]).map(request=>({...request,requester:playerRows.find(player=>player.id===request.requester_id)})));
     setSubstituteRequests(((s??[]) as SubstituteRequest[]).map(request=>({...request,requester:playerRows.find(player=>player.id===request.requester_id)})));
-    setRejoinResponse(rejoin?.id??null);setRejoinChecked(!rejoinError);if(rejoin?.id)rejoinLookupAttempts.current=0;
+    setRejoinResponse((rejoin as RejoinResponse|null)??null);setRejoinChecked(!rejoinError);if(rejoin?.id)rejoinLookupAttempts.current=0;
     setGeofenceReturn((geo as GeofenceReturn|null)??null);
     const uid=(activeUser??user)?.id; let own=playerRows.find(item=>item.user_id===uid)??null;
     if(uid&&!own){const {data:storedOwn}=await supabase.from('waitlist_players').select('*').eq('user_id',uid).maybeSingle();own=(storedOwn as Player|null)??null;}
@@ -525,7 +526,7 @@ export default function App() {
     adminMoveInProgress.current=false;setBusy(false);await refresh();
   }
   function showRejoinOnly(){setOwnPlayer(previous=>previous?{...previous,status:'left'}:previous);setForceRejoin(true);setPlayers(items=>items.filter(player=>player.user_id!==user?.id));}
-  async function answerRejoin(choice:'stay'|'leave'){if(choice==='stay'&&!await requireOnSite())return;if(rejoinResponse&&await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse,p_choice:choice})&&choice==='leave')showRejoinOnly();setRejoinResponse(null);}
+  async function answerRejoin(choice:'stay'|'leave'){if(choice==='stay'&&!await requireOnSite())return;if(rejoinResponse&&await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse.id,p_choice:choice})&&choice==='leave')showRejoinOnly();setRejoinResponse(null);}
   async function leaveOwnWaitlist(){if(await rpc('leave_waitlist',{},false))showRejoinOnly();}
   async function rejoinAtBack(){if(!me)return;if(!await requireOnSite())return;if(await rpc('join_waitlist',{p_first_name:me.first_name,p_last_name:me.last_name},false))setForceRejoin(false);}
   async function returnToFacility(){
@@ -553,7 +554,7 @@ export default function App() {
   if(screen==='email')return <Shell><section className="auth-card"><button className="back" onClick={()=>setScreen('welcome')}>← Go back</button><span className="kicker">{authMode==='signup'?'CREATE ACCOUNT':'ACCOUNT SIGN IN'}</span><h1>{authMode==='signup'?'Create your OpenGym account':'Welcome back'}</h1><p>We’ll email you a secure link—no password needed.</p><form onSubmit={emailSignIn}>{authMode==='signup'&&<><label>First name<input autoFocus value={first} onChange={e=>setFirst(e.target.value)} placeholder="First name" autoComplete="given-name" required/></label><label>Last name<input value={last} onChange={e=>setLast(e.target.value)} placeholder="Last name" autoComplete="family-name" required/></label></>}<label>Email address<input autoFocus={authMode==='signin'} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required/></label><button className="hero-button" disabled={busy}>{busy?'Sending…':'Email me a sign-in link'}</button></form><p className="fine">The link expires for your security.</p></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
   if(screen==='admin')return <Shell><section className="auth-card"><div className="admin-access-heading"><button className="back" onClick={()=>setScreen('welcome')}>← Go back</button><span className="kicker">ADMIN ACCESS</span></div><h1>Manage OpenGym</h1><p>Sign in to choose a waitlist mode and manage players.</p><form onSubmit={adminLogin}><label>Username<input autoFocus value={adminUser} onChange={e=>setAdminUser(e.target.value)} autoCapitalize="none"/></label><label>Password<input type="password" value={adminPassword} onChange={e=>setAdminPassword(e.target.value)}/></label><button className="hero-button" disabled={busy}>Sign in</button></form></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
   if(!admin&&geofenceReturn){const remaining=Math.max(0,Math.ceil((new Date(geofenceReturn.expires_at).getTime()-returnClock)/1000));const saved=new Date(geofenceReturn.saved_position_until).getTime()>returnClock;return <Shell><section className="auth-card geofence-return-card"><Logo/><span className="kicker">RETURN TO THE GYM</span><h1>You’re too far away</h1><p>It seems you moved too far from the gym, so you were taken off the waitlist. Go back to the facility and press “I’m back!” below. If this looks like a mistake, please let an admin know.</p><div className="return-countdown"><strong>{formatCountdown(remaining)}</strong><span>left to return</span></div><p className="return-position-note">{saved?'Your previous position is saved for the first minute.':'Your saved-position minute has ended. You can still rejoin at the back.'}</p><button className="hero-button rejoin-at-back" disabled={busy||remaining===0} onClick={()=>void returnToFacility()}>{remaining===0?'Return window expired':busy?'Checking location…':"I’m back!"}</button></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>}
-  if(me?.status==='rejoin'&&rejoinResponse)return <Shell><section className="auth-card rejoin-card"><Logo/><span className="kicker">REJOIN WAITLIST</span><h1>Do you want to rejoin?</h1><p>Your position is saved. Choose within five minutes or you’ll automatically leave the waitlist.</p><div className="rejoin-actions"><button className="next" onClick={()=>void answerRejoin('stay')}>Rejoin</button><button className="danger" onClick={()=>void answerRejoin('leave')}>Leave</button></div></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
+  if(me?.status==='rejoin'&&rejoinResponse){const remaining=Math.max(0,Math.ceil((new Date(rejoinResponse.expires_at).getTime()-returnClock)/1000));return <Shell><section className="auth-card rejoin-card"><Logo/><span className="kicker">REJOIN WAITLIST</span><h1>Do you want to rejoin?</h1><p>Your position is saved. Choose before the timer reaches zero or you’ll automatically leave the waitlist.</p><div className="return-countdown rejoin-countdown"><strong>{formatCountdown(remaining)}</strong><span>left to rejoin</span></div><div className="rejoin-actions"><button className="next" disabled={remaining===0} onClick={()=>void answerRejoin('stay')}>Rejoin</button><button className="danger" onClick={()=>void answerRejoin('leave')}>Leave</button></div></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>}
   if(screen==='name')return <Shell><section className="auth-card"><button className="back" onClick={()=>setScreen('welcome')}>← Go back</button><h1>What should we call you?</h1><p>Your name is added to the waitlist as soon as you continue.</p><form onSubmit={join}><label>First name<input value={first} onChange={e=>setFirst(e.target.value)} placeholder="First name"/></label><label>Last initial or name<input value={last} onChange={e=>setLast(e.target.value)} placeholder="Optional: Last initial or name"/></label><button className="hero-button" disabled={busy}>Join waitlist</button></form></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
 
   return <Shell>

@@ -267,7 +267,10 @@ export default function App() {
     setGeofenceReturn((geo as GeofenceReturn|null)??null);
     const uid=(activeUser??user)?.id; let own=playerRows.find(item=>item.user_id===uid)??null;
     if(uid&&!own){const {data:storedOwn}=await supabase.from('waitlist_players').select('*').eq('user_id',uid).maybeSingle();own=(storedOwn as Player|null)??null;}
-    if(own){setOwnPlayer(own);setForceRejoin(false);setScreen('queue');}
+    if(own){
+      setOwnPlayer(own);setForceRejoin(false);
+      setScreen(openScreen=>['welcome','email','name','admin'].includes(openScreen)?'queue':openScreen);
+    }
     else if(ownPlayerIdRef.current){setOwnPlayer(previous=>previous?{...previous,status:'left'}:previous);setForceRejoin(true);}
   }
   async function rpc(name:string,args:Record<string,unknown>={},showSuccess=true){

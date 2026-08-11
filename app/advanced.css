@@ -33,7 +33,7 @@
 .player-row[draggable="true"]:active { cursor:grabbing; }
 .admin-drag-preview { position:fixed; top:-1000px; left:-1000px; z-index:9999; width:280px; overflow:hidden; border:3px solid #54b88f; border-radius:16px; background:#24252a; color:#f5f6f8; box-shadow:0 18px 45px rgba(0,0,0,.42); }
 .admin-drag-preview-label { padding:9px 14px; background:#28453a; color:#a9ebd0; font-size:.68rem; font-weight:850; letter-spacing:.08em; text-transform:uppercase; }
-.admin-drag-preview-row { display:flex; align-items:center; gap:12px; min-height:54px; padding:8px 14px; border-top:1px solid #34363d; }
+.admin-drag-preview-row { display:flex; align-items:center; gap:12px; min-height:62px; padding:8px 16px; border-top:1px solid #34363d; opacity:1!important; transform:none!important; margin:0!important; background:inherit; }
 .admin-drag-preview-row span { width:24px; color:#8b8e97; font-size:.82rem; font-weight:750; }
 .admin-drag-preview-row strong { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
 .mobile-admin-drag-preview { position:fixed; top:0; left:0; width:min(280px,calc(100vw - 38px)); pointer-events:none; opacity:.96; transform:translate3d(-1000px,-1000px,0); }

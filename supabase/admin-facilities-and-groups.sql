@@ -38,14 +38,10 @@ declare
   active_count integer;
   old_group uuid;
   new_group uuid:=gen_random_uuid();
-  anchor_player_id uuid;
-  anchor_group_id uuid;
-  anchor_player_ids uuid[];
+  selected_player_ids uuid[];
   anchor_position bigint;
   first_position bigint;
   last_position bigint;
-  selected_status_count integer;
-  selected_status text;
 begin
   if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
   perform pg_advisory_xact_lock(7429102);
@@ -67,62 +63,25 @@ begin
   ) then raise exception 'Select every member of an existing group.'; end if;
 
   perform public.save_admin_undo('group players');
-
-  select count(distinct status),min(status),min(queue_position),max(queue_position)
-    into selected_status_count,selected_status,first_position,last_position
+  select array_agg(id order by queue_position,id),max(queue_position)
+    into selected_player_ids,anchor_position
     from public.waitlist_players
     where id=any(p_player_ids);
 
-  -- Players who already form one uninterrupted block do not need to be
-  -- repositioned. This is especially important for adjacent current-game
-  -- players: grouping positions 1 and 2 must leave them at positions 1 and 2.
-  if selected_status_count=1
-     and selected_status in ('current','waiting')
-     and last_position-first_position+1=selected_count then
-    update public.waitlist_players set
-      group_id=new_group,
-      updated_at=now()
-    where id=any(p_player_ids);
-
-    perform public.log_waitlist_operator_action('admin_group','created a group with '||selected_count||' players.');
-    perform public.notify_waitlist_operator_player(p.user_id,'added you to a group.')
-    from public.waitlist_players p where p.id=any(p_player_ids);
-
-    return jsonb_build_object('message','The group was created.','first_position',first_position,'last_position',last_position);
-  end if;
-
-  select id,group_id
-    into anchor_player_id,anchor_group_id
-    from public.waitlist_players
-    where id=any(p_player_ids)
-    order by queue_position desc,id desc
-    limit 1;
-
-  if anchor_group_id is not null then
-    select array_agg(id),max(queue_position)
-      into anchor_player_ids,anchor_position
-      from public.waitlist_players
-      where group_id=anchor_group_id and status in ('current','waiting','sitout');
-  else
-    anchor_player_ids:=array[anchor_player_id];
-    select queue_position into anchor_position
-      from public.waitlist_players where id=anchor_player_id;
-  end if;
   update public.waitlist_players set queue_position=queue_position*1000 where status in ('current','waiting','sitout');
 
-  -- Keep the furthest selected player/group exactly where it is. Append the
-  -- other selected players immediately behind that anchor instead of sending
-  -- the newly combined group to the back of the entire waitlist.
+  -- Remove the selected players from their old places and reinsert them as one
+  -- block ending at the furthest selected player's original position. For
+  -- example, grouping positions 1 and 3 produces: old 2, old 1, old 3.
   with selected as (
-    select id,row_number() over(order by queue_position,id) rn
-    from public.waitlist_players
-    where id=any(p_player_ids) and not(id=any(anchor_player_ids))
+    select player_id,ordinality::bigint rn
+    from unnest(selected_player_ids) with ordinality as chosen(player_id,ordinality)
   )
   update public.waitlist_players p set
     status='waiting',
-    queue_position=anchor_position*1000+selected.rn,
+    queue_position=anchor_position*1000-selected_count+selected.rn,
     updated_at=now()
-  from selected where p.id=selected.id;
+  from selected where p.id=selected.player_id;
 
   update public.waitlist_players set
     group_id=new_group,

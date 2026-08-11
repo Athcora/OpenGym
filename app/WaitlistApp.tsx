@@ -534,8 +534,8 @@ export default function App() {
     const selected=players.filter(player=>adminGroupIds.includes(player.id)).sort(byPosition);
     if(selected.length<2){setNotice({title:'Select more players',message:'Choose at least two players before creating the group.'});return;}
     const furthestPosition=Math.max(...selected.map(player=>player.queue_position??1));
-    const firstPosition=Math.max(1,furthestPosition);
-    const lastPosition=firstPosition+selected.length-1;
+    const lastPosition=furthestPosition;
+    const firstPosition=Math.max(1,lastPosition-selected.length+1);
     const projectedGame=config.game_number+Math.floor((lastPosition-1)/config.max_players);
     const range=firstPosition===lastPosition?`${firstPosition}`:`${firstPosition}-${lastPosition}`;
     ask(

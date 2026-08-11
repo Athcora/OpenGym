@@ -366,11 +366,13 @@ export default function App() {
       setNotice({
         title:browserBlocked?'Location is blocked':denied?'Phone location access needed':'Location check failed',
         message:browserBlocked
-          ?blockedLocationInstructions()
+          ?`${blockedLocationInstructions()} After changing it to Allow, use the button below to reload OpenGym so Chrome refreshes the permission.`
           :denied
             ?'OpenGym still cannot receive a location from your phone even though the site may show Allow. Make sure Location Services are on for your phone and that Chrome has While Using the App access, then return here and press Allow location again.'
             :'We could not get your location. Check that Location Services are on, then try again.',
-        confirm:'Try again',action:()=>retryLocationPermission(onAllowed),actionTone:'success',cancelLabel:'Not now'
+        confirm:browserBlocked?'Reload after allowing':'Try again',
+        action:browserBlocked?async()=>{window.location.reload();}:()=>retryLocationPermission(onAllowed),
+        actionTone:'success',cancelLabel:'Not now'
       });
     }
   }

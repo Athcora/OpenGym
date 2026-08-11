@@ -326,6 +326,14 @@ export default function App() {
   function showLocationPermissionNotice(message='Allow location access to join or rejoin the waitlist. OpenGym only checks whether you are inside the facility area.'){
     setNotice({title:'Location permission needed',message,confirm:'Allow location',action:retryLocationPermission,actionTone:'success',cancelLabel:'Not now'});
   }
+  function blockedLocationInstructions(){
+    const agent=navigator.userAgent;const ios=/iPhone|iPad|iPod/i.test(agent);const android=/Android/i.test(agent);const chrome=/CriOS|Chrome/i.test(agent);
+    if(ios&&chrome)return 'Chrome cannot ask again until location is enabled. Open the iPhone or iPad Settings app → Apps → Chrome → Location → While Using the App. Then return to OpenGym, reload the page, and press Allow location.';
+    if(android&&chrome)return 'Chrome cannot ask again until this site is allowed. Tap the icon to the left of the address bar → Permissions → Location → Allow. If Location is not listed there, open ⋮ → Settings → Site settings → Location → playopengym.com → Allow. Then return and press Allow location.';
+    if(ios)return 'Safari cannot ask again until this site is allowed. Tap the page menu (aA) → Website Settings → Location → Allow. Then reload OpenGym and press Allow location.';
+    if(chrome)return 'Chrome cannot ask again until this site is allowed. Open the site-controls icon beside the address bar → Site settings or Permissions → Location → Allow. Then return and press Allow location.';
+    return 'Your browser has remembered “Don’t allow.” Open the browser’s settings for playopengym.com, change Location to Allow, then return and press Allow location.';
+  }
   async function retryLocationPermission(){
     setBusy(true);
     try{
@@ -334,7 +342,7 @@ export default function App() {
     }catch(error){
       setBusy(false);
       const denied=typeof error==='object'&&error!==null&&'code' in error&&(error as GeolocationPositionError).code===1;
-      setNotice({title:denied?'Location is blocked':'Location check failed',message:denied?'Your browser has remembered “Don’t allow.” On iPhone or iPad, open the page menu (aA), choose Website Settings, then set Location to Allow. In Chrome, tap the lock or site-controls icon, open Permissions, and set Location to Allow. Then return here and try again.':'We could not get your location. Check that Location Services are on, then try again.',cancelLabel:'Okay'});
+      setNotice({title:denied?'Location is blocked':'Location check failed',message:denied?blockedLocationInstructions():'We could not get your location. Check that Location Services are on, then try again.',cancelLabel:'Okay'});
     }
   }
   async function requireOnSite(){

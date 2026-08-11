@@ -356,11 +356,11 @@ export default function App() {
   }
   function blockedLocationInstructions(){
     const agent=navigator.userAgent;const ios=/iPhone|iPad|iPod/i.test(agent);const android=/Android/i.test(agent);const chrome=/CriOS|Chrome/i.test(agent);
-    if(ios&&chrome)return 'Chrome cannot ask again after “Don’t Allow” until its saved site data is cleared. Tap the three dots in the top-right → Settings → Privacy and Security → Delete Browsing Data. Clear the saved browsing/site data, return to playopengym.com, refresh the page, and choose Allow when Chrome asks for location again.';
-    if(android&&chrome)return 'Chrome cannot ask again until this site is allowed. Tap the icon to the left of the address bar → Permissions → Location → Allow. If Location is not listed there, open ⋮ → Settings → Site settings → Location → playopengym.com → Allow. Then return and press Allow location.';
-    if(ios)return 'Safari cannot ask again until this site is allowed. Tap the page menu (aA) → Website Settings → Location → Allow. Then reload OpenGym and press Allow location.';
-    if(chrome)return 'Chrome cannot ask again until this site is allowed. Open the site-controls icon beside the address bar → Site settings or Permissions → Location → Allow. Then return and press Allow location.';
-    return 'Your browser has remembered “Don’t allow.” Open the browser’s settings for playopengym.com, change Location to Allow, then return and press Allow location.';
+    if(ios&&chrome)return '1) Tap the three dots in the top-right.\n2) Tap Settings.\n3) Tap Privacy and Security.\n4) Tap Delete Browsing Data and clear the saved browsing/site data.\n5) Return to playopengym.com, refresh, and choose Allow when Chrome asks for location.';
+    if(android&&chrome)return '1) Tap the icon to the left of the address bar.\n2) Tap Permissions.\n3) Tap Location, then Allow.\n4) If Location is not shown, open ⋮ → Settings → Site settings → Location → playopengym.com → Allow.\n5) Return to OpenGym and press Reload after allowing.';
+    if(ios)return '1) Tap the icon at the top that looks like two lines with a box above them.\n2) Tap the three dots in the bottom-right.\n3) Scroll all the way down.\n4) Change Location to Allow.\n5) Return to OpenGym and refresh the page.';
+    if(chrome)return '1) Open the site-controls icon beside the address bar.\n2) Tap Site settings or Permissions.\n3) Tap Location, then Allow.\n4) Return to OpenGym and press Reload after allowing.';
+    return '1) Open your browser settings for playopengym.com.\n2) Find the Location permission.\n3) Change Location to Allow.\n4) Return to OpenGym and refresh the page.';
   }
   async function retryLocationPermission(onAllowed?:()=>Promise<void>){
     setBusy(true);
@@ -378,7 +378,7 @@ export default function App() {
       setNotice({
         title:browserBlocked?'Location is blocked':denied?'Phone location access needed':'Location check failed',
         message:browserBlocked
-          ?`${blockedLocationInstructions()} After changing it to Allow, use the button below to reload OpenGym so Chrome refreshes the permission.`
+          ?blockedLocationInstructions()
           :denied
             ?'OpenGym still cannot receive a location from your phone even though the site may show Allow. Make sure Location Services are on for your phone and that Chrome has While Using the App access, then return here and press Allow location again.'
             :'We could not get your location. Check that Location Services are on, then try again.',

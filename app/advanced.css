@@ -246,4 +246,5 @@ body.mobile-admin-dragging { overscroll-behavior:none; }
 .theme-light .history-search::placeholder { color:#677282; opacity:.55; }
 .position { font-size:.75em; }
 .modal-reminder { display:block; margin-top:12px; color:#f3f6fb; font-weight:900; line-height:1.45; }
+.modal p { white-space:pre-line; }
 .theme-light .modal-reminder { color:#202936; }

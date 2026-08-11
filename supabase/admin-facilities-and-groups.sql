@@ -44,6 +44,8 @@ declare
   anchor_position bigint;
   first_position bigint;
   last_position bigint;
+  selected_status_count integer;
+  selected_status text;
 begin
   if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
   perform pg_advisory_xact_lock(7429102);
@@ -65,6 +67,30 @@ begin
   ) then raise exception 'Select every member of an existing group.'; end if;
 
   perform public.save_admin_undo('group players');
+
+  select count(distinct status),min(status),min(queue_position),max(queue_position)
+    into selected_status_count,selected_status,first_position,last_position
+    from public.waitlist_players
+    where id=any(p_player_ids);
+
+  -- Players who already form one uninterrupted block do not need to be
+  -- repositioned. This is especially important for adjacent current-game
+  -- players: grouping positions 1 and 2 must leave them at positions 1 and 2.
+  if selected_status_count=1
+     and selected_status in ('current','waiting')
+     and last_position-first_position+1=selected_count then
+    update public.waitlist_players set
+      group_id=new_group,
+      updated_at=now()
+    where id=any(p_player_ids);
+
+    perform public.log_waitlist_operator_action('admin_group','created a group with '||selected_count||' players.');
+    perform public.notify_waitlist_operator_player(p.user_id,'added you to a group.')
+    from public.waitlist_players p where p.id=any(p_player_ids);
+
+    return jsonb_build_object('message','The group was created.','first_position',first_position,'last_position',last_position);
+  end if;
+
   select id,group_id
     into anchor_player_id,anchor_group_id
     from public.waitlist_players

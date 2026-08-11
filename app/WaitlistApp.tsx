@@ -85,9 +85,15 @@ export default function App() {
   const [geofenceReturn,setGeofenceReturn]=useState<GeofenceReturn|null>(null); const [returnClock,setReturnClock]=useState(Date.now());
   const [permissionPlayer,setPermissionPlayer]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0);
   const [pendingNextGameEvent,setPendingNextGameEvent]=useState<{message:string}|null>(null);
-  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false);
+  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false);
   const activeStatusRef=useRef<PlayerStatus|null>(null); const waitlistModeRef=useRef<Config['mode']>('regular');
   const rejoinLookupAttempts=useRef(0);
+  useEffect(()=>{
+    if(screen!=='name'){locationIntroShown.current=false;return;}
+    if(!config.geofence_enabled||locationIntroShown.current)return;
+    locationIntroShown.current=true;
+    setNotice({title:'Location is required to join',message:'This facility requires location access before you can join the waitlist. OpenGym only uses your location to confirm that you are at the facility—it does not show your location to other players or continuously track where you go.',cancelLabel:'OK'});
+  },[screen,config.geofence_enabled]);
 
   useEffect(()=>{
     const className='next-game-reversal-modal';
@@ -350,7 +356,7 @@ export default function App() {
   }
   function blockedLocationInstructions(){
     const agent=navigator.userAgent;const ios=/iPhone|iPad|iPod/i.test(agent);const android=/Android/i.test(agent);const chrome=/CriOS|Chrome/i.test(agent);
-    if(ios&&chrome)return 'Chrome cannot ask again until location is enabled. Open the iPhone or iPad Settings app → Apps → Chrome → Location → While Using the App. Then return to OpenGym, reload the page, and press Allow location.';
+    if(ios&&chrome)return 'Chrome cannot ask again after “Don’t Allow” until its saved site data is cleared. Tap the three dots in the top-right → Settings → Privacy and Security → Delete Browsing Data. Clear the saved browsing/site data, return to playopengym.com, refresh the page, and choose Allow when Chrome asks for location again.';
     if(android&&chrome)return 'Chrome cannot ask again until this site is allowed. Tap the icon to the left of the address bar → Permissions → Location → Allow. If Location is not listed there, open ⋮ → Settings → Site settings → Location → playopengym.com → Allow. Then return and press Allow location.';
     if(ios)return 'Safari cannot ask again until this site is allowed. Tap the page menu (aA) → Website Settings → Location → Allow. Then reload OpenGym and press Allow location.';
     if(chrome)return 'Chrome cannot ask again until this site is allowed. Open the site-controls icon beside the address bar → Site settings or Permissions → Location → Allow. Then return and press Allow location.';

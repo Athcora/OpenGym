@@ -341,6 +341,10 @@ export default function App() {
     }
   }
   async function verifyLocation(latitude:number,longitude:number){const {data,error}=await supabase.rpc('verify_facility_location',{p_latitude:latitude,p_longitude:longitude});if(error)return null;return data as {configured:boolean;inside:boolean;distance_m:number;radius_m:number};}
+  function showTooFarNotice(result:{distance_m:number;radius_m:number},onAllowed?:()=>Promise<void>){
+    const distance=Math.max(0,Math.round(result.distance_m));
+    setNotice({title:'Move closer to the facility',message:`You are about ${distance} meters from the OpenGym check-in area. You need to be at or closer to the facility before you can join the waitlist. Move closer, then press “Try again.”`,confirm:'Try again',action:()=>retryLocationPermission(onAllowed),actionTone:'success',cancelLabel:'Not now'});
+  }
   function showLocationPermissionNotice(message='Allow location access to join or rejoin the waitlist. OpenGym only checks whether you are inside the facility area.',onAllowed?:()=>Promise<void>){
     setNotice({title:'Location permission needed',message,confirm:'Allow location',action:()=>retryLocationPermission(onAllowed),actionTone:'success',cancelLabel:'Not now'});
   }
@@ -357,7 +361,7 @@ export default function App() {
     try{
       const position=await getPositionAfterPermissionChange();const result=await verifyLocation(position.coords.latitude,position.coords.longitude);setBusy(false);
       if(!result){setNotice({title:'Location check failed',message:'We could not verify the facility location. Please try again.'});return;}
-      if(!result.inside){setNotice({title:'You must be at the facility',message:`Location is allowed, but you are about ${Math.round(result.distance_m)} meters from the OpenGym check-in area. Move inside the facility and try again.`});return;}
+      if(!result.inside){showTooFarNotice(result,onAllowed);return;}
       if(onAllowed){await onAllowed();return;}
       setNotice({title:'Location access allowed',message:'Location is ready. Press Join or Rejoin again to continue.'});
     }catch(error){
@@ -381,7 +385,7 @@ export default function App() {
   async function requireOnSite(onAllowed?:()=>Promise<void>){
     if(!config.geofence_enabled)return true;
     setBusy(true);
-    try{const position=await getPosition();const result=await verifyLocation(position.coords.latitude,position.coords.longitude);setBusy(false);if(!result){setNotice({title:'Location check failed',message:'We could not verify the facility location. Please try again.'});return false;}if(!result.inside){setNotice({title:'You must be at the facility',message:`You are about ${Math.round(result.distance_m)} meters from the OpenGym check-in area. Move inside the facility and try again.`});return false;}return true;}catch{setBusy(false);showLocationPermissionNotice(undefined,onAllowed);return false;}
+    try{const position=await getPosition();const result=await verifyLocation(position.coords.latitude,position.coords.longitude);setBusy(false);if(!result){setNotice({title:'Location check failed',message:'We could not verify the facility location. Please try again.'});return false;}if(!result.inside){showTooFarNotice(result,onAllowed);return false;}return true;}catch{setBusy(false);showLocationPermissionNotice(undefined,onAllowed);return false;}
   }
   async function setFacilityLocation(){setFacilityMenu(value=>!value);}
   async function chooseFacility(code:'PHR'|'NA'){

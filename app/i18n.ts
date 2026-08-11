@@ -99,6 +99,17 @@ Object.assign(zh,{
   'Allow location':'允许位置访问','Not now':'暂不','Location access allowed':'已允许位置访问','Location is blocked':'位置访问已被阻止','Location is ready. Press Join or Rejoin again to continue.':'位置已准备好。请再次点击加入或重新加入以继续。','We could not get your location. Check that Location Services are on, then try again.':'无法获取你的位置。请检查定位服务是否已开启，然后重试。'
 });
 
+Object.assign(es,{
+  'Next Game action button':'Botón de siguiente juego',
+  'Sit Out action button':'Botón de descansar',
+  'Leave action button':'Botón de salir'
+});
+Object.assign(zh,{
+  'Next Game action button':'“下一场”操作按钮',
+  'Sit Out action button':'“轮休”操作按钮',
+  'Leave action button':'“离开”操作按钮'
+});
+
 function translateDynamic(value:string,language:AppLanguage){
   if(language==='en')return value;
   const game=value.match(/^Game (\d+)$/);if(game)return language==='es'?`Juego ${game[1]}`:`第 ${game[1]} 场`;

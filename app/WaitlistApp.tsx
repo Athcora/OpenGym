@@ -323,10 +323,24 @@ export default function App() {
   }
   function getPosition(){return new Promise<GeolocationPosition>((resolve,reject)=>{if(!navigator.geolocation){reject(new Error('Location is not supported on this device.'));return;}navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,maximumAge:10_000,timeout:20_000});});}
   async function verifyLocation(latitude:number,longitude:number){const {data,error}=await supabase.rpc('verify_facility_location',{p_latitude:latitude,p_longitude:longitude});if(error)return null;return data as {configured:boolean;inside:boolean;distance_m:number;radius_m:number};}
+  function showLocationPermissionNotice(message='Allow location access to join or rejoin the waitlist. OpenGym only checks whether you are inside the facility area.'){
+    setNotice({title:'Location permission needed',message,confirm:'Allow location',action:retryLocationPermission,actionTone:'success',cancelLabel:'Not now'});
+  }
+  async function retryLocationPermission(){
+    setBusy(true);
+    try{
+      await getPosition();setBusy(false);
+      setNotice({title:'Location access allowed',message:'Location is ready. Press Join or Rejoin again to continue.'});
+    }catch(error){
+      setBusy(false);
+      const denied=typeof error==='object'&&error!==null&&'code' in error&&(error as GeolocationPositionError).code===1;
+      setNotice({title:denied?'Location is blocked':'Location check failed',message:denied?'Your browser has remembered “Don’t allow.” On iPhone or iPad, open the page menu (aA), choose Website Settings, then set Location to Allow. In Chrome, tap the lock or site-controls icon, open Permissions, and set Location to Allow. Then return here and try again.':'We could not get your location. Check that Location Services are on, then try again.',cancelLabel:'Okay'});
+    }
+  }
   async function requireOnSite(){
     if(!config.geofence_enabled)return true;
     setBusy(true);
-    try{const position=await getPosition();const result=await verifyLocation(position.coords.latitude,position.coords.longitude);setBusy(false);if(!result){setNotice({title:'Location check failed',message:'We could not verify the facility location. Please try again.'});return false;}if(!result.inside){setNotice({title:'You must be at the facility',message:`You are about ${Math.round(result.distance_m)} meters from the OpenGym check-in area. Move inside the facility and try again.`});return false;}return true;}catch{setBusy(false);setNotice({title:'Location permission needed',message:'Allow location access to join or rejoin the waitlist. OpenGym only checks whether you are inside the facility area.'});return false;}
+    try{const position=await getPosition();const result=await verifyLocation(position.coords.latitude,position.coords.longitude);setBusy(false);if(!result){setNotice({title:'Location check failed',message:'We could not verify the facility location. Please try again.'});return false;}if(!result.inside){setNotice({title:'You must be at the facility',message:`You are about ${Math.round(result.distance_m)} meters from the OpenGym check-in area. Move inside the facility and try again.`});return false;}return true;}catch{setBusy(false);showLocationPermissionNotice();return false;}
   }
   async function setFacilityLocation(){setFacilityMenu(value=>!value);}
   async function chooseFacility(code:'PHR'|'NA'){
@@ -587,7 +601,7 @@ export default function App() {
       if(error){setNotice({title:'Could not rejoin',message:error.message});return;}
       if(!data?.inside){setNotice({title:'You are still too far away',message:'Move back inside the OpenGym facility area, then press “I’m back!” again.'});return;}
       setGeofenceReturn(null);await refresh();setNotice({title:'Welcome back',message:data.message});
-    }catch{setBusy(false);setNotice({title:'Location permission needed',message:'Allow location access so OpenGym can confirm that you are back at the facility.'});}
+    }catch{setBusy(false);showLocationPermissionNotice('Allow location access so OpenGym can confirm that you are back at the facility.');}
   }
   async function advanceGame(){
     setBusy(true);const {data,error}=await supabase.rpc('end_current_game');

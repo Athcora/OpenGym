@@ -92,6 +92,13 @@ Object.assign(zh,{
   'Don’t forget to rejoin the queue if you plan to stay.':'如果你打算留下，请别忘记重新加入队列。'
 });
 
+Object.assign(es,{
+  'Allow location':'Permitir ubicación','Not now':'Ahora no','Location access allowed':'Acceso a la ubicación permitido','Location is blocked':'La ubicación está bloqueada','Location is ready. Press Join or Rejoin again to continue.':'La ubicación está lista. Pulsa Unirse o Reingresar otra vez para continuar.','We could not get your location. Check that Location Services are on, then try again.':'No pudimos obtener tu ubicación. Comprueba que los servicios de ubicación estén activados e inténtalo de nuevo.'
+});
+Object.assign(zh,{
+  'Allow location':'允许位置访问','Not now':'暂不','Location access allowed':'已允许位置访问','Location is blocked':'位置访问已被阻止','Location is ready. Press Join or Rejoin again to continue.':'位置已准备好。请再次点击加入或重新加入以继续。','We could not get your location. Check that Location Services are on, then try again.':'无法获取你的位置。请检查定位服务是否已开启，然后重试。'
+});
+
 function translateDynamic(value:string,language:AppLanguage){
   if(language==='en')return value;
   const game=value.match(/^Game (\d+)$/);if(game)return language==='es'?`Juego ${game[1]}`:`第 ${game[1]} 场`;

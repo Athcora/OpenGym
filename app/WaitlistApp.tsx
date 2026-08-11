@@ -322,7 +322,22 @@ export default function App() {
     if(error)setNotice({title:'Tutorial completed',message:'Your tutorial choice could not be saved to your account, but you can continue using the waitlist.'});
     setOnboarding('idle');setTutorialStep(0);
   }
-  function getPosition(){return new Promise<GeolocationPosition>((resolve,reject)=>{if(!navigator.geolocation){reject(new Error('Location is not supported on this device.'));return;}navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,maximumAge:10_000,timeout:20_000});});}
+  function getPosition(){return new Promise<GeolocationPosition>((resolve,reject)=>{if(!navigator.geolocation){reject(new Error('Location is not supported on this device.'));return;}navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:false,maximumAge:5_000,timeout:30_000});});}
+  async function locationPermissionState(){
+    try{return (await navigator.permissions?.query({name:'geolocation'})).state as PermissionState;}
+    catch{return 'unknown' as const;}
+  }
+  async function getPositionAfterPermissionChange(){
+    try{return await getPosition();}
+    catch(firstError){
+      const state=await locationPermissionState();
+      if(state==='granted'||state==='prompt'){
+        await new Promise(resolve=>setTimeout(resolve,500));
+        return getPosition();
+      }
+      throw firstError;
+    }
+  }
   async function verifyLocation(latitude:number,longitude:number){const {data,error}=await supabase.rpc('verify_facility_location',{p_latitude:latitude,p_longitude:longitude});if(error)return null;return data as {configured:boolean;inside:boolean;distance_m:number;radius_m:number};}
   function showLocationPermissionNotice(message='Allow location access to join or rejoin the waitlist. OpenGym only checks whether you are inside the facility area.',onAllowed?:()=>Promise<void>){
     setNotice({title:'Location permission needed',message,confirm:'Allow location',action:()=>retryLocationPermission(onAllowed),actionTone:'success',cancelLabel:'Not now'});
@@ -338,7 +353,7 @@ export default function App() {
   async function retryLocationPermission(onAllowed?:()=>Promise<void>){
     setBusy(true);
     try{
-      const position=await getPosition();const result=await verifyLocation(position.coords.latitude,position.coords.longitude);setBusy(false);
+      const position=await getPositionAfterPermissionChange();const result=await verifyLocation(position.coords.latitude,position.coords.longitude);setBusy(false);
       if(!result){setNotice({title:'Location check failed',message:'We could not verify the facility location. Please try again.'});return;}
       if(!result.inside){setNotice({title:'You must be at the facility',message:`Location is allowed, but you are about ${Math.round(result.distance_m)} meters from the OpenGym check-in area. Move inside the facility and try again.`});return;}
       if(onAllowed){await onAllowed();return;}
@@ -346,7 +361,17 @@ export default function App() {
     }catch(error){
       setBusy(false);
       const denied=typeof error==='object'&&error!==null&&'code' in error&&(error as GeolocationPositionError).code===1;
-      setNotice({title:denied?'Location is blocked':'Location check failed',message:denied?blockedLocationInstructions():'We could not get your location. Check that Location Services are on, then try again.',cancelLabel:'Okay'});
+      const permission=await locationPermissionState();
+      const browserBlocked=denied&&permission==='denied';
+      setNotice({
+        title:browserBlocked?'Location is blocked':denied?'Phone location access needed':'Location check failed',
+        message:browserBlocked
+          ?blockedLocationInstructions()
+          :denied
+            ?'OpenGym still cannot receive a location from your phone even though the site may show Allow. Make sure Location Services are on for your phone and that Chrome has While Using the App access, then return here and press Allow location again.'
+            :'We could not get your location. Check that Location Services are on, then try again.',
+        confirm:'Try again',action:()=>retryLocationPermission(onAllowed),actionTone:'success',cancelLabel:'Not now'
+      });
     }
   }
   async function requireOnSite(onAllowed?:()=>Promise<void>){

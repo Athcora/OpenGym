@@ -352,7 +352,7 @@ export default function App() {
     setNotice({title:'Move closer to the facility',message:`You are about ${distance} meters from the OpenGym check-in area. You need to be at or closer to the facility before you can join the waitlist. Move closer, then press “Try again.”`,confirm:'Try again',action:()=>retryLocationPermission(onAllowed),actionTone:'success',cancelLabel:'Not now'});
   }
   function showLocationPermissionNotice(message='Allow location access to join or rejoin the waitlist. OpenGym only checks whether you are inside the facility area.',onAllowed?:()=>Promise<void>){
-    setNotice({title:'Location permission needed',message,confirm:'Allow location',action:()=>retryLocationPermission(onAllowed),actionTone:'success',cancelLabel:'Not now'});
+    setNotice({title:'Location permission needed',message,confirm:'Continue',action:()=>retryLocationPermission(onAllowed),actionTone:'success',cancelLabel:'Leave',cancelTone:'danger',cancelAction:async()=>{setScreen('welcome')}});
   }
   function blockedLocationInstructions(){
     const agent=navigator.userAgent;const ios=/iPhone|iPad|iPod/i.test(agent);const android=/Android/i.test(agent);const chrome=/CriOS|Chrome/i.test(agent);

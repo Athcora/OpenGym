@@ -38,7 +38,7 @@ begin
 
   -- Courts always fill in numeric order: Court 1, then Court 2, and so on.
   for c in select court_number from public.waitlist_courts order by court_number loop
-    select greatest(cfg.max_players-count(*),0) into open_spots
+    select greatest(cfg.max_players-count(p.id),0) into open_spots
     from public.waitlist_config cfg left join public.waitlist_players p
       on p.status='current' and p.court_number=c.court_number where cfg.id group by cfg.max_players;
     for block in
@@ -221,7 +221,7 @@ begin
       queue_position=target_position*1000-moving_count+moving.rn,updated_at=now()
       from moving where p.id=moving.id;
     if source_court is not null then
-      select greatest(cfg.max_players-count(*),0) into open_spots
+      select greatest(cfg.max_players-count(p.id),0) into open_spots
       from public.waitlist_config cfg left join public.waitlist_players p
         on p.status='current' and p.court_number=source_court where cfg.id group by cfg.max_players;
       for candidate in select coalesce(group_id,id) block_id,count(*)::integer block_size,min(queue_position) first_position
@@ -265,6 +265,46 @@ begin
   return jsonb_build_object('message','Player moved.','source_court',source_court);
 end; $$;
 grant execute on function public.admin_move_player(uuid,text,integer) to authenticated;
+
+-- Joining always enters the shared queue first, then the same allocator used
+-- by game changes fills Court 1, Court 2, and later courts in order. The
+-- original one-court function stopped assigning current players after 12.
+create or replace function public.join_waitlist(p_first_name text,p_last_name text default '')
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare clean_first text:=public.clean_player_name(p_first_name); clean_last text:=public.clean_player_name(p_last_name);
+  player public.waitlist_players; active_count integer; next_position bigint; shown_name text;
+begin
+  if auth.uid() is null then raise exception 'You must be signed in.'; end if;
+  if clean_first='' then raise exception 'Enter a name containing letters.'; end if;
+  if not public.name_is_allowed(clean_first,clean_last) then raise exception 'This name is not allowed. Choose a different one.'; end if;
+  perform pg_advisory_xact_lock(7429101);
+  select * into player from public.waitlist_players where user_id=auth.uid();
+  if player.id is not null and player.status<>'left' then
+    return jsonb_build_object('message','You are already in the waitlist.','player_id',player.id);
+  end if;
+  if clean_last='' and exists(select 1 from public.waitlist_players where lower(first_name)=lower(clean_first) and status<>'left') then
+    raise exception 'Another player has that first name. Add a last initial or last name.';
+  end if;
+  shown_name:=clean_first||case when clean_last='' then '' else ' '||left(clean_last,1)||'.' end;
+  if exists(select 1 from public.waitlist_players where lower(display_name)=lower(shown_name) and status<>'left') then
+    shown_name:=clean_first||' '||clean_last;
+  end if;
+  select coalesce(max(queue_position),0)+1 into next_position from public.waitlist_players
+    where status in('current','waiting','sitout','rejoin');
+  insert into public.waitlist_players(user_id,first_name,last_name,display_name,status,queue_position,court_number,updated_at)
+  values(auth.uid(),clean_first,clean_last,shown_name,'waiting',next_position,null,now())
+  on conflict(user_id) do update set first_name=excluded.first_name,last_name=excluded.last_name,
+    display_name=excluded.display_name,status='waiting',queue_position=excluded.queue_position,
+    court_number=null,rejoin_expires_at=null,updated_at=now()
+  returning * into player;
+  perform public.fill_open_court_slots();
+  select * into player from public.waitlist_players where id=player.id;
+  select count(*) into active_count from public.waitlist_players where status<>'left';
+  return jsonb_build_object('message',shown_name||case when player.status='current' then
+    ' joined Court '||player.court_number||'.' else ' joined the waitlist.' end,
+    'player_id',player.id,'active_count',active_count);
+end; $$;
+grant execute on function public.join_waitlist(text,text) to authenticated;
 
 -- Undo/redo must include every piece of multi-court state. Older restore
 -- functions omitted court_number and the court rows, which collapsed all

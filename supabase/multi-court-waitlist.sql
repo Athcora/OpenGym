@@ -237,7 +237,9 @@ begin
         exit when open_spots=0;
       end loop;
     end if;
-    perform public.fill_open_court_slots();
+    -- The source court was refilled above. Do not run the global court filler
+    -- here: it can reassign players belonging to other active courts while a
+    -- cross-list drag is still being finalized.
   elsif player.status='current' and source_court is not null then
     -- Reorder only inside the player's original court.
     select queue_position into target_position from public.waitlist_players

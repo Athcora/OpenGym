@@ -132,3 +132,94 @@ end; $$;
 
 grant execute on function public.admin_set_court_count(integer) to authenticated;
 grant execute on function public.end_court_game(integer) to authenticated;
+
+-- Undo/redo must include every piece of multi-court state. Older restore
+-- functions omitted court_number and the court rows, which collapsed all
+-- restored current players onto Court 1.
+create or replace function public.capture_waitlist_state()
+returns jsonb language sql security definer set search_path=public as $$
+  select jsonb_build_object(
+    'players',coalesce((select jsonb_agg(to_jsonb(p) order by p.queue_position nulls last) from public.waitlist_players p),'[]'::jsonb),
+    'config',(select to_jsonb(c) from public.waitlist_config c where c.id),
+    'courts',coalesce((select jsonb_agg(to_jsonb(c) order by c.court_number) from public.waitlist_courts c),'[]'::jsonb),
+    'past_games',coalesce((select jsonb_agg(to_jsonb(g) order by g.game_number) from public.past_games g),'[]'::jsonb)
+  );
+$$;
+
+create or replace function public.restore_waitlist_state(p_state jsonb)
+returns void language plpgsql security definer set search_path=public as $$
+declare item jsonb; restored_court_count integer;
+begin
+  delete from public.waitlist_players where true;
+  for item in select * from jsonb_array_elements(coalesce(p_state->'players','[]'::jsonb)) loop
+    insert into public.waitlist_players(
+      id,user_id,first_name,last_name,display_name,status,queue_position,restricted,
+      rejoin_expires_at,created_at,updated_at,group_id,is_host,sitout_priority,sitout_from_game,court_number
+    ) values(
+      (item->>'id')::uuid,nullif(item->>'user_id','')::uuid,item->>'first_name',item->>'last_name',
+      item->>'display_name',item->>'status',nullif(item->>'queue_position','')::bigint,
+      coalesce((item->>'restricted')::boolean,false),nullif(item->>'rejoin_expires_at','')::timestamptz,
+      (item->>'created_at')::timestamptz,now(),nullif(item->>'group_id','')::uuid,
+      coalesce((item->>'is_host')::boolean,false),coalesce((item->>'sitout_priority')::boolean,false),
+      nullif(item->>'sitout_from_game','')::integer,nullif(item->>'court_number','')::integer
+    );
+  end loop;
+  restored_court_count:=coalesce(nullif(p_state->'config'->>'court_count','')::integer,1);
+  update public.waitlist_config set
+    game_number=(p_state->'config'->>'game_number')::integer,
+    max_players=(p_state->'config'->>'max_players')::integer,
+    court_count=restored_court_count,
+    mode=p_state->'config'->>'mode',updated_at=now()
+  where id;
+  delete from public.waitlist_courts where true;
+  if jsonb_array_length(coalesce(p_state->'courts','[]'::jsonb))>0 then
+    for item in select * from jsonb_array_elements(p_state->'courts') loop
+      insert into public.waitlist_courts(court_number,game_number,started_at)
+      values((item->>'court_number')::integer,(item->>'game_number')::integer,(item->>'started_at')::timestamptz);
+    end loop;
+  else
+    insert into public.waitlist_courts(court_number,game_number,started_at)
+    select n,(p_state->'config'->>'game_number')::integer-greatest(restored_court_count-n,0),now()
+    from generate_series(1,restored_court_count) n;
+  end if;
+  delete from public.past_games where true;
+  for item in select * from jsonb_array_elements(coalesce(p_state->'past_games','[]'::jsonb)) loop
+    insert into public.past_games(id,game_number,player_names,ended_at,court_number)
+    values((item->>'id')::uuid,(item->>'game_number')::integer,item->'player_names',
+      (item->>'ended_at')::timestamptz,coalesce(nullif(item->>'court_number','')::integer,1));
+  end loop;
+end;
+$$;
+
+create or replace function public.repair_active_court_assignments()
+returns void language plpgsql security definer set search_path=public as $$
+declare cfg public.waitlist_config; court record; player_id uuid; occupied integer;
+begin
+  select * into cfg from public.waitlist_config where id;
+  -- Keep the earliest players already assigned to each court and release only overflow.
+  with ranked as(
+    select id,row_number()over(partition by court_number order by queue_position,id) rn
+    from public.waitlist_players where status='current')
+  update public.waitlist_players p set court_number=null from ranked
+  where p.id=ranked.id and (p.court_number is null or ranked.rn>cfg.max_players);
+  for court in select * from public.waitlist_courts order by started_at,court_number loop
+    select count(*) into occupied from public.waitlist_players
+      where status='current' and court_number=court.court_number;
+    for player_id in select id from public.waitlist_players
+      where status='current' and court_number is null order by queue_position,id
+      limit greatest(cfg.max_players-occupied,0)
+    loop
+      update public.waitlist_players set court_number=court.court_number where id=player_id;
+    end loop;
+  end loop;
+  -- If every active court is full, any remaining legacy overflow returns to the
+  -- front of the shared waitlist instead of being silently shown on Court 1.
+  update public.waitlist_players set status='waiting',court_number=null,updated_at=now()
+    where status='current' and court_number is null;
+  with ranked as(select id,row_number()over(order by case when status='current' then 0 else 1 end,queue_position,id) rn
+    from public.waitlist_players where status in('current','waiting','sitout') and queue_position is not null)
+  update public.waitlist_players p set queue_position=ranked.rn from ranked where p.id=ranked.id;
+end;
+$$;
+
+select public.repair_active_court_assignments();

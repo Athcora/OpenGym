@@ -19,7 +19,7 @@ update public.waitlist_players set court_number=1 where status='current' and cou
 
 create or replace function public.fill_open_court_slots()
 returns void language plpgsql security definer set search_path=public as $$
-declare c record; open_spots integer; block record;
+declare c record; open_spots integer; block record; split_group uuid; split_members uuid[]; promoted_group uuid; remaining_size integer;
 begin
   for c in select court_number from public.waitlist_courts order by started_at,court_number loop
     select greatest(cfg.max_players-count(*),0) into open_spots
@@ -40,6 +40,46 @@ begin
         open_spots:=open_spots-block.block_size;
       end if;
     end loop;
+    -- If whole groups cannot fill the final spaces, split only the earliest
+    -- group that is too large. This guarantees a court reaches 12 whenever
+    -- enough waiting players exist while preserving groups whenever possible.
+    if open_spots>0 then
+      select p.group_id,count(*)::integer
+        into split_group,remaining_size
+      from public.waitlist_players p
+      where p.status='waiting' and p.group_id is not null
+      group by p.group_id
+      having count(*)>open_spots
+      order by min(p.queue_position),p.group_id
+      limit 1;
+      if split_group is not null then
+        select array_agg(chosen.id order by chosen.queue_position,chosen.id)
+          into split_members
+        from (
+          select p.id,p.queue_position
+          from public.waitlist_players p
+          where p.status='waiting' and p.group_id=split_group
+          order by p.queue_position,p.id
+          limit open_spots
+        ) chosen;
+        remaining_size:=remaining_size-coalesce(array_length(split_members,1),0);
+        promoted_group:=case when coalesce(array_length(split_members,1),0)>1 then gen_random_uuid() else null end;
+        insert into public.group_notifications(user_id,message)
+          select distinct p.user_id,
+            'Your group needed to split because there were not enough single players to make a full court.'
+          from public.waitlist_players p
+          where p.group_id=split_group and p.user_id is not null;
+        update public.waitlist_players p
+          set status='current',court_number=c.court_number,group_id=promoted_group,
+              sitout_priority=false,updated_at=now()
+          where p.id=any(split_members);
+        if remaining_size<2 then
+          update public.waitlist_players set group_id=null,updated_at=now()
+          where group_id=split_group;
+        end if;
+        open_spots:=0;
+      end if;
+    end if;
   end loop;
   with ranked as(
     select id,row_number()over(order by case when status='current' then 0 else 1 end,

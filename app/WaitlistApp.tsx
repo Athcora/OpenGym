@@ -614,35 +614,12 @@ export default function App() {
     const movingMembers=movingPlayer?.group_id
       ? players.filter(player=>player.group_id===movingPlayer.group_id)
       : movingPlayer?[movingPlayer]:[];
-    const movingOutOfGame=movingPlayer?.status==='current'&&status==='waiting';
     if(!movingPlayer||movingMembers.length===0)return;
     const beforeMove=players;
     setPlayers(previewAdminMove(players,playerId,status,index,config.max_players));
     adminMoveInProgress.current=true;setBusy(true);
     const {error:moveError}=await supabase.rpc('admin_move_player',{p_player_id:playerId,p_status:status,p_index:index});
     if(moveError){adminMoveInProgress.current=false;setBusy(false);setPlayers(beforeMove);setNotice({title:'Could not move that player',message:moveError.message});await refresh();return;}
-    if(movingOutOfGame){
-      const excludedIds=new Set(movingMembers.map(player=>player.id));
-      const {data:freshRows,error:freshError}=await supabase.from('waitlist_players').select('*').in('status',['current','waiting']).order('queue_position');
-      if(freshError){adminMoveInProgress.current=false;setBusy(false);setNotice({title:'The player moved, but the game could not refill',message:freshError.message});await refresh();return;}
-      const freshPlayers=(freshRows??[]) as Player[];
-      let openSpots=Math.max(config.max_players-freshPlayers.filter(player=>player.status==='current').length,0);
-      const freshWaiting=freshPlayers.filter(player=>player.status==='waiting');
-      const seenBlocks=new Set<string>();
-      for(const candidate of freshWaiting){
-        if(excludedIds.has(candidate.id))continue;
-        const blockKey=candidate.group_id??candidate.id;
-        if(seenBlocks.has(blockKey))continue;
-        seenBlocks.add(blockKey);
-        const blockSize=candidate.group_id?freshWaiting.filter(player=>player.group_id===candidate.group_id).length:1;
-        if(blockSize<=openSpots){
-          const {error:fillError}=await supabase.rpc('admin_move_player',{p_player_id:candidate.id,p_status:'current',p_index:config.max_players});
-          if(fillError){adminMoveInProgress.current=false;setBusy(false);setNotice({title:'The player moved, but the game could not refill',message:fillError.message});await refresh();return;}
-          openSpots-=blockSize;
-        }
-        if(openSpots===0)break;
-      }
-    }
     adminMoveInProgress.current=false;setBusy(false);await refresh();
   }
   function showRejoinOnly(){setOwnPlayer(previous=>previous?{...previous,status:'left'}:previous);setForceRejoin(true);setPlayers(items=>items.filter(player=>player.user_id!==user?.id));}
@@ -720,12 +697,14 @@ function previewAdminMove(source:Player[],playerId:string,targetStatus:'current'
   const moving=source.find(player=>player.id===playerId);if(!moving)return source;
   const movingMembers=(moving.group_id?source.filter(player=>player.group_id===moving.group_id):[moving]).sort(byPosition);
   const movingIds=new Set(movingMembers.map(player=>player.id));
-  let current=source.filter(player=>player.status==='current'&&!movingIds.has(player.id)).sort(byPosition);
+  const sourceCourt=moving.court_number;
+  const otherCourts=source.filter(player=>player.status==='current'&&player.court_number!==sourceCourt&&!movingIds.has(player.id));
+  let current=source.filter(player=>player.status==='current'&&player.court_number===sourceCourt&&!movingIds.has(player.id)).sort(byPosition);
   let waiting=source.filter(player=>(player.status==='waiting'||player.status==='sitout')&&!movingIds.has(player.id)).sort(byPosition);
   const originalTarget=source.filter(player=>player.status===targetStatus||(targetStatus==='waiting'&&player.status==='sitout')).sort(byPosition);
   const removedBefore=originalTarget.slice(0,targetIndex).filter(player=>movingIds.has(player.id)).length;
   const insertion=Math.max(0,Math.min(targetIndex-removedBefore,targetStatus==='current'?current.length:waiting.length));
-  const movedBlock=movingMembers.map(player=>({...player,status:targetStatus,queue_position:null}));
+  const movedBlock=movingMembers.map(player=>({...player,status:targetStatus,court_number:targetStatus==='current'?sourceCourt:null,queue_position:null}));
   if(targetStatus==='current')current.splice(insertion,0,...movedBlock);else waiting.splice(insertion,0,...movedBlock);
   if(current.length>maxPlayers){const overflow=current.splice(maxPlayers);waiting=[...overflow.map(player=>({...player,status:'waiting' as PlayerStatus})),...waiting];}
   if(current.length<maxPlayers){
@@ -733,10 +712,10 @@ function previewAdminMove(source:Player[],playerId:string,targetStatus:'current'
     for(let cursor=0;cursor<waiting.length&&current.length<maxPlayers;){
       const candidate=waiting[cursor];const block=candidate.group_id?waiting.filter(player=>player.group_id===candidate.group_id):[candidate];
       if(block.some(player=>excluded.has(player.id))||block.length>maxPlayers-current.length){cursor+=block.length;continue;}
-      const blockIds=new Set(block.map(player=>player.id));waiting=waiting.filter(player=>!blockIds.has(player.id));current.push(...block.map(player=>({...player,status:'current' as PlayerStatus})));cursor=0;
+      const blockIds=new Set(block.map(player=>player.id));waiting=waiting.filter(player=>!blockIds.has(player.id));current.push(...block.map(player=>({...player,status:'current' as PlayerStatus,court_number:sourceCourt})));cursor=0;
     }
   }
-  const active=[...current,...waiting].map((player,index)=>({...player,queue_position:index+1}));
+  const active=[...otherCourts,...current,...waiting].sort((a,b)=>a.status===b.status?((a.court_number??999)-(b.court_number??999)||byPosition(a,b)):a.status==='current'?-1:1).map((player,index)=>({...player,queue_position:index+1}));
   const activeIds=new Set(active.map(player=>player.id));return [...active,...source.filter(player=>!activeIds.has(player.id)&&!movingIds.has(player.id))];
 }
 function projectQueueGames(players:Player[],currentGame:number,maxPlayers:number){

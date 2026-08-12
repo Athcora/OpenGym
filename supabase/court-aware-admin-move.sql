@@ -10,7 +10,7 @@ declare
   source_court integer;
   destination_court integer;
   moving_count integer;
-  max_players integer;
+  v_max_players integer;
   target_position bigint;
   open_spots integer;
   candidate record;
@@ -23,10 +23,10 @@ begin
   if player.id is null then raise exception 'Player not found.'; end if;
   source_court:=player.court_number;
   destination_court:=case when p_status='current' then coalesce(p_court_number,source_court,1) else null end;
-  select max_players into max_players from public.waitlist_config where id;
+  select cfg.max_players into v_max_players from public.waitlist_config cfg where cfg.id = true;
   select count(*) into moving_count from public.waitlist_players
     where id=player.id or (player.group_id is not null and group_id=player.group_id);
-  if moving_count>max_players then raise exception 'This group is larger than a court.'; end if;
+  if moving_count>v_max_players then raise exception 'This group is larger than a court.'; end if;
   perform public.save_admin_undo('move player');
 
   -- Open large gaps without changing the relative order of any court or queue.
@@ -73,7 +73,7 @@ begin
       where status='current' and court_number=destination_court
     ), displaced as (
       select p.id,row_number() over(order by p.queue_position,p.id) rn
-      from public.waitlist_players p join ranked r on r.id=p.id where r.rn>max_players
+      from public.waitlist_players p join ranked r on r.id=p.id where r.rn>v_max_players
     ), queue_head as (
       select coalesce(min(queue_position),1000000) head from public.waitlist_players
       where status in ('waiting','sitout')
@@ -85,9 +85,9 @@ begin
 
   -- Refill only a court that the move actually vacated.
   if source_court is not null and source_court is distinct from destination_court then
-    select greatest(max_players-count(p.id),0) into open_spots
+    select greatest(v_max_players-count(p.id),0) into open_spots
       from public.waitlist_config cfg left join public.waitlist_players p
-        on p.status='current' and p.court_number=source_court where cfg.id group by cfg.max_players;
+        on p.status='current' and p.court_number=source_court where cfg.id = true group by cfg.max_players;
     for candidate in
       select coalesce(group_id,id) block_id,count(*)::integer block_size,min(queue_position) first_position
       from public.waitlist_players where status='waiting'

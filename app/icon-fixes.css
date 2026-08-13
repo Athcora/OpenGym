@@ -17,14 +17,3 @@
   content: "Add player";
   font-size: 0.9rem;
 }
-
-/* Keep navigation arrows clean even when an older label contains encoded text. */
-.history-button > span {
-  font-size: 0;
-}
-
-.history-button > span::before {
-  content: "→";
-  font-size: 1rem;
-  line-height: 1;
-}

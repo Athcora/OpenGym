@@ -111,7 +111,7 @@ export default function App() {
   const host=Boolean(me?.is_host&&!admin); const operator=admin||host;
   adminAccess.current=admin;
   activeStatusRef.current=activeMe?.status??null;waitlistModeRef.current=config.mode;
-  const displayedPlayers=useMemo(()=>dragging&&dragOver?previewAdminMove(players,dragging,dragOver.status,dragOver.index,config.max_players):players,[players,dragging,dragOver,config.max_players]);
+  const displayedPlayers=useMemo(()=>dragging&&dragOver?previewAdminMove(players,dragging,dragOver.status,dragOver.index,config.max_players,dragOver.courtNumber):players,[players,dragging,dragOver,config.max_players]);
   const savedQueuePositions=useMemo(()=>{
     const positions=new Map<string,number>();
     for(const court of courts){
@@ -629,7 +629,7 @@ export default function App() {
       : movingPlayer?[movingPlayer]:[];
     if(!movingPlayer||movingMembers.length===0)return;
     const beforeMove=players;
-    setPlayers(previewAdminMove(players,playerId,status,index,config.max_players));
+    setPlayers(previewAdminMove(players,playerId,status,index,config.max_players,courtNumber));
     adminMoveInProgress.current=true;setBusy(true);
     const {error:moveError}=await supabase.rpc('admin_move_player',{p_player_id:playerId,p_status:status,p_index:index,p_court_number:courtNumber});
     if(moveError){adminMoveInProgress.current=false;setBusy(false);setPlayers(beforeMove);setNotice({title:'Could not move that player',message:moveError.message});await refresh();return;}
@@ -706,18 +706,18 @@ export default function App() {
     {notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
 }
 
-function previewAdminMove(source:Player[],playerId:string,targetStatus:'current'|'waiting',targetIndex:number,maxPlayers:number){
+function previewAdminMove(source:Player[],playerId:string,targetStatus:'current'|'waiting',targetIndex:number,maxPlayers:number,targetCourtNumber:number|null=null){
   const moving=source.find(player=>player.id===playerId);if(!moving)return source;
   const movingMembers=(moving.group_id?source.filter(player=>player.group_id===moving.group_id):[moving]).sort(byPosition);
   const movingIds=new Set(movingMembers.map(player=>player.id));
-  const sourceCourt=moving.court_number;
+  const sourceCourt=moving.court_number??targetCourtNumber??1;const targetCourt=targetStatus==='current'?(targetCourtNumber??sourceCourt):sourceCourt;
   const otherCourts=source.filter(player=>player.status==='current'&&player.court_number!==sourceCourt&&!movingIds.has(player.id));
-  let current=source.filter(player=>player.status==='current'&&player.court_number===sourceCourt&&!movingIds.has(player.id)).sort(byPosition);
+  let current=source.filter(player=>player.status==='current'&&player.court_number===targetCourt&&!movingIds.has(player.id)).sort(byPosition);
   let waiting=source.filter(player=>(player.status==='waiting'||player.status==='sitout')&&!movingIds.has(player.id)).sort(byPosition);
-  const originalTarget=source.filter(player=>player.status===targetStatus||(targetStatus==='waiting'&&player.status==='sitout')).sort(byPosition);
+  const originalTarget=source.filter(player=>targetStatus==='current'?(player.status==='current'&&player.court_number===targetCourt):(player.status==='waiting'||player.status==='sitout')).sort(byPosition);
   const removedBefore=originalTarget.slice(0,targetIndex).filter(player=>movingIds.has(player.id)).length;
   const insertion=Math.max(0,Math.min(targetIndex-removedBefore,targetStatus==='current'?current.length:waiting.length));
-  const movedBlock=movingMembers.map(player=>({...player,status:targetStatus,court_number:targetStatus==='current'?sourceCourt:null,queue_position:null}));
+  const movedBlock=movingMembers.map(player=>({...player,status:targetStatus,court_number:targetStatus==='current'?targetCourt:null,queue_position:null}));
   if(targetStatus==='current')current.splice(insertion,0,...movedBlock);else waiting.splice(insertion,0,...movedBlock);
   if(current.length>maxPlayers){const overflow=current.splice(maxPlayers);waiting=[...overflow.map(player=>({...player,status:'waiting' as PlayerStatus})),...waiting];}
   if(current.length<maxPlayers){
@@ -725,7 +725,7 @@ function previewAdminMove(source:Player[],playerId:string,targetStatus:'current'
     for(let cursor=0;cursor<waiting.length&&current.length<maxPlayers;){
       const candidate=waiting[cursor];const block=candidate.group_id?waiting.filter(player=>player.group_id===candidate.group_id):[candidate];
       if(block.some(player=>excluded.has(player.id))||block.length>maxPlayers-current.length){cursor+=block.length;continue;}
-      const blockIds=new Set(block.map(player=>player.id));waiting=waiting.filter(player=>!blockIds.has(player.id));current.push(...block.map(player=>({...player,status:'current' as PlayerStatus,court_number:sourceCourt})));cursor=0;
+      const blockIds=new Set(block.map(player=>player.id));waiting=waiting.filter(player=>!blockIds.has(player.id));current.push(...block.map(player=>({...player,status:'current' as PlayerStatus,court_number:targetCourt})));cursor=0;
     }
   }
   const active=[...otherCourts,...current,...waiting].sort((a,b)=>a.status===b.status?((a.court_number??999)-(b.court_number??999)||byPosition(a,b)):a.status==='current'?-1:1).map((player,index)=>({...player,queue_position:index+1}));
@@ -823,18 +823,17 @@ function positionPlayerDragPreview(preview:HTMLElement,x:number,y:number){
  const left=Math.min(bounds.right-width,Math.max(bounds.left,point.x-width/2));const top=Math.min(Math.max(bounds.top,bounds.bottom-height),Math.max(bounds.top,point.y-height/2));preview.style.transform=`translate3d(${left}px,${top}px,0)`;
 }
 function resolveDropPlacement(x:number,y:number,fallback:DropPlacement|null=null):DropPlacement|null{
- const point=constrainQueueDragPoint(x,y);const element=document.elementFromPoint(point.x,point.y);const row=element?.closest<HTMLElement>('[data-player-id]');const card=element?.closest<HTMLElement>('[data-drop-status]');
- if(!card)return fallback;const status=card.dataset.dropStatus as 'current'|'waiting';
+ const point=constrainQueueDragPoint(x,y);
+ const cards=[...document.querySelectorAll<HTMLElement>('[data-drop-status]')].filter(card=>{const rect=card.getBoundingClientRect();return point.x>=rect.left&&point.x<=rect.right&&point.y>=rect.top&&point.y<=rect.bottom});
+ const card=cards.at(-1);if(!card)return fallback;const status=card.dataset.dropStatus as 'current'|'waiting';
  const currentCards=[...document.querySelectorAll<HTMLElement>('[data-drop-status="current"]')];
  const courtNumber=status==='current'?Math.max(1,currentCards.indexOf(card)+1):null;
- if(!row)return{status,index:Number(card.dataset.playerCount??0),marker:null,courtNumber};
- if(row.classList.contains('dragging'))return fallback??{status,index:Number(row.dataset.playerIndex??0),marker:null,courtNumber};
- const groupId=row.dataset.groupId;let first=row,last=row;
- if(groupId){const grouped=[...card.querySelectorAll<HTMLElement>('[data-player-id]')].filter(item=>item.dataset.groupId===groupId);if(grouped.length){first=grouped[0];last=grouped[grouped.length-1];}}
- const midpoint=(first.getBoundingClientRect().top+last.getBoundingClientRect().bottom)/2;
- if(fallback&&fallback.status===status&&Math.abs(point.y-midpoint)<14)return fallback;
- const before=point.y<midpoint;const edge=before?first:last;
- const base=Number(edge.dataset.playerIndex);return{status,index:base+(before?0:1),marker:`${before?'before':'after'}:${edge.dataset.playerId}`,courtNumber};
+ const rows=[...card.querySelectorAll<HTMLElement>('[data-player-id]')].filter(row=>!row.classList.contains('dragging'));
+ if(!rows.length)return{status,index:0,marker:'empty',courtNumber};
+ const blocks:Array<{first:HTMLElement;last:HTMLElement}>=[];
+ for(let index=0;index<rows.length;){const first=rows[index];const groupId=first.dataset.groupId;let last=first;index++;if(groupId)while(index<rows.length&&rows[index].dataset.groupId===groupId){last=rows[index];index++;}blocks.push({first,last});}
+ for(const block of blocks){const rectFirst=block.first.getBoundingClientRect();const rectLast=block.last.getBoundingClientRect();const midpoint=(rectFirst.top+rectLast.bottom)/2;if(point.y<midpoint){const index=Number(block.first.dataset.playerIndex??0);return{status,index,marker:`before:${block.first.dataset.playerId}`,courtNumber};}}
+ const last=blocks.at(-1)!.last;return{status,index:Number(last.dataset.playerIndex??rows.length-1)+1,marker:`after:${last.dataset.playerId}`,courtNumber};
 }
 
 function QueueCard({title,subtitle,status,players,start,savedQueuePositions,me,admin=false,operator=false,spotlight=false,groupSpotlight=false,editing,editName,setEditing,setEditName,saveName,requestGroup,leaveGroup,leaveOwnGroup,adminLeaveGroup,permissions,adminSitOut,adminLeave,dragging,dragOver,setDragging,setDragOver,movePlayer,projections,projectedCourts}:{title:string;subtitle:string;status:'current'|'waiting';players:Player[];start:number;savedQueuePositions:Map<string,number|null>;me?:Player;admin?:boolean;operator?:boolean;spotlight?:boolean;groupSpotlight?:boolean;editing:string|null;editName:string;setEditing:(v:string|null)=>void;setEditName:(v:string)=>void;saveName:(p:Player)=>void;requestGroup:(p:Player)=>Promise<void>;leaveGroup:(p:Player)=>Promise<void>;leaveOwnGroup:()=>void;adminLeaveGroup:(p:Player)=>Promise<void>;permissions:(p:Player)=>void;adminSitOut:(p:Player)=>void;adminLeave:(p:Player)=>void;dragging:string|null;dragOver:DropPlacement|null;setDragging:(v:string|null)=>void;setDragOver:(v:DropPlacement|null)=>void;movePlayer:(id:string,status:'current'|'waiting',index:number,courtNumber?:number|null)=>Promise<void>;projections?:Map<string,number>;projectedCourts?:Map<string,number>}){
@@ -848,7 +847,7 @@ function QueueCard({title,subtitle,status,players,start,savedQueuePositions,me,a
  useEffect(()=>{dragOverRef.current=dragOver},[dragOver]);
  const sameTarget=(a:DropPlacement|null,b:DropPlacement|null)=>Boolean(a&&b&&a.status===b.status&&a.index===b.index&&a.marker===b.marker&&a.courtNumber===b.courtNumber);
  const resetDragTarget=()=>{acceptedTargetY.current=null;dragOverRef.current=null;setDragOver(null)};
- const commitDragTarget=(next:DropPlacement|null,y:number)=>{const current=dragOverRef.current;if((!current&&!next)||sameTarget(current,next))return current;if(current&&next&&current.status===next.status&&acceptedTargetY.current!==null&&Math.abs(y-acceptedTargetY.current)<28)return current;acceptedTargetY.current=y;dragOverRef.current=next;setDragOver(next);return next};
+ const commitDragTarget=(next:DropPlacement|null,y:number)=>{const current=dragOverRef.current;if((!current&&!next)||sameTarget(current,next))return current;if(current&&next&&current.status===next.status&&acceptedTargetY.current!==null&&Math.abs(y-acceptedTargetY.current)<6)return current;acceptedTargetY.current=y;dragOverRef.current=next;setDragOver(next);return next};
  const updateMobileTarget=(x:number,y:number)=>{const point=constrainQueueDragPoint(x,y);commitDragTarget(resolveDropPlacement(point.x,point.y,dragOverRef.current),point.y);};
  const stopAutoScroll=()=>{if(mobileDrag.current.frame!==null){cancelAnimationFrame(mobileDrag.current.frame);mobileDrag.current.frame=null;}};
  useEffect(()=>{if(!operator)return;const trackDrag=(event:PointerEvent)=>{const state=mobileDrag.current;if(!state.active)return;event.preventDefault();state.lastX=event.clientX;state.lastY=event.clientY;if(state.preview)positionPlayerDragPreview(state.preview,event.clientX,event.clientY);updateMobileTarget(event.clientX,event.clientY);};const finishDrag=(event:PointerEvent)=>{if(mobileDrag.current.active)finishMobileDrag(event.clientX,event.clientY);};const confineNewPreview=new MutationObserver(()=>{const state=mobileDrag.current;if(state.preview)positionPlayerDragPreview(state.preview,state.lastX,state.lastY);});document.addEventListener('pointermove',trackDrag,{passive:false});document.addEventListener('pointerup',finishDrag);document.addEventListener('pointercancel',finishDrag);confineNewPreview.observe(document.body,{childList:true});return()=>{document.removeEventListener('pointermove',trackDrag);document.removeEventListener('pointerup',finishDrag);document.removeEventListener('pointercancel',finishDrag);confineNewPreview.disconnect();};},[operator,players]);

@@ -106,13 +106,22 @@ end; $$;
 
 create or replace function public.admin_set_court_count(p_court_count integer)
 returns jsonb language plpgsql security definer set search_path=public as $$
-declare cfg public.waitlist_config; old_count integer; court record; next_game integer;
+declare cfg public.waitlist_config; old_count integer; court record; next_game integer; existing_count integer;
 begin
   if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
   if p_court_count<1 or p_court_count>12 then raise exception 'Choose between 1 and 12 courts.'; end if;
   perform pg_advisory_xact_lock(7429101);
-  select * into cfg from public.waitlist_config where id for update; old_count:=cfg.court_count;
-  if old_count=p_court_count then return jsonb_build_object('message',p_court_count||' court(s) are active.'); end if;
+  select * into cfg from public.waitlist_config where id for update;
+  select count(*) into existing_count from public.waitlist_courts;
+  old_count:=existing_count;
+  if old_count=p_court_count and not exists(
+    select 1 from generate_series(1,p_court_count) expected(court_number)
+    left join public.waitlist_courts actual using(court_number)
+    where actual.court_number is null
+  ) then
+    update public.waitlist_config set court_count=p_court_count,updated_at=now() where id;
+    return jsonb_build_object('message',p_court_count||' court(s) are active.');
+  end if;
   perform public.save_admin_undo('change number of courts');
   if p_court_count<old_count then
     -- Remove the most recently started courts first. Their players keep their
@@ -133,9 +142,17 @@ begin
       (select coalesce(max(game_number),0) from public.waitlist_courts),
       (select coalesce(max(game_number),0) from public.past_games)
     );
-    for court in old_count+1..p_court_count loop
+    for court in select expected.court_number
+      from generate_series(1,p_court_count) expected(court_number)
+      left join public.waitlist_courts actual using(court_number)
+      where actual.court_number is null
+      order by expected.court_number loop
       next_game:=next_game+1;
-      insert into public.waitlist_courts(court_number,game_number,started_at) values(court,next_game,now());
+      insert into public.waitlist_courts(court_number,game_number,started_at)
+      values(court.court_number,next_game,now())
+      on conflict(court_number) do update set
+        game_number=excluded.game_number,
+        started_at=excluded.started_at;
     end loop;
     update public.waitlist_config set game_number=next_game where id;
   end if;

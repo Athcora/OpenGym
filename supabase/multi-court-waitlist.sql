@@ -129,7 +129,10 @@ begin
       where status in('current','waiting','sitout') and queue_position is not null)
     update public.waitlist_players p set queue_position=ranked.rn from ranked where p.id=ranked.id;
   else
-    next_game:=greatest(cfg.game_number,(select coalesce(max(game_number),0) from public.waitlist_courts));
+    next_game:=greatest(
+      (select coalesce(max(game_number),0) from public.waitlist_courts),
+      (select coalesce(max(game_number),0) from public.past_games)
+    );
     for court in old_count+1..p_court_count loop
       next_game:=next_game+1;
       insert into public.waitlist_courts(court_number,game_number,started_at) values(court,next_game,now());
@@ -176,7 +179,10 @@ begin
   else
     update public.waitlist_players set status='waiting' where status='current' and court_number is null and queue_position>last_position;
   end if;
-  next_game:=greatest(cfg.game_number,(select coalesce(max(game_number),0) from public.waitlist_courts))+1;
+  next_game:=greatest(
+    (select coalesce(max(game_number),0) from public.waitlist_courts),
+    (select coalesce(max(game_number),0) from public.past_games)
+  )+1;
   update public.waitlist_courts set game_number=next_game,started_at=now() where court_number=p_court_number;
   update public.waitlist_config set game_number=next_game,updated_at=now() where id;
   perform public.fill_open_court_slots();

@@ -1,8 +1,11 @@
+drop function if exists public.admin_move_player(uuid,text,integer);
+drop function if exists public.admin_move_player(uuid,text,integer,integer);
+
 create or replace function public.admin_move_player(
   p_player_id uuid,
   p_status text,
   p_index integer,
-  p_court_number integer default null
+  p_court_number integer
 )
 returns jsonb language plpgsql security definer set search_path=public as $$
 declare

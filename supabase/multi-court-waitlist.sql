@@ -189,7 +189,11 @@ end; $$;
 grant execute on function public.admin_set_court_count(integer) to authenticated;
 grant execute on function public.end_court_game(integer) to authenticated;
 
--- Court-aware admin movement. The original move function treated every
+-- Court-aware admin movement is maintained in court-aware-admin-move.sql.
+-- Remove the legacy overload so PostgREST never has two candidate functions.
+drop function if exists public.admin_move_player(uuid,text,integer);
+
+/* Court-aware admin movement. The original move function treated every
 -- current player as belonging to one 12-player game, so dragging somebody
 -- from a court into the waitlist could be rejected or collapse later courts.
 create or replace function public.admin_move_player(p_player_id uuid,p_status text,p_index integer)
@@ -265,6 +269,7 @@ begin
   return jsonb_build_object('message','Player moved.','source_court',source_court);
 end; $$;
 grant execute on function public.admin_move_player(uuid,text,integer) to authenticated;
+*/
 
 -- Joining always enters the shared queue first, then the same allocator used
 -- by game changes fills Court 1, Court 2, and later courts in order. The

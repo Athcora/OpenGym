@@ -1,9 +1,13 @@
 .pencil {
-  font-size: 0;
+  font-size: 0.92rem;
 }
 
 .pencil::before {
   content: "✎";
   font-size: 0.92rem;
   line-height: 1;
+}
+
+.pencil::before {
+  content: none;
 }

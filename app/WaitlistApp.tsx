@@ -842,14 +842,18 @@ function resolveDropPlacement(x:number,y:number,fallback:DropPlacement|null=null
  // Resolve against the row physically under the pointer. The rendered list is a
  // preview, so data-player-index is intentionally not used here: it includes the
  // moving row and produces an off-by-one position when the RPC persists the drop.
- // Treat each player/group midpoint as a stable insertion boundary. This avoids
- // hit-testing the row that React just shifted, which made slow drags bounce or
- // leave the placeholder stuck at its original position.
- for(const block of blocks){
-  const firstIndex=rows.indexOf(block.first);const rectFirst=block.first.getBoundingClientRect();const rectLast=block.last.getBoundingClientRect();
-  if(point.y<(rectFirst.top+rectLast.bottom)/2)return{status,index:firstIndex,marker:`before:${block.first.dataset.playerId}`,courtNumber};
- }
- const last=blocks.at(-1)!;return{status,index:rows.length,marker:`after:${last.last.dataset.playerId}`,courtNumber};
+ // Calculate the slot directly from the cursor's vertical position. The row
+ // animation may move elements under the cursor, so element hit-testing creates
+ // a feedback loop and leaves the placeholder stuck. A fixed row grid makes the
+ // highlighted slot follow the pointer predictably while the list previews.
+ const header=card.querySelector<HTMLElement>('header');const contentTop=header?.getBoundingClientRect().bottom??card.getBoundingClientRect().top;
+ const heights=rows.map(row=>row.getBoundingClientRect().height).filter(height=>height>0);const rowHeight=heights.length?heights.sort((a,b)=>a-b)[Math.floor(heights.length/2)]:62;
+ let insertion=Math.max(0,Math.min(Math.round((point.y-contentTop)/rowHeight-.5),rows.length));
+ // Never split an existing group: snap a cursor landing inside one to the
+ // closest outside edge of that group.
+ for(const block of blocks){const firstIndex=rows.indexOf(block.first);const lastIndex=rows.indexOf(block.last);if(insertion>firstIndex&&insertion<=lastIndex){const firstRect=block.first.getBoundingClientRect();const lastRect=block.last.getBoundingClientRect();insertion=point.y<(firstRect.top+lastRect.bottom)/2?firstIndex:lastIndex+1;break;}}
+ if(insertion>=rows.length){const last=rows.at(-1)!;return{status,index:rows.length,marker:`after:${last.dataset.playerId}`,courtNumber};}
+ return{status,index:insertion,marker:`before:${rows[insertion].dataset.playerId}`,courtNumber};
 }
 
 function QueueCard({title,subtitle,status,players,start,savedQueuePositions,me,admin=false,operator=false,spotlight=false,groupSpotlight=false,editing,editName,setEditing,setEditName,saveName,requestGroup,leaveGroup,leaveOwnGroup,adminLeaveGroup,permissions,adminSitOut,adminLeave,dragging,dragOver,setDragging,setDragOver,movePlayer,projections,projectedCourts}:{title:string;subtitle:string;status:'current'|'waiting';players:Player[];start:number;savedQueuePositions:Map<string,number|null>;me?:Player;admin?:boolean;operator?:boolean;spotlight?:boolean;groupSpotlight?:boolean;editing:string|null;editName:string;setEditing:(v:string|null)=>void;setEditName:(v:string)=>void;saveName:(p:Player)=>void;requestGroup:(p:Player)=>Promise<void>;leaveGroup:(p:Player)=>Promise<void>;leaveOwnGroup:()=>void;adminLeaveGroup:(p:Player)=>Promise<void>;permissions:(p:Player)=>void;adminSitOut:(p:Player)=>void;adminLeave:(p:Player)=>void;dragging:string|null;dragOver:DropPlacement|null;setDragging:(v:string|null)=>void;setDragOver:(v:DropPlacement|null)=>void;movePlayer:(id:string,status:'current'|'waiting',index:number,courtNumber?:number|null)=>Promise<void>;projections?:Map<string,number>;projectedCourts?:Map<string,number>}){

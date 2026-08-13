@@ -7,13 +7,3 @@
   font-size: 0.92rem;
   line-height: 1;
 }
-
-/* Keep these frequently used controls immune to legacy encoded text. */
-.add-player-tool {
-  font-size: 0;
-}
-
-.add-player-tool::before {
-  content: "Add player";
-  font-size: 0.9rem;
-}

@@ -60,6 +60,7 @@ export default function App() {
   const [players,setPlayers]=useState<Player[]>([]);
   const [games,setGames]=useState<Game[]>([]);
   const [config,setConfig]=useState<Config>({game_number:1,max_players:12,court_count:1,mode:'regular',geofence_enabled:false,geofence_radius_m:150});
+  const [courtCountDraft,setCourtCountDraft]=useState('1');
   const [courts,setCourts]=useState<Court[]>([{court_number:1,game_number:1,started_at:new Date(0).toISOString()}]);
   const [screen,setScreen]=useState<'welcome'|'email'|'name'|'admin'|'queue'|'history'|'player-history'|'members'|'restricted'|'add-player'|'offline-rejoin'|'admin-history'>('welcome');
   const [first,setFirst]=useState(''); const [last,setLast]=useState('');
@@ -330,6 +331,13 @@ export default function App() {
     if(error){setNotice({title:'Could not complete that',message:error.message});return false;}
     if(data?.message&&showSuccess)setNotice({title:'Done',message:data.message}); await refresh(); return true;
   }
+  async function commitCourtCount(){
+    const parsed=Number(courtCountDraft);
+    const value=Number.isFinite(parsed)&&courtCountDraft!==''?Math.max(1,Math.min(12,Math.trunc(parsed))):config.court_count;
+    setCourtCountDraft(String(value));
+    if(value!==config.court_count)await rpc('admin_set_court_count',{p_court_count:value},false);
+  }
+  useEffect(()=>setCourtCountDraft(String(config.court_count)),[config.court_count]);
   async function finishJoin(f:string,l:string){if(await rpc('join_waitlist',{p_first_name:f,p_last_name:l},false)){setScreen('queue');if(config.mode!=='teams'&&user?.user_metadata?.opengym_tutorial_version!==TUTORIAL_VERSION)setOnboarding('disclaimer');}}
   async function join(event:FormEvent){event.preventDefault(); const f=cleanName(first),l=cleanName(last); if(!f){setNotice({title:'Enter your name',message:'Your name needs to contain letters.'});return;}
     if(isInappropriateName(`${first} ${last}`)){setNotice(inappropriateNameNotice);return;}
@@ -670,7 +678,7 @@ export default function App() {
     <header className="topbar"><Logo compact/><div className="top-actions">{pushSupported()&&!notifications&&<button className="icon-button" onClick={turnOnNotifications}>Enable alerts</button>}<button className="icon-button" onClick={()=>ask('Log out?','This will remove you from the waitlist and sign you out.','Log out',async()=>{await rpc('leave_waitlist',{},false);await logout()})}>Log out</button><label className="language-picker" aria-label="Change language"><span className="language-symbol" aria-hidden="true"><i>🌐</i><b>{language==='en'?'ENG':language==='es'?'ESP':'中文'}</b></span><select value={language} onChange={event=>setLanguage(event.target.value as AppLanguage)}><option value="en">English</option><option value="es">Español</option><option value="zh-CN">简体中文</option></select></label></div></header>
     <main className="queue-page">
       <section className="game-heading"><div><span className="kicker">{admin?'LIVE QUEUE · ADMIN':host?'LIVE QUEUE · HOST':'LIVE QUEUE'}</span><h1>{translateUiText(courts.length>1?`Game ${courts.map(court=>court.game_number).join(' · ')}`:`Game ${courts[0]?.game_number??config.game_number}`,language)}</h1></div><span className="live-pill"><i/>Live</span></section>
-      {operator&&<section className="court-count-control"><label htmlFor="court-count"># of courts</label><input id="court-count" type="number" inputMode="numeric" min="1" max="12" value={config.court_count} onChange={event=>{const value=Math.max(1,Math.min(12,Number(event.target.value)||1));if(value!==config.court_count)void rpc('admin_set_court_count',{p_court_count:value},false)}}/></section>}
+      {operator&&<section className="court-count-control"><label htmlFor="court-count"># of courts</label><input id="court-count" type="number" inputMode="numeric" min="1" max="12" value={courtCountDraft} onChange={event=>setCourtCountDraft(event.target.value.replace(/\D/g,'').slice(0,2))} onBlur={()=>void commitCourtCount()} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();event.currentTarget.blur()}}}/></section>}
       {admin&&facilityMenu&&<section className="facility-menu"><strong>Select facility</strong><p>Choose the affiliated recreation center for on-site check-in.</p><button className={config.geofence_enabled?'selected':''} onClick={()=>void chooseFacility('PHR')}><span>PHR</span><small>Pacific Highlands Ranch<br/>5977 Village Center Loop Rd, San Diego, CA 92130</small></button><button className={!config.geofence_enabled?'selected':''} onClick={()=>void chooseFacility('NA')}><span>N/A</span><small>No facility location requirement</small></button></section>}
       {adminGrouping&&<aside className="admin-group-toolbar"><span>{adminGroupIds.length}/6 selected</span><button className="group-cancel" onClick={cancelAdminGrouping}>Cancel</button><button className="group-done" onClick={previewAdminGroup}>Done</button></aside>}
       {(adminSubstituting||playerSubstituting)&&<aside className="admin-group-toolbar substitute-toolbar"><span>{substituteIds.length}/{adminSubstituting?2:1} selected</span><button className="group-cancel" onClick={cancelSubstitute}>Cancel</button><button className="group-done" onClick={adminSubstituting?previewAdminSubstitute:previewPlayerSubstitute}>Continue</button></aside>}

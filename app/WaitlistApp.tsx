@@ -833,6 +833,8 @@ function resolveDropPlacement(x:number,y:number,fallback:DropPlacement|null=null
  const card=cards.at(-1);if(!card)return fallback;const status=card.dataset.dropStatus as 'current'|'waiting';
  const currentCards=[...document.querySelectorAll<HTMLElement>('[data-drop-status="current"]')];
  const courtNumber=status==='current'?Math.max(1,currentCards.indexOf(card)+1):null;
+ const placeholder=card.querySelector<HTMLElement>('[data-player-id].dragging');
+ if(placeholder&&fallback&&fallback.status===status&&fallback.courtNumber===courtNumber){const rect=placeholder.getBoundingClientRect();if(point.y>=rect.top&&point.y<=rect.bottom)return fallback;}
  const rows=[...card.querySelectorAll<HTMLElement>('[data-player-id]')].filter(row=>!row.classList.contains('dragging'));
  if(!rows.length)return{status,index:0,marker:'empty',courtNumber};
  const blocks:Array<{first:HTMLElement;last:HTMLElement}>=[];

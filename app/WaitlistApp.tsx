@@ -775,10 +775,10 @@ function WaitlistDisclaimer({mode,language,acknowledge}:{mode:Config['mode'];lan
  return <div className="onboarding-backdrop"><section className="onboarding-card" role="dialog" aria-modal="true" aria-labelledby="waitlist-mode-title"><span className="onboarding-kicker">BEFORE YOU START</span><h2 id="waitlist-mode-title">{title}</h2><p>{details} <strong>{permission}</strong></p><button className="hero-button" onClick={acknowledge}>I acknowledge</button></section></div>;
 }
 const tutorialSteps=[
- {title:'Next Game action button',message:'This button appears only when you are in the current game. Pressing it ends that game, advances the entire queue, and notifies every playerâ€”so use it only when the game is truly over.'},
+ {title:'Next Game action button',message:'This button appears only when you are in the current game. Pressing it ends that game, advances the entire queue, and notifies every player—so use it only when the game is truly over.'},
  {title:'Sit Out action button',message:'Sit Out makes only you skip the next game. Everyone else keeps their order. After skipping one game, you receive priority for the following game.'},
  {title:'Leave action button',message:'Leave removes only your name from the current game or waitlist. Other players remain in order, and you can join again later.'},
- {title:'Who is playing now',message:'The players in this card are in the current game. Only theyâ€”and adminsâ€”can start the next game.'},
+ {title:'Who is playing now',message:'The players in this card are in the current game. Only they—and admins—can start the next game.'},
  {title:'Waitlist',message:'Your number is your queue position. When you are waiting, your projected game appears beside your name.'},
  {title:'Group Up',message:'Use Group Up beside another player when you want to play together.'},
 ];

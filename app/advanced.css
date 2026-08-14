@@ -47,11 +47,18 @@ body.mobile-admin-dragging { overscroll-behavior:none; }
 .queue-page:not(:has(.court-section ~ .court-section)) .admin-tools>.next-game-tool{display:block}
 .queue-page:not(:has(.court-section ~ .court-section)) .court-next-button{display:none}
 .court-count-control{display:flex;align-items:center;gap:10px;margin:-6px 0 14px;color:#8f95a4;font-size:.78rem;font-weight:800;letter-spacing:.06em}
+.court-count-input{display:flex;align-items:stretch;gap:5px}
 .court-count-control input{width:64px;border:1px solid #3b3e47;border-radius:10px;background:#25262b;color:#fff;padding:8px 10px;text-align:center;font-weight:850}
+.court-count-steppers{display:grid;grid-template-rows:1fr 1fr;gap:3px}
+.court-count-steppers button{display:grid;place-items:center;width:30px;min-height:18px;border:1px solid #3b3e47;border-radius:7px;background:#2d3038;color:#dce5f5;font-size:.72rem;font-weight:900;line-height:1;padding:0;touch-action:manipulation}
+.court-count-steppers button:disabled{opacity:.35}
+.court-count-steppers button:not(:disabled):hover,.court-count-steppers button:not(:disabled):focus-visible{border-color:#5b91d8;background:#35445b;box-shadow:0 0 0 3px rgba(91,145,216,.16)}
 .court-section{position:relative;margin-top:18px}
 .court-next-button{width:100%;min-height:46px;margin:0 0 9px;border:1px solid #3b8fe1;border-radius:13px;background:#2878c8;color:#fff;font-weight:850;cursor:pointer}
 .court-next-button:disabled{opacity:.45;cursor:not-allowed}
 .theme-light .court-count-control input{background:#fff;color:#20242c;border-color:#dbe0e6}
+.theme-light .court-count-steppers button{background:#f1f5f9;color:#26364c;border-color:#d5dce6}
+.theme-light .court-count-steppers button:not(:disabled):hover,.theme-light .court-count-steppers button:not(:disabled):focus-visible{border-color:#4f83c4;background:#e3edf9;box-shadow:0 0 0 3px rgba(79,131,196,.14)}
 .theme-light .court-next-button{background:#2d7fce;border-color:#4291dd}
 .admin-tools select,.admin-tools>button,.admin-tools .undo-redo-controls { min-width:0; width:100%; }
 .admin-tools select,.admin-tools>button { padding:10px 8px; font-size:.78rem; white-space:normal; }

@@ -718,7 +718,7 @@ function previewAdminMove(source:Player[],playerId:string,targetStatus:'current'
   const removedBefore=originalTarget.slice(0,targetIndex).filter(player=>movingIds.has(player.id)).length;
   const targetList=targetStatus==='current'?current:waiting;const [markerSide,markerId]=targetMarker?.split(':')??[];const markerIndex=markerId?targetList.findIndex(player=>player.id===markerId):-1;
   const insertion=Math.max(0,Math.min(markerIndex>=0?markerIndex+(markerSide==='after'?1:0):targetIndex-removedBefore,targetList.length));
-  const movedBlock=movingMembers.map(player=>({...player,status:targetStatus,court_number:targetStatus==='current'?targetCourt:null,queue_position:null}));
+  const movedBlock=movingMembers.map(player=>({...player,status:targetStatus,court_number:targetStatus==='current'?targetCourt:null,queue_position:insertion+1}));
   if(targetStatus==='current')current.splice(insertion,0,...movedBlock);else waiting.splice(insertion,0,...movedBlock);
   if(current.length>maxPlayers){const overflow=current.splice(maxPlayers);waiting=[...overflow.map(player=>({...player,status:'waiting' as PlayerStatus})),...waiting];}
   if(current.length<maxPlayers){
@@ -729,7 +729,12 @@ function previewAdminMove(source:Player[],playerId:string,targetStatus:'current'
       const blockIds=new Set(block.map(player=>player.id));waiting=waiting.filter(player=>!blockIds.has(player.id));current.push(...block.map(player=>({...player,status:'current' as PlayerStatus,court_number:targetCourt})));cursor=0;
     }
   }
-  const active=[...otherCourts,...current,...waiting].sort((a,b)=>a.status===b.status?((a.court_number??999)-(b.court_number??999)||byPosition(a,b)):a.status==='current'?-1:1).map((player,index)=>({...player,queue_position:index+1}));
+  // `current` and `waiting` already contain the exact preview insertion order.
+  // Re-sorting here used the dragged player's temporary null queue_position and
+  // pushed its highlighted placeholder to the bottom even though nearby rows
+  // previewed the correct shift.
+  const orderedOtherCourts=[...otherCourts].sort((a,b)=>(a.court_number??1)-(b.court_number??1)||byPosition(a,b));
+  const active=[...orderedOtherCourts,...current,...waiting].map((player,index)=>({...player,queue_position:index+1}));
   const activeIds=new Set(active.map(player=>player.id));return [...active,...source.filter(player=>!activeIds.has(player.id)&&!movingIds.has(player.id))];
 }
 function projectQueueGames(players:Player[],currentGame:number,maxPlayers:number){

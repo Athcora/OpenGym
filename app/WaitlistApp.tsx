@@ -87,7 +87,7 @@ export default function App() {
   const [geofenceReturn,setGeofenceReturn]=useState<GeofenceReturn|null>(null); const [returnClock,setReturnClock]=useState(Date.now());
   const [permissionPlayer,setPermissionPlayer]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0);
   const [pendingNextGameEvent,setPendingNextGameEvent]=useState<{message:string}|null>(null);
-  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false);
+  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null);
   const activeStatusRef=useRef<PlayerStatus|null>(null); const waitlistModeRef=useRef<Config['mode']>('regular');
   const rejoinLookupAttempts=useRef(0);
   useEffect(()=>{
@@ -102,6 +102,16 @@ export default function App() {
     document.body.classList.toggle(className,notice?.confirm==='Reverse');
     return()=>document.body.classList.remove(className);
   },[notice?.title]);
+  useEffect(()=>{
+    const commitWhenTappingOutside=(event:PointerEvent)=>{
+      const input=courtCountInputRef.current;
+      const target=event.target as Node|null;
+      if(!input||!target||input.closest('.court-count-input')?.contains(target))return;
+      if(input.value!==String(config.court_count))void commitCourtCount(input);
+    };
+    document.addEventListener('pointerdown',commitWhenTappingOutside);
+    return()=>document.removeEventListener('pointerdown',commitWhenTappingOutside);
+  },[config.court_count]);
 
   const activeMe=players.find(p=>p.user_id===user?.id)??null;
   // The live queue is authoritative. A cached inactive record must never hide
@@ -337,13 +347,13 @@ export default function App() {
     if(value!==config.court_count)await rpc('admin_set_court_count',{p_court_count:value},false);
   }
   async function stepCourtCount(delta:number){
-    const current=Number(config.court_count)||1;
+    const input=courtCountInputRef.current;
+    if(!input)return;
+    const current=Number(input.value)||Number(config.court_count)||1;
     const value=Math.max(1,Math.min(12,current+delta));
     if(value===current)return;
-    const input=document.getElementById('court-count') as HTMLInputElement|null;
-    if(input)input.value=String(value);
-    setConfig(previous=>({...previous,court_count:value}));
-    if(!await rpc('admin_set_court_count',{p_court_count:value},false))setConfig(previous=>({...previous,court_count:current}));
+    input.value=String(value);
+    await commitCourtCount(input);
   }
   async function finishJoin(f:string,l:string){if(await rpc('join_waitlist',{p_first_name:f,p_last_name:l},false)){setScreen('queue');if(config.mode!=='teams'&&user?.user_metadata?.opengym_tutorial_version!==TUTORIAL_VERSION)setOnboarding('disclaimer');}}
   async function join(event:FormEvent){event.preventDefault(); const f=cleanName(first),l=cleanName(last); if(!f){setNotice({title:'Enter your name',message:'Your name needs to contain letters.'});return;}
@@ -685,7 +695,7 @@ export default function App() {
     <header className="topbar"><Logo compact/><div className="top-actions">{pushSupported()&&!notifications&&<button className="icon-button" onClick={turnOnNotifications}>Enable alerts</button>}<button className="icon-button" onClick={()=>ask('Log out?','This will remove you from the waitlist and sign you out.','Log out',async()=>{await rpc('leave_waitlist',{},false);await logout()})}>Log out</button><label className="language-picker" aria-label="Change language"><span className="language-symbol" aria-hidden="true"><i>🌐</i><b>{language==='en'?'ENG':language==='es'?'ESP':'中文'}</b></span><select value={language} onChange={event=>setLanguage(event.target.value as AppLanguage)}><option value="en">English</option><option value="es">Español</option><option value="zh-CN">简体中文</option></select></label></div></header>
     <main className="queue-page">
       <section className="game-heading"><div><span className="kicker">{admin?'LIVE QUEUE · ADMIN':host?'LIVE QUEUE · HOST':'LIVE QUEUE'}</span><h1>{translateUiText(courts.length>1?`Game ${courts.map(court=>court.game_number).join(' · ')}`:`Game ${courts[0]?.game_number??config.game_number}`,language)}</h1></div><span className="live-pill"><i/>Live</span></section>
-      {operator&&<section className="court-count-control"><label htmlFor="court-count"># of courts</label><div className="court-count-input"><input key={config.court_count} id="court-count" type="text" inputMode="numeric" pattern="[0-9]*" defaultValue={config.court_count} aria-label="Number of courts" onInput={event=>{event.currentTarget.value=event.currentTarget.value.replace(/\D/g,'').slice(0,2)}} onBlur={event=>void commitCourtCount(event.currentTarget)} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();event.currentTarget.blur()}}}/><div className="court-count-steppers"><button type="button" aria-label="Increase courts" disabled={busy||config.court_count>=12} onClick={()=>void stepCourtCount(1)}>&uarr;</button><button type="button" aria-label="Decrease courts" disabled={busy||config.court_count<=1} onClick={()=>void stepCourtCount(-1)}>&darr;</button></div></div></section>}
+      {operator&&<section className="court-count-control"><label htmlFor="court-count"># of courts</label><div className="court-count-input"><input ref={courtCountInputRef} key={config.court_count} id="court-count" type="text" inputMode="numeric" pattern="[0-9]*" defaultValue={config.court_count} aria-label="Number of courts" onInput={event=>{event.currentTarget.value=event.currentTarget.value.replace(/\D/g,'').slice(0,2)}} onBlur={event=>void commitCourtCount(event.currentTarget)} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();event.currentTarget.blur()}}}/><div className="court-count-steppers"><button type="button" aria-label="Increase courts" disabled={busy||config.court_count>=12} onClick={()=>void stepCourtCount(1)}>&uarr;</button><button type="button" aria-label="Decrease courts" disabled={busy||config.court_count<=1} onClick={()=>void stepCourtCount(-1)}>&darr;</button></div></div></section>}
       {admin&&facilityMenu&&<section className="facility-menu"><strong>Select facility</strong><p>Choose the affiliated recreation center for on-site check-in.</p><button className={config.geofence_enabled?'selected':''} onClick={()=>void chooseFacility('PHR')}><span>PHR</span><small>Pacific Highlands Ranch<br/>5977 Village Center Loop Rd, San Diego, CA 92130</small></button><button className={!config.geofence_enabled?'selected':''} onClick={()=>void chooseFacility('NA')}><span>N/A</span><small>No facility location requirement</small></button></section>}
       {adminGrouping&&<aside className="admin-group-toolbar"><span>{adminGroupIds.length}/6 selected</span><button className="group-cancel" onClick={cancelAdminGrouping}>Cancel</button><button className="group-done" onClick={previewAdminGroup}>Done</button></aside>}
       {(adminSubstituting||playerSubstituting)&&<aside className="admin-group-toolbar substitute-toolbar"><span>{substituteIds.length}/{adminSubstituting?2:1} selected</span><button className="group-cancel" onClick={cancelSubstitute}>Cancel</button><button className="group-done" onClick={adminSubstituting?previewAdminSubstitute:previewPlayerSubstitute}>Continue</button></aside>}

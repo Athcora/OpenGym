@@ -337,8 +337,13 @@ export default function App() {
     if(value!==config.court_count)await rpc('admin_set_court_count',{p_court_count:value},false);
   }
   async function stepCourtCount(delta:number){
-    const value=Math.max(1,Math.min(12,config.court_count+delta));
-    if(value!==config.court_count)await rpc('admin_set_court_count',{p_court_count:value},false);
+    const current=Number(config.court_count)||1;
+    const value=Math.max(1,Math.min(12,current+delta));
+    if(value===current)return;
+    const input=document.getElementById('court-count') as HTMLInputElement|null;
+    if(input)input.value=String(value);
+    setConfig(previous=>({...previous,court_count:value}));
+    if(!await rpc('admin_set_court_count',{p_court_count:value},false))setConfig(previous=>({...previous,court_count:current}));
   }
   async function finishJoin(f:string,l:string){if(await rpc('join_waitlist',{p_first_name:f,p_last_name:l},false)){setScreen('queue');if(config.mode!=='teams'&&user?.user_metadata?.opengym_tutorial_version!==TUTORIAL_VERSION)setOnboarding('disclaimer');}}
   async function join(event:FormEvent){event.preventDefault(); const f=cleanName(first),l=cleanName(last); if(!f){setNotice({title:'Enter your name',message:'Your name needs to contain letters.'});return;}

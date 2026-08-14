@@ -869,7 +869,7 @@ function QueueCard({title,subtitle,status,players,start,savedQueuePositions,me,a
  useEffect(()=>{if(!projectedCourts)return;const added:HTMLElement[]=[];for(const [playerId,court] of projectedCourts){const row=cardRef.current?.querySelector<HTMLElement>(`[data-player-id="${playerId}"]`);const gameLabel=row?.querySelector<HTMLElement>('.player-name small:not(.sitout-priority-label)');if(!gameLabel||gameLabel.querySelector('.projected-court'))continue;const label=document.createElement('span');label.className='projected-court';label.textContent=` · Court ${court}`;gameLabel.appendChild(label);added.push(label)}return()=>added.forEach(label=>label.remove())},[projectedCourts,players]);
  const mobileDrag=useRef<{timer:number|null;active:boolean;preview:HTMLElement|null;player:Player|null;startX:number;startY:number;lastX:number;lastY:number;frame:number|null}>({timer:null,active:false,preview:null,player:null,startX:0,startY:0,lastX:0,lastY:0,frame:null});
  const dragOverRef=useRef<DropPlacement|null>(dragOver);
- useEffect(()=>{dragOverRef.current=dragOver},[dragOver]);
+ useEffect(()=>{if(dragOver||!mobileDrag.current.active)dragOverRef.current=dragOver},[dragOver]);
  const sameTarget=(a:DropPlacement|null,b:DropPlacement|null)=>Boolean(a&&b&&a.status===b.status&&a.index===b.index&&a.marker===b.marker&&a.courtNumber===b.courtNumber);
  const resetDragTarget=()=>{dragOverRef.current=null;setDragOver(null)};
  const commitDragTarget=(next:DropPlacement|null,_y:number)=>{const current=dragOverRef.current;if((!current&&!next)||sameTarget(current,next))return current;dragOverRef.current=next;setDragOver(next);return next};

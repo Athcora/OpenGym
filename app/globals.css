@@ -25,6 +25,6 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 .court-section.drag-hidden-court {
-  visibility: hidden;
+  display: none;
   pointer-events: none;
 }

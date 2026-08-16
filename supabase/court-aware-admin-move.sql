@@ -50,7 +50,7 @@ begin
       where id=player.id or (player.group_id is not null and group_id=player.group_id)
     )
     update public.waitlist_players p set status='waiting',court_number=null,
-      queue_position=target_position-moving_count+moving.rn,updated_at=now()
+      queue_position=target_position-moving_count+moving.rn-1,updated_at=now()
       from moving where p.id=moving.id;
   else
     select queue_position into target_position from public.waitlist_players
@@ -66,7 +66,7 @@ begin
       where id=player.id or (player.group_id is not null and group_id=player.group_id)
     )
     update public.waitlist_players p set status='current',court_number=destination_court,
-      sitout_priority=false,queue_position=target_position-moving_count+moving.rn,updated_at=now()
+      sitout_priority=false,queue_position=target_position-moving_count+moving.rn-1,updated_at=now()
       from moving where p.id=moving.id;
 
     -- Only the players displaced beyond this court's 12 spots move to the
@@ -82,7 +82,7 @@ begin
       where status in ('waiting','sitout')
     )
     update public.waitlist_players p set status='waiting',court_number=null,
-      queue_position=queue_head.head-moving_count+displaced.rn,updated_at=now()
+      queue_position=queue_head.head-moving_count+displaced.rn-1,updated_at=now()
       from displaced cross join queue_head where p.id=displaced.id;
   end if;
 

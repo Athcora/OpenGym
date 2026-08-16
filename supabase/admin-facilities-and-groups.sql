@@ -97,14 +97,10 @@ begin
     update public.waitlist_players set group_id=null,updated_at=now() where group_id=old_group;
   end loop;
 
-  with ranked as (
-    select id,row_number() over(order by case status when 'current' then 0 else 1 end,queue_position,id) rn
-    from public.waitlist_players where status in ('current','waiting','sitout')
-  )
-  update public.waitlist_players p set queue_position=ranked.rn from ranked where p.id=ranked.id;
-
   -- Preserve every unaffected court. The legacy normalizer treated all
   -- current players as one game and could empty later courts while grouping.
+  -- Do not rank before refilling: doing so pushes the temporarily-waiting
+  -- selected group behind every current player and loses its chosen anchor.
   perform public.fill_open_court_slots();
 
   select min(queue_position),max(queue_position) into first_position,last_position

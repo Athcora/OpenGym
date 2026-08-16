@@ -84,20 +84,10 @@ begin
      or (target.group_id is not null and group_id=target.group_id)
      or (requester.group_id is not null and group_id=requester.group_id);
 
-  with ranked as (
-    select id,row_number() over(order by queue_position,id) rn
-    from public.waitlist_players
-    where status in ('current','waiting')
-  )
-  update public.waitlist_players p
-  set queue_position=ranked.rn
-  from ranked
-  where p.id=ranked.id;
-
   -- Grouping can move a current-game player back to the later player's
   -- position. Refill every open game spot from the front of the waitlist,
   -- while keeping existing groups together.
-  -- Refill open spots without flattening all active courts into one game.
+  -- Refill before ranking so the merged group keeps its anchor position.
   perform public.fill_open_court_slots();
 
   update public.group_requests set status='accepted',answered_at=now() where id=request.id;

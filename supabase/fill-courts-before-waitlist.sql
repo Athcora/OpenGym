@@ -4,14 +4,9 @@ create or replace function public.fill_open_court_slots()
 returns void language plpgsql security definer set search_path=public as $$
 declare c record; open_spots integer; candidate record; group_size integer;
 begin
-  with settings as (select max_players from public.waitlist_config where id), ranked as (
-    select p.id,row_number() over(order by p.court_number,p.queue_position,p.id) rn,settings.max_players
-    from public.waitlist_players p cross join settings where p.status='current'
-  )
-  update public.waitlist_players p
-  set court_number=((ranked.rn-1)/ranked.max_players)+1,updated_at=now()
-  from ranked where p.id=ranked.id;
-
+  -- Never redistribute players who are already playing. Fill each court's
+  -- vacancies from the shared queue, in court order, so an operation on one
+  -- court cannot silently alter another court.
   for c in select court_number from public.waitlist_courts order by court_number loop
     select greatest(cfg.max_players-count(p.id),0) into open_spots
     from public.waitlist_config cfg left join public.waitlist_players p

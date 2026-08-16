@@ -831,7 +831,13 @@ function createPlayerDragPreview(player:Player,players:Player[],start:number){
  const sourceRow=document.querySelector<HTMLElement>(`[data-player-id="${player.id}"]`);if(sourceRow)preview.style.width=`${sourceRow.getBoundingClientRect().width}px`;
  return preview;
 }
-function hideOtherCourtsForDrag(row:HTMLElement){const source=row.closest('.court-section');document.querySelectorAll<HTMLElement>('.court-section').forEach(section=>section.classList.toggle('drag-hidden-court',section!==source));}
+function hideOtherCourtsForDrag(row:HTMLElement){
+ const source=row.closest('.court-section');
+ // A player picked up from a court can move only within that court and the
+ // shared waitlist. A player picked up from the waitlist can move into any
+ // court, so every court must remain visible.
+ document.querySelectorAll<HTMLElement>('.court-section').forEach(section=>section.classList.toggle('drag-hidden-court',Boolean(source)&&section!==source));
+}
 function clearDragArtifacts(){document.querySelectorAll('.mobile-admin-drag-preview,.admin-drag-preview').forEach(preview=>preview.remove());document.querySelectorAll('.court-section.drag-hidden-court').forEach(section=>section.classList.remove('drag-hidden-court'));document.body.classList.remove('mobile-admin-dragging');}
 function captureDropViewport(status:'current'|'waiting',courtNumber:number|null){
  const cards=[...document.querySelectorAll<HTMLElement>(`[data-drop-status="${status}"]`)];

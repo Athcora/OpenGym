@@ -103,7 +103,9 @@ begin
   )
   update public.waitlist_players p set queue_position=ranked.rn from ranked where p.id=ranked.id;
 
-  perform public.normalize_active_waitlist();
+  -- Preserve every unaffected court. The legacy normalizer treated all
+  -- current players as one game and could empty later courts while grouping.
+  perform public.fill_open_court_slots();
 
   select min(queue_position),max(queue_position) into first_position,last_position
   from public.waitlist_players where group_id=new_group;

@@ -218,6 +218,7 @@ body.mobile-admin-dragging { overscroll-behavior:none; }
 .player-row.group-start { border-top:3px solid #54b88f; border-bottom-color:transparent; border-radius:14px 14px 0 0; }
 .player-row.group-middle { border-bottom-color:transparent; }
 .player-row.group-end { border-bottom:3px solid #54b88f; border-radius:0 0 14px 14px; }
+.player-row.group-end + .player-row.group-start { margin-top:6px; }
 .player-row.group-single { border:3px solid #54b88f; border-radius:14px; }
 .theme-light .player-row.grouped { border-left-color:#26966a; border-right-color:#26966a; }
 .theme-light .player-row.group-start { border-top-color:#26966a; }

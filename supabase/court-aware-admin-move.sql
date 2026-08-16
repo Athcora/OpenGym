@@ -94,6 +94,8 @@ begin
     for candidate in
       select coalesce(group_id,id) block_id,count(*)::integer block_size,min(queue_position) first_position
       from public.waitlist_players where status='waiting'
+        and id<>player.id
+        and (player.group_id is null or group_id is distinct from player.group_id)
       group by coalesce(group_id,id) order by min(queue_position)
     loop
       if candidate.block_size<=open_spots then

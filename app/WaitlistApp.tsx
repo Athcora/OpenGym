@@ -300,7 +300,8 @@ export default function App() {
           setNotice(canReverse?{title:'Next game started',message:event.message,confirm:'Reverse',actionTone:'danger',cancelLabel:'OK',action:reverseNextGame}:{title:'Waitlist update',message:event.message});
           return;
         }
-        if(event.actor_user_id!==session?.user.id&&event.message&&!quietEvents.has(event.event_type??''))setNotice({title:'Waitlist update',message:event.message});
+        const quietSitOut=/sit[_-]?out/i.test(event.event_type??'');
+        if(event.actor_user_id!==session?.user.id&&event.message&&!quietSitOut&&!quietEvents.has(event.event_type??''))setNotice({title:'Waitlist update',message:event.message});
       }).subscribe();
     realtimeChannel.current=channel;
     return()=>{if(realtimeChannel.current===channel)realtimeChannel.current=null;void supabase.removeChannel(channel)};
@@ -444,6 +445,7 @@ export default function App() {
     if(notification.message.startsWith('HOST_APPOINTED|')){if(!hostAppointmentActive.current){hostAppointmentActive.current=true;setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:true}:player));setHostAppointmentNotice(notification.message.split('|')[1]||'The admin appointed you as a Session Host.')}return;}
     if(notification.message.startsWith('HOST_REMOVED|')){hostAppointmentActive.current=false;setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:false}:player));setHostAppointmentNotice(null);setHostTutorial(false);setNotice({title:'Host permissions removed',message:notification.message.split('|')[1]||'Your Session Host permissions were removed.'});return;}
     if(notification.message.startsWith('OPERATOR_ACTION|')){setNotice({title:'An admin or host updated your player',message:notification.message.split('|')[1]||'An admin or host performed an action on your player.',cancelLabel:'Okay'});return;}
+    if(/sit[\s-]?out/i.test(notification.message))return;
     setNotice({title:notification.message.includes('wants to group with you')?'Group request':'Group update',message:notification.message});
   }
   async function clearUnreadHostNotifications(activeUserId:string,prefix:string){

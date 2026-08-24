@@ -196,6 +196,12 @@ begin
   else
     update public.waitlist_players set status='waiting' where status='current' and court_number is null and queue_position>last_position;
   end if;
+  -- A sit-out skips exactly the game recorded in sitout_from_game. Once that
+  -- game has finished, return the player/group to the shared queue before
+  -- filling the newly opened court so their priority applies immediately.
+  update public.waitlist_players
+    set status='waiting',sitout_from_game=null,updated_at=now()
+    where status='sitout' and sitout_from_game<=court.game_number;
   next_game:=greatest(
     (select coalesce(max(game_number),0) from public.waitlist_courts),
     (select coalesce(max(game_number),0) from public.past_games)

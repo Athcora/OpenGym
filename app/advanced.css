@@ -260,6 +260,9 @@ body.mobile-admin-dragging { overscroll-behavior:none; }
 .theme-dark .past-game { background:#2a2b31; border-color:#393b43; }
 .theme-dark .past-game p,.theme-dark .add-player-card>p { color:#a4a9b4; }
 .theme-dark .add-player-card label { color:#b8bdc7; }
+.field-label { display:inline-flex; align-items:center; gap:4px; }
+.required-marker { color:#ef5d68; font-weight:900; }
+.optional-marker { color:#8f95a4; font-size:.74rem; font-weight:600; }
 .theme-dark .drawer { background:#0009; }
 .theme-dark .modal-backdrop { background:#0c0d10bb; }
 .theme-dark .neutral { background:#4b5362!important; }

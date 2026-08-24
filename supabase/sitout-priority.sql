@@ -14,7 +14,10 @@ begin
   select * into player from public.waitlist_players
     where user_id=auth.uid() and status in('current','waiting') for update;
   if player.id is null then raise exception 'You are no longer active in the waitlist.'; end if;
-  select game_number into current_game from public.waitlist_config where id;
+  if player.status='current' and player.court_number is not null then
+    select game_number into current_game from public.waitlist_courts where court_number=player.court_number;
+  end if;
+  if current_game is null then select game_number into current_game from public.waitlist_config where id; end if;
   skipped_game:=case when player.status='current' then current_game
     else greatest(coalesce(p_skip_game,current_game+1),current_game+1) end;
   update public.waitlist_players
@@ -39,7 +42,10 @@ begin
   select * into player from public.waitlist_players where id=p_player_id and status in('current','waiting') for update;
   if player.id is null then raise exception 'This player is no longer active.'; end if;
   perform public.save_admin_undo('sit out player');
-  select game_number into current_game from public.waitlist_config where id;
+  if player.status='current' and player.court_number is not null then
+    select game_number into current_game from public.waitlist_courts where court_number=player.court_number;
+  end if;
+  if current_game is null then select game_number into current_game from public.waitlist_config where id; end if;
   skipped_game:=case when player.status='current' then current_game
     else greatest(coalesce(p_skip_game,current_game+1),current_game+1) end;
   update public.waitlist_players
@@ -67,7 +73,10 @@ begin
   if caller.id is null then raise exception 'You are no longer active in the waitlist.'; end if;
   if caller.group_id is null then raise exception 'You are not currently in a group.'; end if;
   previous_group:=caller.group_id;
-  select game_number into current_game from public.waitlist_config where id;
+  if caller.status='current' and caller.court_number is not null then
+    select game_number into current_game from public.waitlist_courts where court_number=caller.court_number;
+  end if;
+  if current_game is null then select game_number into current_game from public.waitlist_config where id; end if;
   skipped_game:=case when caller.status='current' then current_game
     else greatest(coalesce(p_skip_game,current_game+1),current_game+1) end;
   insert into public.group_notifications(user_id,message)

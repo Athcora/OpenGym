@@ -87,7 +87,7 @@ export default function App() {
   const [geofenceReturn,setGeofenceReturn]=useState<GeofenceReturn|null>(null); const [returnClock,setReturnClock]=useState(Date.now());
   const [permissionPlayer,setPermissionPlayer]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0);
   const [pendingNextGameEvent,setPendingNextGameEvent]=useState<{message:string}|null>(null);
-  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null);
+  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null); const refreshTimer=useRef<number|null>(null); const screenRef=useRef(screen);
   const activeStatusRef=useRef<PlayerStatus|null>(null); const waitlistModeRef=useRef<Config['mode']>('regular');
   const rejoinLookupAttempts=useRef(0);
   useEffect(()=>{
@@ -121,6 +121,7 @@ export default function App() {
   const host=Boolean(me?.is_host&&!admin); const operator=admin||host;
   adminAccess.current=admin;
   activeStatusRef.current=activeMe?.status??null;waitlistModeRef.current=config.mode;
+  screenRef.current=screen;
   const displayedPlayers=useMemo(()=>dragging&&dragOver?previewAdminMove(players,dragging,dragOver.status,dragOver.index,config.max_players,dragOver.courtNumber,dragOver.marker):players,[players,dragging,dragOver,config.max_players]);
   const savedQueuePositions=useMemo(()=>{
     const positions=new Map<string,number>();
@@ -140,27 +141,20 @@ export default function App() {
   const tutorialNeedsDemo=onboarding==='tutorial'&&tutorialStep===5&&!admin&&Boolean(me)&&waiting.every(player=>player.id===me?.id);
   const tutorialWaiting=tutorialNeedsDemo?[...waiting,{id:'tutorial-demo-player',user_id:null,first_name:'Demo',last_name:'Player',display_name:'Demo Player',status:'waiting' as PlayerStatus,queue_position:(waiting.at(-1)?.queue_position??current.length)+1,restricted:false,group_id:null,is_host:false,court_number:null,sitout_priority:false,sitout_from_game:null}]:waiting;
 
-  useEffect(()=>{ void boot(); },[]);
+  useEffect(()=>{let cleanup:(()=>void)|undefined;let stopped=false;void boot().then(remove=>{if(stopped)remove?.();else cleanup=remove});return()=>{stopped=true;cleanup?.();if(refreshTimer.current!==null)window.clearTimeout(refreshTimer.current)}},[]);
   useEffect(()=>{
     if(!user||admin)return;let stopped=false;
-    const check=async()=>{const {data}=await supabase.from('waitlist_players').select('is_host').eq('user_id',user.id).neq('status','left').order('updated_at',{ascending:false}).limit(1).maybeSingle();if(!stopped&&data)syncOwnHostStatus(Boolean(data.is_host),user.id)};
-    const timer=window.setInterval(()=>void check(),1500);return()=>{stopped=true;window.clearInterval(timer)};
-  },[user?.id,admin]);
-  useEffect(()=>{
-    if(!user||admin)return;let stopped=false;
-    // Realtime is the fastest path, but mobile browsers can suspend or miss a
-    // channel event. Poll every unread player notification as a reliable
-    // fallback so host, group, substitute, and operator messages appear
-    // without requiring a refresh.
+    // Realtime delivers notifications immediately. This slower visible-page
+    // fallback only covers mobile browsers that suspended the websocket.
     const check=async()=>{const {data}=await supabase.from('group_notifications').select('id,user_id,message,read_at').eq('user_id',user.id).is('read_at',null).order('created_at',{ascending:true}).limit(1).maybeSingle();if(stopped||!data)return;const notification=data as GroupNotification;showPlayerNotification(notification,user.id);await supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id)};
-    void check();const timer=window.setInterval(()=>void check(),800);return()=>{stopped=true;window.clearInterval(timer)};
+    void check();const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void check()},15_000);return()=>{stopped=true;window.clearInterval(timer)};
   },[user?.id,admin]);
   useEffect(()=>{
     if(!user)return;let stopped=false;let refreshing=false;
-    // Keep pending group/substitute requests synchronized even when a device's
-    // realtime connection has been paused by the operating system.
-    const sync=async()=>{if(stopped||refreshing)return;refreshing=true;try{await refresh(user)}finally{refreshing=false}};
-    const timer=window.setInterval(()=>void sync(),1000);return()=>{stopped=true;window.clearInterval(timer)};
+    // Realtime is primary. A low-frequency visible-page refresh is enough to
+    // recover after a suspended or briefly disconnected mobile browser.
+    const sync=async()=>{if(stopped||refreshing||document.visibilityState!=='visible')return;refreshing=true;try{await refresh(user)}finally{refreshing=false}};
+    const timer=window.setInterval(()=>void sync(),30_000);return()=>{stopped=true;window.clearInterval(timer)};
   },[user?.id]);
   useEffect(()=>{
     const substituting=adminSubstituting||playerSubstituting;
@@ -276,16 +270,16 @@ export default function App() {
           return items.map(player=>player.id===changed.id?changed:player);
         });
         const inactiveOwn=isOwnChange&&!['current','waiting','sitout'].includes(changed.status);
-        if(!adminMoveInProgress.current&&!inactiveOwn)void refresh();
+        if(!adminMoveInProgress.current&&!inactiveOwn)scheduleRefresh();
       })
-      .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_config'},()=>void refresh())
-      .on('postgres_changes',{event:'*',schema:'public',table:'group_requests'},()=>void refresh())
-      .on('postgres_changes',{event:'*',schema:'public',table:'substitute_requests'},()=>void refresh())
+      .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_config'},scheduleRefresh)
+      .on('postgres_changes',{event:'*',schema:'public',table:'group_requests'},scheduleRefresh)
+      .on('postgres_changes',{event:'*',schema:'public',table:'substitute_requests'},scheduleRefresh)
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'group_notifications'},payload=>{
         const notification=payload.new as GroupNotification;
         if(notification.user_id===session?.user.id){showPlayerNotification(notification,session.user.id);void supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id);}
       })
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'past_games'},()=>void refresh())
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'past_games'},()=>{if(screenRef.current==='history')void loadPastGames()})
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'waitlist_events'},payload=>{
         const event=payload.new as {actor_user_id?:string;event_type?:string;message?:string};
         if(event.event_type==='host_appointed'||event.event_type==='host_removed')return;
@@ -309,19 +303,21 @@ export default function App() {
       }).subscribe();
     return()=>{void supabase.removeChannel(channel)};
   }
+  function scheduleRefresh(){if(refreshTimer.current!==null)window.clearTimeout(refreshTimer.current);refreshTimer.current=window.setTimeout(()=>{refreshTimer.current=null;void refresh()},250)}
+  async function loadPastGames(){const {data,error}=await supabase.from('past_games').select('id,game_number,court_number,player_names,ended_at').order('game_number',{ascending:false}).limit(60);if(error){setNotice({title:'Past games unavailable',message:error.message});return;}setGames((data??[]) as Game[])}
+  function openPastGames(){setScreen('history');void loadPastGames()}
   async function refresh(activeUser?:User|null){
-    const [{data:p},{data:c},{data:g},{data:courtRows},{data:a},{data:r},{data:s},{data:rejoin,error:rejoinError},{data:geo}]=await Promise.all([
-      supabase.from('waitlist_players').select('*').neq('status','left').order('queue_position'),
+    const [{data:p},{data:c},{data:courtRows},{data:a},{data:r},{data:s},{data:rejoin,error:rejoinError},{data:geo}]=await Promise.all([
+      supabase.from('waitlist_players').select('id,user_id,first_name,last_name,display_name,status,queue_position,restricted,group_id,is_host,court_number,sitout_priority,sitout_from_game').neq('status','left').order('queue_position'),
       supabase.from('waitlist_config').select('game_number,max_players,court_count,mode,geofence_enabled,geofence_radius_m').single(),
-      supabase.from('past_games').select('*').order('game_number',{ascending:false}),
       supabase.from('waitlist_courts').select('*').order('court_number'),
       supabase.from('admin_sessions').select('user_id').maybeSingle(),
-      supabase.from('group_requests').select('*').eq('status','pending'),
-      supabase.from('substitute_requests').select('*').eq('status','pending'),
+      supabase.from('group_requests').select('id,requester_id,target_id,status').eq('status','pending'),
+      supabase.from('substitute_requests').select('id,requester_id,target_id,status').eq('status','pending'),
       supabase.from('rejoin_responses').select('id,expires_at').is('choice',null).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false}).limit(1).maybeSingle(),
       supabase.from('geofence_return_prompts').select('id,removed_at,saved_position_until,expires_at').is('resolved_at',null).gt('expires_at',new Date().toISOString()).order('removed_at',{ascending:false}).limit(1).maybeSingle()
     ]);
-    const playerRows=(p??[]) as Player[];setPlayers(playerRows); if(c)setConfig(c as Config); setGames((g??[]) as Game[]);setCourts((courtRows??[]) as Court[]);setAdmin(Boolean(a));
+    const playerRows=(p??[]) as Player[];setPlayers(playerRows); if(c)setConfig(c as Config);setCourts((courtRows??[]) as Court[]);setAdmin(Boolean(a));
     const activeUid=(activeUser??user)?.id;const activeHost=Boolean(playerRows.find(item=>item.user_id===activeUid)?.is_host);if(activeUid)syncOwnHostStatus(activeHost,activeUid);
     if(a||activeHost){const {data:offline}=await supabase.rpc('admin_list_offline_rejoins');setAdminRejoins((offline??[]) as AdminRejoin[]);}else setAdminRejoins([]);
     setGroupRequests(((r??[]) as GroupRequest[]).map(request=>({...request,requester:playerRows.find(player=>player.id===request.requester_id)})));
@@ -708,7 +704,7 @@ export default function App() {
       {courts.map((court,courtIndex)=>{const courtPlayers=current.filter(player=>(player.court_number??1)===court.court_number);const hiddenDuringDrag=draggedCourtNumber!==null&&court.court_number!==draggedCourtNumber;return <section className={`court-section ${hiddenDuringDrag?'drag-hidden-court':''}`} aria-hidden={hiddenDuringDrag||undefined} key={court.court_number}>{operator&&<button className="court-next-button" disabled={busy||courtPlayers.length===0} onClick={()=>ask(`Start next game on Court ${court.court_number}?`,`Only Court ${court.court_number} will advance and refill from the shared waitlist.`,'Next game',()=>advanceGame(court.court_number))}>Next game (Court {court.court_number})</button>}<QueueCard title={courts.length>1?`COURT ${court.court_number} - Game ${court.game_number}`:`Game ${court.game_number}`} subtitle={`${courtPlayers.length} playing`} status="current" players={courtPlayers} start={1} savedQueuePositions={savedQueuePositions} me={me} admin={admin} operator={operator} spotlight={onboarding==='tutorial'&&tutorialStep===3&&courtIndex===0} editing={editing} editName={editName} setEditing={setEditing} setEditName={setEditName} saveName={saveName} requestGroup={requestGroup} leaveGroup={removeGroupMember} leaveOwnGroup={confirmLeaveOwnGroup} adminLeaveGroup={adminRemoveGroupMember} permissions={setPermissionPlayer} adminSitOut={confirmAdminSitOut} adminLeave={confirmAdminLeave} dragging={dragging} dragOver={dragOver} setDragging={setDragging} setDragOver={setDragOver} movePlayer={movePlayer}/></section>})}
       <QueueCard title="Waitlist" subtitle={tutorialWaiting.length?`${tutorialWaiting.length} waiting`:'No one waiting'} status="waiting" players={tutorialWaiting} start={13} savedQueuePositions={savedQueuePositions} me={me} admin={admin} operator={operator} spotlight={onboarding==='tutorial'&&tutorialStep===4} groupSpotlight={onboarding==='tutorial'&&tutorialStep===5} editing={editing} editName={editName} setEditing={setEditing} setEditName={setEditName} saveName={saveName} projections={projectedGames} projectedCourts={courts.length>1?new Map([...projections].map(([id,value])=>[id,value.court])):undefined} requestGroup={requestGroup} leaveGroup={removeGroupMember} leaveOwnGroup={confirmLeaveOwnGroup} adminLeaveGroup={adminRemoveGroupMember} permissions={setPermissionPlayer} adminSitOut={confirmAdminSitOut} adminLeave={confirmAdminLeave} dragging={dragging} dragOver={dragOver} setDragging={setDragging} setDragOver={setDragOver} movePlayer={movePlayer}/>
       {!admin&&<button className={`history-button your-history-button ${host?'history-tool':''}`} onClick={()=>void openPlayerHistory()}>{host?'Action History':'Your history'} <span>→</span></button>}
-      <button className="history-button" onClick={()=>setScreen('history')}>Past games <span>→</span></button>
+      <button className="history-button" onClick={openPastGames}>Past games <span>→</span></button>
       <p className="projection-note">Queue positions update live on every connected phone.</p>
     </main>
     {onboarding==='disclaimer'&&<WaitlistDisclaimer mode={config.mode} language={language} acknowledge={()=>{setTutorialStep(0);setOnboarding('tutorial')}}/>}

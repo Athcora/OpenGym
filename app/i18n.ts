@@ -105,7 +105,9 @@ Object.assign(es,{
   'Leave action button':'Botón de salir',
   'Sit Out makes you skip one game. After skipping that game, you receive priority for the following game.':'Descansar hace que te saltes un juego. Después de saltarte ese juego, recibes prioridad para el siguiente.',
   'Leave removes only you from the waitlist, so use it when you do not want to play anymore.':'Salir te elimina únicamente a ti de la lista de espera; úsalo cuando ya no quieras jugar.',
-  'The players in this section are in the current game. Only they are able to start the next game.':'Los jugadores de esta sección están en el juego actual. Solo ellos pueden iniciar el siguiente juego.'
+  'The players in this section are in the current game. Only they are able to start the next game.':'Los jugadores de esta sección están en el juego actual. Solo ellos pueden iniciar el siguiente juego.',
+  'Rejoin after every game':'Reingresa después de cada juego',
+  'After you play, you will be taken off the waitlist. To keep your saved place, press Rejoin within five minutes.':'Después de jugar, saldrás de la lista de espera. Para conservar tu lugar guardado, pulsa Reingresar dentro de cinco minutos.'
 });
 Object.assign(zh,{
   'Next Game action button':'“下一场”操作按钮',
@@ -113,7 +115,9 @@ Object.assign(zh,{
   'Leave action button':'“离开”操作按钮',
   'Sit Out makes you skip one game. After skipping that game, you receive priority for the following game.':'轮休会让你跳过一场比赛。跳过该场后，你会在下一场获得优先权。',
   'Leave removes only you from the waitlist, so use it when you do not want to play anymore.':'离开只会将你本人移出等候名单；当你不想再参加时，请使用此按钮。',
-  'The players in this section are in the current game. Only they are able to start the next game.':'此区域中的球员正在参加当前比赛。只有他们可以开始下一场比赛。'
+  'The players in this section are in the current game. Only they are able to start the next game.':'此区域中的球员正在参加当前比赛。只有他们可以开始下一场比赛。',
+  'Rejoin after every game':'每场比赛后重新加入',
+  'After you play, you will be taken off the waitlist. To keep your saved place, press Rejoin within five minutes.':'比赛结束后，你会被移出等候名单。若要保留原来的位置，请在五分钟内点击“重新加入”。'
 });
 
 function translateDynamic(value:string,language:AppLanguage){

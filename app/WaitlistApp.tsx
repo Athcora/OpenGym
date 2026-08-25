@@ -791,16 +791,16 @@ function Shell({children}:{children:React.ReactNode}){const [theme,setTheme]=use
 function Logo({compact=false}:{compact?:boolean}){return <div className={`logo ${compact?'compact':''}`}><span><img src="/open-gym-app-icon.png" alt=""/></span><div><strong>OpenGym</strong>{!compact&&<small>VOLLEYBALL WAITLIST</small>}</div></div>}
 function WaitlistDisclaimer({mode,language,acknowledge}:{mode:Config['mode'];language:AppLanguage;acknowledge:()=>void}){
  const rejoin=mode==='rejoin';
- const title=language==='es'?`Esta es una lista ${rejoin?'de REINGRESO':'REGULAR'}`:language==='zh-CN'?`è¿™æ˜¯${rejoin?'é‡æ–°åŠ å…¥':'æ™®é€š'}ç­‰å€™åå•`:`This is a ${mode.toUpperCase()} waitlist`;
- const details=language==='es'?(rejoin?'DespuÃ©s de jugar, vuelve a ingresar dentro de cinco minutos para conservar tu lugar.':'Permaneces en la fila hasta que tÃº o un administrador te retire.'):language==='zh-CN'?(rejoin?'æ¯”èµ›ç»“æŸåŽï¼Œè¯·åœ¨äº”åˆ†é’Ÿå†…é‡æ–°åŠ å…¥ä»¥ä¿ç•™ä½ç½®ã€‚':'ä½ ä¼šä¿ç•™åœ¨é˜Ÿåˆ—ä¸­ï¼Œç›´åˆ°ä½ æˆ–ç®¡ç†å‘˜å°†ä½ ç§»é™¤ã€‚'):(rejoin?'After you play, rejoin within five minutes to keep your place.':'You stay in line until you or an admin removes you.');
- const permission=language==='es'?'Solo los jugadores del juego actual pueden presionar Siguiente juego.':language==='zh-CN'?'åªæœ‰å½“å‰ä¸Šåœºçš„çƒå‘˜å¯ä»¥ç‚¹å‡»â€œä¸‹ä¸€åœºâ€ã€‚':'Only current-game players can press Next Game.';
- return <div className="onboarding-backdrop"><section className="onboarding-card" role="dialog" aria-modal="true" aria-labelledby="waitlist-mode-title"><span className="onboarding-kicker">BEFORE YOU START</span><h2 id="waitlist-mode-title">{title}</h2><p>{details} <strong>{permission}</strong></p><button className="hero-button" onClick={acknowledge}>I acknowledge</button></section></div>;
+ const title=language==='es'?`Esta es una lista ${rejoin?'de REINGRESO':'REGULAR'}`:language==='zh-CN'?`这是${rejoin?'重新加入':'普通'}等候名单`:`This is a ${mode.toUpperCase()} waitlist`;
+ const details=language==='es'?(rejoin?'Después de jugar, vuelve a ingresar dentro de cinco minutos para conservar tu lugar.':'No necesitas volver a registrarte. Permanecerás en la fila hasta que salgas o estés fuera del rango permitido del centro.'):language==='zh-CN'?(rejoin?'比赛结束后，请在五分钟内重新加入以保留你的位置。':'你无需重新报名。除非你主动离开或超出场馆允许的范围，否则你会一直保留在队列中。'):(rejoin?'After you play, rejoin within five minutes to keep your place.':'You do not need to sign up again. You stay in line until you leave or move out of range of the facility.');
+ const permission=language==='es'?'Solo los jugadores del juego actual pueden presionar Siguiente juego.':language==='zh-CN'?'只有当前上场的球员可以点击“下一场”。':'Only current-game players can press Next Game.';
+ return <div className="onboarding-backdrop"><section className="onboarding-card" role="dialog" aria-modal="true" aria-labelledby="waitlist-mode-title"><span className="onboarding-kicker">BEFORE YOU START</span><h2 id="waitlist-mode-title">{title}</h2><p>{details}{rejoin&&<> <strong>{permission}</strong></>}</p><button className="hero-button" onClick={acknowledge}>I acknowledge</button></section></div>;
 }
 const tutorialSteps=[
  {title:'Next Game action button',message:'This button appears only when you are in the current game. Pressing it ends that game, advances the entire queue, and notifies every player—so use it only when the game is truly over.'},
- {title:'Sit Out action button',message:'Sit Out makes only you skip the next game. Everyone else keeps their order. After skipping one game, you receive priority for the following game.'},
- {title:'Leave action button',message:'Leave removes only your name from the current game or waitlist. Other players remain in order, and you can join again later.'},
- {title:'Who is playing now',message:'The players in this card are in the current game. Only they—and admins—can start the next game.'},
+ {title:'Sit Out action button',message:'Sit Out makes you skip one game. After skipping that game, you receive priority for the following game.'},
+ {title:'Leave action button',message:'Leave removes only you from the waitlist, so use it when you do not want to play anymore.'},
+ {title:'Who is playing now',message:'The players in this section are in the current game. Only they are able to start the next game.'},
  {title:'Waitlist',message:'Your number is your queue position. When you are waiting, your projected game appears beside your name.'},
  {title:'Group Up',message:'Use Group Up beside another player when you want to play together.'},
 ];

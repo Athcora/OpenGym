@@ -102,12 +102,18 @@ Object.assign(zh,{
 Object.assign(es,{
   'Next Game action button':'Botón de siguiente juego',
   'Sit Out action button':'Botón de descansar',
-  'Leave action button':'Botón de salir'
+  'Leave action button':'Botón de salir',
+  'Sit Out makes you skip one game. After skipping that game, you receive priority for the following game.':'Descansar hace que te saltes un juego. Después de saltarte ese juego, recibes prioridad para el siguiente.',
+  'Leave removes only you from the waitlist, so use it when you do not want to play anymore.':'Salir te elimina únicamente a ti de la lista de espera; úsalo cuando ya no quieras jugar.',
+  'The players in this section are in the current game. Only they are able to start the next game.':'Los jugadores de esta sección están en el juego actual. Solo ellos pueden iniciar el siguiente juego.'
 });
 Object.assign(zh,{
   'Next Game action button':'“下一场”操作按钮',
   'Sit Out action button':'“轮休”操作按钮',
-  'Leave action button':'“离开”操作按钮'
+  'Leave action button':'“离开”操作按钮',
+  'Sit Out makes you skip one game. After skipping that game, you receive priority for the following game.':'轮休会让你跳过一场比赛。跳过该场后，你会在下一场获得优先权。',
+  'Leave removes only you from the waitlist, so use it when you do not want to play anymore.':'离开只会将你本人移出等候名单；当你不想再参加时，请使用此按钮。',
+  'The players in this section are in the current game. Only they are able to start the next game.':'此区域中的球员正在参加当前比赛。只有他们可以开始下一场比赛。'
 });
 
 function translateDynamic(value:string,language:AppLanguage){

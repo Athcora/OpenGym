@@ -522,6 +522,11 @@ export default function App() {
     event.preventDefault(); const f=cleanName(adminFirst),l=cleanName(adminLast);
     if(!f){setNotice({title:'Enter a player name',message:'The player name needs to contain letters.'});return;}
     if(isInappropriateName(`${adminFirst} ${adminLast}`)){setNotice(inappropriateNameNotice);return;}
+    if(config.mode==='teams'){
+      setBusy(true);const {data,error}=await supabase.rpc('admin_add_player',{p_first_name:f,p_last_name:l});
+      if(!error&&data?.player_id){const prepared=await supabase.rpc('king_prepare_player',{p_player_id:data.player_id});if(prepared.error){setBusy(false);setNotice({title:'Could not add that team player',message:prepared.error.message});return;}}
+      setBusy(false);if(error){setNotice({title:'Could not add that player',message:error.message});return;}await refresh();setAdminFirst('');setAdminLast('');return;
+    }
     if(await rpc('admin_add_player',{p_first_name:f,p_last_name:l},false)){setAdminFirst('');setAdminLast('');}
   }
   async function answerOfflineRejoin(player:AdminRejoin,stay:boolean){

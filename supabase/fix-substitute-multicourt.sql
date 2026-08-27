@@ -13,6 +13,7 @@ begin
     status=case when id=first_player.id then second_player.status else first_player.status end,
     queue_position=case when id=first_player.id then second_player.queue_position else first_player.queue_position end,
     court_number=case when id=first_player.id then second_player.court_number else first_player.court_number end,
+    team_id=case when id=first_player.id then second_player.team_id else first_player.team_id end,
     sitout_priority=case when id=first_player.id then second_player.sitout_priority else first_player.sitout_priority end,
     sitout_from_game=case when id=first_player.id then second_player.sitout_from_game else first_player.sitout_from_game end,
     updated_at=now()

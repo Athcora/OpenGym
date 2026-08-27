@@ -53,6 +53,27 @@ begin
 end; $$;
 grant execute on function public.join_king_team(uuid,uuid) to authenticated;
 
+create or replace function public.join_new_king_team(p_player_id uuid)
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare player public.waitlist_players; target public.king_teams; old_team uuid; next_pos bigint; next_no integer;
+begin
+  perform pg_advisory_xact_lock(7429201);
+  select * into player from public.waitlist_players where id=p_player_id for update;
+  if player.id is null or (player.user_id<>auth.uid() and not public.is_waitlist_operator()) then raise exception 'You cannot move that player.'; end if;
+  old_team:=player.team_id;
+  select coalesce(max(queue_position),0)+1 into next_pos from public.king_teams where status='waiting';
+  select coalesce(max((regexp_match(name,'[0-9]+'))[1]::integer),0)+1 into next_no from public.king_teams;
+  insert into public.king_teams(name,status,queue_position,court_number,court_side,consecutive_wins)
+    values('Team '||next_no,'waiting',next_pos,null,null,0) returning * into target;
+  update public.waitlist_players set team_id=target.id,status='waiting',court_number=null,updated_at=now() where id=player.id;
+  if old_team is not null and old_team<>target.id and not exists(select 1 from public.waitlist_players where team_id=old_team and status<>'left') then
+    delete from public.king_teams where id=old_team;
+  end if;
+  perform public.king_fill_courts();
+  return jsonb_build_object('message','You joined a new team.','team_id',target.id);
+end; $$;
+grant execute on function public.join_new_king_team(uuid) to authenticated;
+
 create or replace function public.end_team_rotation(p_court_number integer)
 returns jsonb language plpgsql security definer set search_path=public as $$
 declare cfg public.waitlist_config; court public.waitlist_courts; caller public.waitlist_players;

@@ -45,7 +45,7 @@ body.mobile-admin-dragging { overscroll-behavior:none; }
 /* With one active court, keep the simple Next game control in the operator
    toolbar. Court-specific controls are only useful when multiple courts exist. */
 .queue-page:not(:has(.court-section ~ .court-section)) .admin-tools>.next-game-tool{display:block}
-.queue-page:not(:has(.court-section ~ .court-section)) .court-next-button{display:none}
+.queue-page:not(:has(.king-board)):not(:has(.court-section ~ .court-section)) .court-next-button{display:none}
 .court-count-control{display:flex;align-items:center;gap:10px;margin:-6px 0 14px;color:#8f95a4;font-size:.78rem;font-weight:800;letter-spacing:.06em}
 .court-count-input{display:flex;align-items:stretch;gap:5px}
 .court-count-control input{width:64px;border:1px solid #3b3e47;border-radius:10px;background:#25262b;color:#fff;padding:8px 10px;text-align:center;font-weight:850}

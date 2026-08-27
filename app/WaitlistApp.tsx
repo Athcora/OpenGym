@@ -969,7 +969,9 @@ function setPlayerDragPreview(event:React.DragEvent<HTMLElement>,player:Player,p
 function formatCountdown(totalSeconds:number){const minutes=Math.floor(totalSeconds/60);const seconds=totalSeconds%60;return `${minutes}:${String(seconds).padStart(2,'0')}`}
 type DropPlacement={status:'current'|'waiting';index:number;marker:string|null;courtNumber:number|null};
 function queueDragBounds(){
- const cards=[...document.querySelectorAll<HTMLElement>('[data-drop-status]')];const rows=[...document.querySelectorAll<HTMLElement>('[data-player-id]')];
+ const standardCards=[...document.querySelectorAll<HTMLElement>('[data-drop-status]')];
+ const cards=standardCards.length?standardCards:[...document.querySelectorAll<HTMLElement>('.king-court,.king-waitlist')];
+ const rows=[...document.querySelectorAll<HTMLElement>('[data-player-id]')];
  if(!cards.length)return null;const cardRects=cards.map(card=>card.getBoundingClientRect());const rowRects=rows.map(row=>row.getBoundingClientRect());
  return{left:Math.min(...cardRects.map(rect=>rect.left)),right:Math.max(...cardRects.map(rect=>rect.right)),top:rowRects.length?Math.min(...rowRects.map(rect=>rect.top)):Math.min(...cardRects.map(rect=>rect.top)),bottom:rowRects.length?Math.max(...rowRects.map(rect=>rect.bottom)):Math.max(...cardRects.map(rect=>rect.bottom))};
 }

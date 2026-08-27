@@ -135,3 +135,8 @@ begin
   return jsonb_build_object('message','Advancement complete.','game_number',next_game,'winner',public.king_team_label(winner.id),'winner_stays',winner_stays);
 end; $$;
 grant execute on function public.end_team_king_game(integer,uuid) to authenticated;
+
+-- Remove stale empty teams left by earlier Teams Mode builds, then refill courts.
+delete from public.king_teams t
+where not exists(select 1 from public.waitlist_players p where p.team_id=t.id and p.status<>'left');
+select public.king_fill_courts();

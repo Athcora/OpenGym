@@ -276,6 +276,18 @@ export default function App() {
         if(!adminMoveInProgress.current&&!inactiveOwn)scheduleRefresh();
       })
       .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_config'},scheduleRefresh)
+      .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_courts'},payload=>{
+        const changed=payload.new as Court;
+        const removed=payload.old as Partial<Court>;
+        setCourts(items=>{
+          if(payload.eventType==='DELETE')return items.filter(court=>court.court_number!==removed.court_number);
+          if(!changed?.court_number)return items;
+          const next=items.some(court=>court.court_number===changed.court_number)
+            ?items.map(court=>court.court_number===changed.court_number?changed:court)
+            :[...items,changed];
+          return next.sort((a,b)=>a.court_number-b.court_number);
+        });
+      })
       .on('postgres_changes',{event:'*',schema:'public',table:'king_teams'},scheduleRefresh)
       .on('postgres_changes',{event:'*',schema:'public',table:'group_requests'},scheduleRefresh)
       .on('postgres_changes',{event:'*',schema:'public',table:'substitute_requests'},scheduleRefresh)
@@ -707,7 +719,15 @@ export default function App() {
     setNotice({title:`Join Team ${side}?`,message:'Joining a new team will remove you from your current team. Do you want to continue?',confirm:'Continue',actionTone:'success',action:()=>rpc('join_new_king_team',{p_player_id:me.id},false),cancelLabel:'Cancel',cancelTone:'danger'});
   }
   async function setTeamCourtRules(courtNumber:number,mode:'rotation'|'king',maxWins:number|null){
-    await rpc('set_team_court_rules',{p_court_number:courtNumber,p_team_mode:mode,p_max_wins:maxWins},false);
+    const previous=courts.find(court=>court.court_number===courtNumber);
+    setCourts(items=>items.map(court=>court.court_number===courtNumber?{...court,team_mode:mode,team_max_wins:maxWins}:court));
+    setBusy(true);
+    const {error}=await supabase.rpc('set_team_court_rules',{p_court_number:courtNumber,p_team_mode:mode,p_max_wins:maxWins});
+    setBusy(false);
+    if(error){
+      if(previous)setCourts(items=>items.map(court=>court.court_number===courtNumber?previous:court));
+      setNotice({title:'Could not update this court',message:error.message});
+    }
   }
   async function rotateTeamCourt(courtNumber:number){
     setBusy(true);const {data,error}=await supabase.rpc('end_team_rotation',{p_court_number:courtNumber});setBusy(false);

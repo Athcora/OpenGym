@@ -980,7 +980,11 @@ function queueScrollBounds(){
 function constrainQueueDragPoint(x:number,y:number){const bounds=queueDragBounds();if(!bounds)return{x,y};return{x:Math.min(bounds.right-2,Math.max(bounds.left+2,x)),y:Math.min(bounds.bottom-2,Math.max(bounds.top+2,y))};}
 function positionPlayerDragPreview(preview:HTMLElement,x:number,y:number){
  const bounds=queueDragBounds();if(!bounds)return;const point=constrainQueueDragPoint(x,y);const width=preview.offsetWidth||280;const height=preview.offsetHeight||62;
- const left=Math.min(bounds.right-width,Math.max(bounds.left,point.x-width/2));const top=Math.min(Math.max(bounds.top,bounds.bottom-height),Math.max(bounds.top,point.y-height/2));preview.style.transform=`translate3d(${left}px,${top}px,0)`;
+ const left=Math.min(bounds.right-width,Math.max(bounds.left,point.x-width/2));const top=Math.min(Math.max(bounds.top,bounds.bottom-height),Math.max(bounds.top,point.y-height/2));
+ // Use explicit fixed-position coordinates. Combining the preview's historical
+ // off-screen top/left values with a transform could leave the card outside the
+ // viewport even while its highlighted placeholder was moving correctly.
+ preview.style.left=`${left}px`;preview.style.top=`${top}px`;preview.style.transform='none';
 }
 function resolveDropPlacement(x:number,y:number,fallback:DropPlacement|null=null):DropPlacement|null{
  const point=constrainQueueDragPoint(x,y);

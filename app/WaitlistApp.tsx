@@ -263,7 +263,7 @@ export default function App() {
       if(unread){const notification=unread as GroupNotification;showPlayerNotification(notification,session.user.id);await supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id);}
     }
     if(realtimeChannel.current){await supabase.removeChannel(realtimeChannel.current);realtimeChannel.current=null;}
-    const channel=supabase.channel(`live-waitlist-${session.user.id}-${Date.now()}`)
+    const channel=supabase.channel('live-waitlist')
       .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_players'},payload=>{
         const changed=payload.new as Player;const isOwnChange=changed.user_id===session.user.id||changed.id===ownPlayerIdRef.current;
         if(isOwnChange){setOwnPlayer(changed);setForceRejoin(!['current','waiting','sitout'].includes(changed.status));ownPlayerIdRef.current=changed.id;syncOwnHostStatus(Boolean(changed.is_host),session.user.id);if(changed.status==='rejoin'){rejoinLookupAttempts.current=0;setRejoinChecked(false);window.setTimeout(()=>void refresh(),150);}}
@@ -287,6 +287,10 @@ export default function App() {
             :[...items,changed];
           return next.sort((a,b)=>a.court_number-b.court_number);
         });
+      })
+      .on('broadcast',{event:'court_rules_changed'},({payload})=>{
+        const update=payload as {courtNumber:number;mode:'rotation'|'king';maxWins:number|null};
+        setCourts(items=>items.map(court=>court.court_number===update.courtNumber?{...court,team_mode:update.mode,team_max_wins:update.maxWins}:court));
       })
       .on('postgres_changes',{event:'*',schema:'public',table:'king_teams'},scheduleRefresh)
       .on('postgres_changes',{event:'*',schema:'public',table:'group_requests'},scheduleRefresh)
@@ -727,7 +731,9 @@ export default function App() {
     if(error){
       if(previous)setCourts(items=>items.map(court=>court.court_number===courtNumber?previous:court));
       setNotice({title:'Could not update this court',message:error.message});
+      return;
     }
+    await realtimeChannel.current?.send({type:'broadcast',event:'court_rules_changed',payload:{courtNumber,mode,maxWins}});
   }
   async function rotateTeamCourt(courtNumber:number){
     setBusy(true);const {data,error}=await supabase.rpc('end_team_rotation',{p_court_number:courtNumber});setBusy(false);

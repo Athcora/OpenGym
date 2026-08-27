@@ -17,16 +17,26 @@ grant execute on function public.set_team_court_rules(integer,text,integer) to a
 
 create or replace function public.join_king_team(p_player_id uuid,p_team_id uuid default null)
 returns jsonb language plpgsql security definer set search_path=public as $$
-declare player public.waitlist_players; target public.king_teams; old_team uuid; member_count integer; next_pos bigint; next_no integer;
+declare player public.waitlist_players; target public.king_teams; old_team uuid; target_id uuid; member_count integer; next_pos bigint; next_no integer;
 begin
   perform pg_advisory_xact_lock(7429201);
   select * into player from public.waitlist_players where id=p_player_id for update;
   if player.id is null or (player.user_id<>auth.uid() and not public.is_waitlist_operator()) then raise exception 'You cannot move that player.'; end if;
   old_team:=player.team_id;
   if p_team_id is null then
-    select coalesce(max(queue_position),0)+1 into next_pos from public.king_teams where status='waiting';
-    select coalesce(max((regexp_match(name,'[0-9]+'))[1]::integer),0)+1 into next_no from public.king_teams;
-    insert into public.king_teams(name,queue_position) values('Team '||next_no,next_pos) returning * into target;
+    select t.id into target_id
+      from public.king_teams t
+      where (select count(*) from public.waitlist_players p where p.team_id=t.id and p.status<>'left') between 1 and 5
+      order by case when t.status='current' then 0 else 1 end,
+        coalesce(t.court_number,2147483647),coalesce(t.court_side,2147483647),t.queue_position,t.created_at
+      limit 1;
+    if target_id is not null then
+      select * into target from public.king_teams where id=target_id for update;
+    else
+      select coalesce(max(queue_position),0)+1 into next_pos from public.king_teams where status='waiting';
+      select coalesce(max((regexp_match(name,'[0-9]+'))[1]::integer),0)+1 into next_no from public.king_teams;
+      insert into public.king_teams(name,queue_position) values('Team '||next_no,next_pos) returning * into target;
+    end if;
   else
     select * into target from public.king_teams where id=p_team_id for update;
     if target.id is null then raise exception 'That team is unavailable.'; end if;

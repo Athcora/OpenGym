@@ -14,3 +14,7 @@
 .team-block-label{justify-content:flex-start}
 .team-block-label .king-join-button{width:auto;min-width:0;margin:0 0 0 9px;padding:6px 10px;flex:0 0 auto}
 .team-block-label>span{margin-left:auto}
+@media(max-width:720px){
+  .king-player-row:has(.admin-player-actions){-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:pan-y}
+  body.mobile-admin-dragging .king-player-row{touch-action:none}
+}

@@ -11,3 +11,6 @@
 .pencil::before {
   content: none;
 }
+.team-block-label{justify-content:flex-start}
+.team-block-label .king-join-button{width:auto;min-width:0;margin:0 0 0 9px;padding:6px 10px;flex:0 0 auto}
+.team-block-label>span{margin-left:auto}

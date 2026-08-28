@@ -111,8 +111,55 @@ grant execute on function public.join_king_team(uuid,uuid) to authenticated;
 
 create or replace function public.king_prepare_player(p_player_id uuid)
 returns jsonb language plpgsql security definer set search_path=public as $$
+declare
+  player public.waitlist_players;
+  target public.king_teams;
+  old_team uuid;
+  member_count integer;
+  next_member_position bigint;
+  next_team_position bigint;
+  next_team_number integer;
 begin
-  return public.join_king_team(p_player_id,null);
+  perform pg_advisory_xact_lock(7429201);
+  select * into player from public.waitlist_players where id=p_player_id for update;
+  if player.id is null or (player.user_id<>auth.uid() and not public.is_waitlist_operator()) then
+    raise exception 'You cannot add that player.';
+  end if;
+  old_team:=player.team_id;
+
+  -- New players always fill the earliest available slot: Court 1 before
+  -- Court 2, Team 1 before Team 2, and member positions 1 through 6.
+  select t.* into target
+  from public.king_teams t
+  where t.status in ('current','waiting')
+    and (select count(*) from public.waitlist_players p
+         where p.team_id=t.id and p.status<>'left' and p.id<>player.id)<6
+  order by case when t.status='current' then 0 else 1 end,
+    t.court_number asc nulls last,t.court_side asc nulls last,
+    t.queue_position asc,t.created_at asc
+  limit 1 for update;
+
+  if target.id is null then
+    select coalesce(max(queue_position),0)+1 into next_team_position from public.king_teams where status='waiting';
+    select coalesce(max((regexp_match(name,'[0-9]+'))[1]::integer),0)+1 into next_team_number from public.king_teams;
+    insert into public.king_teams(name,queue_position)
+      values('Team '||next_team_number,next_team_position) returning * into target;
+  end if;
+
+  select count(*) into member_count from public.waitlist_players
+    where team_id=target.id and status<>'left' and id<>player.id;
+  select coalesce(max(queue_position),0)+1 into next_member_position from public.waitlist_players
+    where team_id=target.id and status<>'left' and id<>player.id;
+  update public.waitlist_players set team_id=target.id,status=target.status,
+    court_number=target.court_number,queue_position=next_member_position,updated_at=now()
+    where id=player.id;
+
+  if old_team is not null and old_team<>target.id
+    and not exists(select 1 from public.waitlist_players where team_id=old_team and status<>'left') then
+    delete from public.king_teams where id=old_team;
+  end if;
+  perform public.king_fill_courts();
+  return jsonb_build_object('message','You joined '||public.king_team_label(target.id)||'.','team_id',target.id,'position',member_count+1);
 end; $$;
 grant execute on function public.king_prepare_player(uuid) to authenticated;
 

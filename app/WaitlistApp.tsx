@@ -1071,12 +1071,14 @@ function KingBoard({teams,courts,me,admin,host,busy,nextGame,joinTeam,joinEmptyT
  const waiting=teams.filter(team=>team.status==='waiting').sort((a,b)=>a.queue_position-b.queue_position);
  const hasOpenCourtTeam=teams.filter(team=>team.status==='current').length<courts.length*2;
  useEffect(()=>{dropRef.current=drop},[drop]);
- const resolveTarget=(x:number,y:number)=>{const point=constrainQueueDragPoint(x,y);const element=document.elementFromPoint(point.x,point.y) as HTMLElement|null;let card=element?.closest<HTMLElement>('[data-king-team-id]')??null;
-  // When crossing courts the pointer often passes through the court header or
-  // the spacing around its teams. Resolve that region to the nearest available
-  // team so every court remains a valid destination, not only the row directly
-  // under the pointer.
-  if(!card){const region=element?.closest<HTMLElement>('.king-court,.king-waitlist');if(region){const candidates=[...region.querySelectorAll<HTMLElement>('[data-king-team-id]')].filter(candidate=>{const target=teams.find(item=>item.id===candidate.dataset.kingTeamId);return Boolean(target&&target.members.filter(member=>member.id!==dragRef.current.player?.id).length<6)});card=candidates.sort((a,b)=>{const ar=a.getBoundingClientRect(),br=b.getBoundingClientRect();const ad=point.y<ar.top?ar.top-point.y:point.y>ar.bottom?point.y-ar.bottom:0;const bd=point.y<br.top?br.top-point.y:point.y>br.bottom?point.y-br.bottom:0;return ad-bd})[0]??null;}}
+ const resolveTarget=(x:number,y:number)=>{const point=constrainQueueDragPoint(x,y);
+  // Resolve from the geometry of every available team across every court and
+  // the shared waitlist. elementFromPoint is unreliable during a drag because
+  // animated rows, headers, and overlays can temporarily become the hit target.
+  const candidates=[...document.querySelectorAll<HTMLElement>('[data-king-team-id]')].filter(candidate=>{const target=teams.find(item=>item.id===candidate.dataset.kingTeamId);return Boolean(target&&target.members.filter(member=>member.id!==dragRef.current.player?.id).length<6)});
+  const distance=(candidate:HTMLElement)=>{const rect=candidate.getBoundingClientRect();const dx=point.x<rect.left?rect.left-point.x:point.x>rect.right?point.x-rect.right:0;const dy=point.y<rect.top?rect.top-point.y:point.y>rect.bottom?point.y-rect.bottom:0;return Math.hypot(dx,dy)};
+  let card=candidates.filter(candidate=>{const rect=candidate.getBoundingClientRect();return point.x>=rect.left&&point.x<=rect.right&&point.y>=rect.top&&point.y<=rect.bottom}).sort((a,b)=>distance(a)-distance(b))[0]??null;
+  if(!card){const nearest=candidates.sort((a,b)=>distance(a)-distance(b))[0]??null;if(nearest&&distance(nearest)<=72)card=nearest;}
   // Keep the current team selected while the pointer is only a few pixels
   // outside its edge. This prevents a finger hovering between two teams from
   // rapidly clearing and re-selecting the destination.

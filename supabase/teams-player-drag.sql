@@ -67,3 +67,58 @@ end;
 $$;
 
 grant execute on function public.admin_move_king_player(uuid,uuid,integer) to authenticated;
+
+create or replace function public.admin_move_king_player_to_empty(
+  p_player_id uuid,
+  p_target_status text,
+  p_court_number integer default null,
+  p_court_side integer default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path=public
+as $$
+declare
+  target_id uuid;
+  next_team_number integer;
+  next_queue_position bigint;
+begin
+  if not public.is_waitlist_operator() then
+    raise exception 'Admin or host access required.';
+  end if;
+  if p_target_status not in ('current','waiting') then
+    raise exception 'Invalid team destination.';
+  end if;
+  if p_target_status='current' and (p_court_number is null or p_court_side not in (1,2)) then
+    raise exception 'Invalid court destination.';
+  end if;
+
+  perform pg_advisory_xact_lock(7429201);
+  if p_target_status='current' then
+    select id into target_id from public.king_teams
+      where status='current' and court_number=p_court_number and court_side=p_court_side
+      order by created_at limit 1 for update;
+  end if;
+
+  if target_id is null then
+    select coalesce(max((regexp_match(name,'[0-9]+'))[1]::integer),0)+1
+      into next_team_number from public.king_teams;
+    select coalesce(max(queue_position),0)+1 into next_queue_position
+      from public.king_teams where status='waiting';
+    insert into public.king_teams(name,status,queue_position,court_number,court_side,consecutive_wins)
+      values(
+        'Team '||next_team_number,
+        p_target_status,
+        case when p_target_status='waiting' then next_queue_position else 0 end,
+        case when p_target_status='current' then p_court_number else null end,
+        case when p_target_status='current' then p_court_side else null end,
+        0
+      ) returning id into target_id;
+  end if;
+
+  return public.admin_move_king_player(p_player_id,target_id,0);
+end;
+$$;
+
+grant execute on function public.admin_move_king_player_to_empty(uuid,text,integer,integer) to authenticated;

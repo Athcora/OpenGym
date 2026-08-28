@@ -685,8 +685,13 @@ export default function App() {
     adminMoveInProgress.current=false;setBusy(false);await refresh();
   }
   async function moveKingPlayer(playerId:string,targetTeamId:string,index:number){
+    document.querySelectorAll('.king-empty-drop-target').forEach(node=>node.classList.remove('king-empty-drop-target'));
     setBusy(true);
-    const {error}=await supabase.rpc('admin_move_king_player',{p_player_id:playerId,p_target_team_id:targetTeamId,p_target_index:index});
+    const empty=targetTeamId.match(/^empty:(current):(\d+):(1|2)$/);
+    const waitingEmpty=targetTeamId==='empty:waiting';
+    const {error}=empty||waitingEmpty
+      ?await supabase.rpc('admin_move_king_player_to_empty',{p_player_id:playerId,p_target_status:waitingEmpty?'waiting':'current',p_court_number:empty?Number(empty[2]):null,p_court_side:empty?Number(empty[3]):null})
+      :await supabase.rpc('admin_move_king_player',{p_player_id:playerId,p_target_team_id:targetTeamId,p_target_index:index});
     setBusy(false);
     if(error){setNotice({title:'Could not move that player',message:error.message});await refresh();return;}
     await refresh();
@@ -1071,26 +1076,28 @@ function KingBoard({teams,courts,me,admin,host,busy,nextGame,joinTeam,joinEmptyT
  const waiting=teams.filter(team=>team.status==='waiting').sort((a,b)=>a.queue_position-b.queue_position);
  const hasOpenCourtTeam=teams.filter(team=>team.status==='current').length<courts.length*2;
  useEffect(()=>{dropRef.current=drop},[drop]);
+ const candidateKey=(candidate:HTMLElement)=>{if(candidate.dataset.kingTeamId)return candidate.dataset.kingTeamId;if(!candidate.classList.contains('empty-team-block'))return null;if(candidate.closest('.king-waitlist'))return 'empty:waiting';const label=candidate.querySelector('.team-block-label strong')?.textContent??'';const teamNumber=Number(label.match(/\d+/)?.[0]);if(!teamNumber)return null;return `empty:current:${Math.ceil(teamNumber/2)}:${teamNumber%2===1?1:2}`};
+ const clearEmptyTarget=()=>document.querySelectorAll('.king-empty-drop-target').forEach(node=>node.classList.remove('king-empty-drop-target'));
  const resolveTarget=(x:number,y:number)=>{const point=constrainQueueDragPoint(x,y);
   // Resolve from the geometry of every available team across every court and
   // the shared waitlist. elementFromPoint is unreliable during a drag because
   // animated rows, headers, and overlays can temporarily become the hit target.
-  const candidates=[...document.querySelectorAll<HTMLElement>('[data-king-team-id]')].filter(candidate=>{const target=teams.find(item=>item.id===candidate.dataset.kingTeamId);return Boolean(target&&target.members.filter(member=>member.id!==dragRef.current.player?.id).length<6)});
+  const candidates=[...document.querySelectorAll<HTMLElement>('[data-king-team-id],.empty-team-block')].filter(candidate=>{const key=candidateKey(candidate);if(key?.startsWith('empty:'))return true;const target=teams.find(item=>item.id===key);return Boolean(target&&target.members.filter(member=>member.id!==dragRef.current.player?.id).length<6)});
   const distance=(candidate:HTMLElement)=>{const rect=candidate.getBoundingClientRect();const dx=point.x<rect.left?rect.left-point.x:point.x>rect.right?point.x-rect.right:0;const dy=point.y<rect.top?rect.top-point.y:point.y>rect.bottom?point.y-rect.bottom:0;return Math.hypot(dx,dy)};
   let card=candidates.filter(candidate=>{const rect=candidate.getBoundingClientRect();return point.x>=rect.left&&point.x<=rect.right&&point.y>=rect.top&&point.y<=rect.bottom}).sort((a,b)=>distance(a)-distance(b))[0]??null;
   if(!card){const nearest=candidates.sort((a,b)=>distance(a)-distance(b))[0]??null;if(nearest&&distance(nearest)<=72)card=nearest;}
   // Keep the current team selected while the pointer is only a few pixels
   // outside its edge. This prevents a finger hovering between two teams from
   // rapidly clearing and re-selecting the destination.
-  if(!card&&dropRef.current){const current=document.querySelector<HTMLElement>(`[data-king-team-id="${dropRef.current.teamId}"]`);const rect=current?.getBoundingClientRect();if(current&&rect&&point.x>=rect.left-10&&point.x<=rect.right+10&&point.y>=rect.top-10&&point.y<=rect.bottom+10)card=current;}
-  if(!card){if(dropRef.current){dropRef.current=null;setDrop(null)}return;}const team=teams.find(item=>item.id===card.dataset.kingTeamId);const memberCount=team?.members.filter(member=>member.id!==dragRef.current.player?.id).length??6;if(!team||memberCount>=6){if(dropRef.current){dropRef.current=null;setDrop(null)}return;}
+  if(!card&&dropRef.current){const current=candidates.find(candidate=>candidateKey(candidate)===dropRef.current?.teamId)??null;const rect=current?.getBoundingClientRect();if(current&&rect&&point.x>=rect.left-10&&point.x<=rect.right+10&&point.y>=rect.top-10&&point.y<=rect.bottom+10)card=current;}
+  if(!card){clearEmptyTarget();if(dropRef.current){dropRef.current=null;setDrop(null)}return;}const targetKey=candidateKey(card);const team=teams.find(item=>item.id===targetKey);const memberCount=targetKey?.startsWith('empty:')?0:team?.members.filter(member=>member.id!==dragRef.current.player?.id).length??6;if(!targetKey||memberCount>=6){clearEmptyTarget();if(dropRef.current){dropRef.current=null;setDrop(null)}return;}
   // Resolve against the team's fixed six-slot grid, never against rows that
   // are currently animating around the placeholder. Using moving row bounds
   // creates a feedback loop where the highlighted slot bounces back and forth.
   const label=card.querySelector<HTMLElement>('.team-block-label');const firstRow=card.querySelector<HTMLElement>('.king-player-row');const contentTop=label?.getBoundingClientRect().bottom??firstRow?.getBoundingClientRect().top??card.getBoundingClientRect().top;const rowHeight=firstRow?.getBoundingClientRect().height||62;
   let index=Math.max(0,Math.min(Math.floor((point.y-contentTop)/rowHeight+.5),memberCount));const current=dropRef.current;
-  if(current?.teamId===team.id&&index!==current.index){const boundary=contentTop+(Math.max(index,current.index)-.5)*rowHeight;const hysteresis=9;if(Math.abs(point.y-boundary)<hysteresis)index=current.index;}
-  const next={teamId:team.id,index};if(current?.teamId===next.teamId&&current.index===next.index)return;dropRef.current=next;setDrop(next)};
+  if(current?.teamId===targetKey&&index!==current.index){const boundary=contentTop+(Math.max(index,current.index)-.5)*rowHeight;const hysteresis=9;if(Math.abs(point.y-boundary)<hysteresis)index=current.index;}
+  const next={teamId:targetKey,index};if(current?.teamId===next.teamId&&current.index===next.index)return;clearEmptyTarget();if(targetKey.startsWith('empty:'))card.classList.add('king-empty-drop-target');dropRef.current=next;setDrop(next)};
  const stopAutoScroll=()=>{if(dragRef.current.frame!==null){cancelAnimationFrame(dragRef.current.frame);dragRef.current.frame=null}};
  const startAutoScroll=()=>{if(dragRef.current.frame!==null)return;const tick=()=>{const state=dragRef.current;if(!state.active){state.frame=null;return;}const edge=Math.min(128,window.innerHeight*.22);const root=document.scrollingElement??document.documentElement;const canUp=root.scrollTop>1;const canDown=root.scrollTop+window.innerHeight<root.scrollHeight-1;const direction=state.lastY<edge&&canUp?-1:state.lastY>window.innerHeight-edge&&canDown?1:0;if(direction){const strength=Math.max(.3,1-Math.min(state.lastY,window.innerHeight-state.lastY)/edge);window.scrollBy(0,direction*(7+17*strength));if(state.preview)positionPlayerDragPreview(state.preview,state.lastX,state.lastY);resolveTarget(state.lastX,state.lastY)}state.frame=requestAnimationFrame(tick)};dragRef.current.frame=requestAnimationFrame(tick)};
  const activateDrag=(player:Player,start:number)=>{const state=dragRef.current;const row=state.row;if(!row)return;captureDragPickupViewport(row);state.player=player;state.timer=null;state.active=true;if(state.pointerId!==null)try{row.setPointerCapture(state.pointerId)}catch{}const preview=createPlayerDragPreview(player,[player],start);preview.classList.add('mobile-admin-drag-preview','king-player-drag-preview');document.body.appendChild(preview);state.preview=preview;document.body.classList.add('mobile-admin-dragging');positionPlayerDragPreview(preview,state.lastX,state.lastY);setDragging(player.id);navigator.vibrate?.(35);resolveTarget(state.lastX,state.lastY);startAutoScroll()};

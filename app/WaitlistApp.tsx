@@ -976,7 +976,8 @@ function queueDragBounds(){
  return{left:Math.min(...cardRects.map(rect=>rect.left)),right:Math.max(...cardRects.map(rect=>rect.right)),top:rowRects.length?Math.min(...rowRects.map(rect=>rect.top)):Math.min(...cardRects.map(rect=>rect.top)),bottom:rowRects.length?Math.max(...rowRects.map(rect=>rect.bottom)):Math.max(...cardRects.map(rect=>rect.bottom))};
 }
 function queueScrollBounds(){
- const sections=[...document.querySelectorAll<HTMLElement>('.court-section,[data-drop-status="waiting"]')];if(!sections.length)return null;const rects=sections.map(section=>section.getBoundingClientRect());
+ const standardSections=[...document.querySelectorAll<HTMLElement>('.court-section,[data-drop-status="waiting"]')];
+ const sections=standardSections.length?standardSections:[...document.querySelectorAll<HTMLElement>('.king-court,.king-waitlist')];if(!sections.length)return null;const rects=sections.map(section=>section.getBoundingClientRect());
  return{top:Math.min(...rects.map(rect=>rect.top)),bottom:Math.max(...rects.map(rect=>rect.bottom))};
 }
 function constrainQueueDragPoint(x:number,y:number){const bounds=queueDragBounds();if(!bounds)return{x,y};return{x:Math.min(bounds.right-2,Math.max(bounds.left+2,x)),y:Math.min(bounds.bottom-2,Math.max(bounds.top+2,y))};}

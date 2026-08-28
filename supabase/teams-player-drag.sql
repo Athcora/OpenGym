@@ -81,6 +81,7 @@ set search_path=public
 as $$
 declare
   target_id uuid;
+  old_team_id uuid;
   next_team_number integer;
   next_queue_position bigint;
 begin
@@ -117,7 +118,23 @@ begin
       ) returning id into target_id;
   end if;
 
-  return public.admin_move_king_player(p_player_id,target_id,0);
+  select team_id into old_team_id from public.waitlist_players where id=p_player_id for update;
+  if old_team_id is null then raise exception 'That player is unavailable.'; end if;
+
+  update public.waitlist_players
+    set team_id=target_id,
+        status=p_target_status,
+        court_number=case when p_target_status='current' then p_court_number else null end,
+        queue_position=case when p_target_status='waiting' then next_queue_position*100 else 0 end,
+        updated_at=now()
+    where id=p_player_id;
+
+  if old_team_id<>target_id
+     and not exists(select 1 from public.waitlist_players where team_id=old_team_id and status<>'left') then
+    delete from public.king_teams where id=old_team_id;
+  end if;
+
+  return jsonb_build_object('message','Player moved.','team_id',target_id);
 end;
 $$;
 

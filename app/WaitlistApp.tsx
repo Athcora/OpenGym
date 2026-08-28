@@ -1086,6 +1086,7 @@ function KingBoard({teams,courts,me,admin,host,busy,nextGame,joinTeam,joinEmptyT
   const distance=(candidate:HTMLElement)=>{const rect=candidate.getBoundingClientRect();const dx=point.x<rect.left?rect.left-point.x:point.x>rect.right?point.x-rect.right:0;const dy=point.y<rect.top?rect.top-point.y:point.y>rect.bottom?point.y-rect.bottom:0;return Math.hypot(dx,dy)};
   let card=candidates.filter(candidate=>{const rect=candidate.getBoundingClientRect();return point.x>=rect.left&&point.x<=rect.right&&point.y>=rect.top&&point.y<=rect.bottom}).sort((a,b)=>distance(a)-distance(b))[0]??null;
   if(!card){const nearest=candidates.sort((a,b)=>distance(a)-distance(b))[0]??null;if(nearest&&distance(nearest)<=72)card=nearest;}
+  if(card&&dropRef.current&&candidateKey(card)!==dropRef.current.teamId){const rect=card.getBoundingClientRect();const inset=16;const decisivelyInside=point.x>=rect.left+inset&&point.x<=rect.right-inset&&point.y>=rect.top+inset&&point.y<=rect.bottom-inset;if(!decisivelyInside){const previous=candidates.find(candidate=>candidateKey(candidate)===dropRef.current?.teamId);if(previous)card=previous;}}
   // Keep the current team selected while the pointer is only a few pixels
   // outside its edge. This prevents a finger hovering between two teams from
   // rapidly clearing and re-selecting the destination.

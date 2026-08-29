@@ -978,7 +978,8 @@ function queueDragBounds(){
  const cards=standardCards.length?standardCards:[...document.querySelectorAll<HTMLElement>('.king-court,.king-waitlist')];
  const rows=[...document.querySelectorAll<HTMLElement>('[data-player-id]')];
  if(!cards.length)return null;const cardRects=cards.map(card=>card.getBoundingClientRect());const rowRects=rows.map(row=>row.getBoundingClientRect());
- return{left:Math.min(...cardRects.map(rect=>rect.left)),right:Math.max(...cardRects.map(rect=>rect.right)),top:rowRects.length?Math.min(...rowRects.map(rect=>rect.top)):Math.min(...cardRects.map(rect=>rect.top)),bottom:rowRects.length?Math.max(...rowRects.map(rect=>rect.bottom)):Math.max(...cardRects.map(rect=>rect.bottom))};
+ const teamsMode=standardCards.length===0;
+ return{left:Math.min(...cardRects.map(rect=>rect.left)),right:Math.max(...cardRects.map(rect=>rect.right)),top:teamsMode?Math.min(...cardRects.map(rect=>rect.top)):rowRects.length?Math.min(...rowRects.map(rect=>rect.top)):Math.min(...cardRects.map(rect=>rect.top)),bottom:teamsMode?Math.max(...cardRects.map(rect=>rect.bottom)):rowRects.length?Math.max(...rowRects.map(rect=>rect.bottom)):Math.max(...cardRects.map(rect=>rect.bottom))};
 }
 function queueScrollBounds(){
  const standardSections=[...document.querySelectorAll<HTMLElement>('.court-section,[data-drop-status="waiting"]')];

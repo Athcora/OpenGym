@@ -40,6 +40,7 @@
 .admin-drag-preview-row strong { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
 .mobile-admin-drag-preview { position:fixed; top:0; left:0; width:min(280px,calc(100vw - 38px)); pointer-events:none; opacity:.96; transform:translate3d(-1000px,-1000px,0); }
 body.mobile-admin-dragging { overscroll-behavior:none; }
+body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .admin-tools { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); }
 .admin-tools>.next-game-tool{display:none}
 /* With one active court, keep the simple Next game control in the operator

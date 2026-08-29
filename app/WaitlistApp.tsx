@@ -769,7 +769,8 @@ export default function App() {
     const active=kingTeams.filter(team=>team.status==='current'&&team.court_number===courtNumber).sort((a,b)=>(a.court_side??1)-(b.court_side??1));
     if(active.length!==2){setNotice({title:'Two teams required',message:'This court needs two teams before its game can advance.'});return;}
     if(operator){
-      setNotice({title:'Which team won?',message:'Select the team that won this game.',confirm:'Team 1',actionTone:'success',action:()=>recordKingWinner(courtNumber,active[0].id),cancelLabel:'Team 2',cancelTone:'success',cancelAction:()=>recordKingWinner(courtNumber,active[1].id),blocking:true});
+      const firstTeamNumber=(courtNumber-1)*2+1;
+      setNotice({title:`Which team won on Court ${courtNumber}?`,message:'Select the team that won this game.',confirm:`Team ${firstTeamNumber}`,actionTone:'success',action:()=>recordKingWinner(courtNumber,active[0].id),cancelLabel:`Team ${firstTeamNumber+1}`,cancelTone:'success',cancelAction:()=>recordKingWinner(courtNumber,active[1].id),blocking:true});
       return;
     }
     const own=active.find(team=>team.id===me?.team_id);const opponent=active.find(team=>team.id!==me?.team_id);

@@ -127,6 +127,13 @@ begin
   end if;
   old_team:=player.team_id;
 
+  -- Preparing a newly joined player must never reshuffle somebody who is
+  -- already assigned to a team. Only unassigned players enter the next open
+  -- queue slot.
+  if old_team is not null and exists(select 1 from public.king_teams where id=old_team) then
+    return jsonb_build_object('message','Player is already assigned.','team_id',old_team);
+  end if;
+
   -- New players always fill the earliest available slot: Court 1 before
   -- Court 2, Team 1 before Team 2, and member positions 1 through 6.
   select t.* into target

@@ -687,6 +687,8 @@ export default function App() {
   async function moveKingPlayer(playerId:string,targetTeamId:string,index:number){
     document.querySelectorAll('.king-empty-drop-target').forEach(node=>node.classList.remove('king-empty-drop-target'));
     setBusy(true);
+    const {error:snapshotError}=await supabase.rpc('save_operator_undo',{p_label:'move team player'});
+    if(snapshotError){setBusy(false);setNotice({title:'Could not prepare undo',message:snapshotError.message});return;}
     const empty=targetTeamId.match(/^empty:(current):(\d+):(1|2)$/);
     const waitingEmpty=targetTeamId==='empty:waiting';
     const {error}=empty||waitingEmpty
@@ -739,6 +741,8 @@ export default function App() {
     const previous=courts.find(court=>court.court_number===courtNumber);
     setCourts(items=>items.map(court=>court.court_number===courtNumber?{...court,team_mode:mode,team_max_wins:maxWins}:court));
     setBusy(true);
+    const {error:snapshotError}=await supabase.rpc('save_operator_undo',{p_label:'change court rules'});
+    if(snapshotError){setBusy(false);if(previous)setCourts(items=>items.map(court=>court.court_number===courtNumber?previous:court));setNotice({title:'Could not prepare undo',message:snapshotError.message});return;}
     const {error}=await supabase.rpc('set_team_court_rules',{p_court_number:courtNumber,p_team_mode:mode,p_max_wins:maxWins});
     setBusy(false);
     if(error){
@@ -749,13 +753,13 @@ export default function App() {
     await realtimeChannel.current?.send({type:'broadcast',event:'court_rules_changed',payload:{courtNumber,mode,maxWins}});
   }
   async function rotateTeamCourt(courtNumber:number){
-    setBusy(true);const {data,error}=await supabase.rpc('end_team_rotation',{p_court_number:courtNumber});setBusy(false);
+    setBusy(true);if(operator){const {error:snapshotError}=await supabase.rpc('save_operator_undo',{p_label:'start next team game'});if(snapshotError){setBusy(false);setNotice({title:'Could not prepare undo',message:snapshotError.message});return;}}const {data,error}=await supabase.rpc('end_team_rotation',{p_court_number:courtNumber});setBusy(false);
     if(error){setNotice({title:'Could not advance this court',message:error.message});return;}
     await refresh();
     setNotice({title:'Advancement complete',message:data?.message??'Both teams rotated out and the next two teams entered.',confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success'});
   }
   async function recordKingWinner(courtNumber:number,winnerId:string){
-    setBusy(true);const {data,error}=await supabase.rpc('end_team_king_game',{p_court_number:courtNumber,p_winning_team_id:winnerId});setBusy(false);
+    setBusy(true);if(operator){const {error:snapshotError}=await supabase.rpc('save_operator_undo',{p_label:'start next king game'});if(snapshotError){setBusy(false);setNotice({title:'Could not prepare undo',message:snapshotError.message});return;}}const {data,error}=await supabase.rpc('end_team_king_game',{p_court_number:courtNumber,p_winning_team_id:winnerId});setBusy(false);
     if(error){setNotice({title:'Could not advance King of the Court',message:error.message});return;}
     await refresh();
     setNotice({title:'Advancement complete',message:`${data?.winner??'The winning team'} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success'});

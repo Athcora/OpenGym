@@ -41,6 +41,15 @@ begin
     );
   end loop;
 
+  -- An empty team is a UI placeholder, not persistent queue state. Keeping an
+  -- empty saved row reserves its old name (for example Team 5) in a current
+  -- court slot and makes the first games appear out of order after undo.
+  delete from public.king_teams t
+  where not exists(
+    select 1 from public.waitlist_players p
+    where p.team_id=t.id and p.status<>'left'
+  );
+
   restored_court_count:=coalesce(nullif(p_state->'config'->>'court_count','')::integer,1);
   update public.waitlist_config set
     game_number=(p_state->'config'->>'game_number')::integer,
@@ -65,6 +74,7 @@ begin
     values((item->>'id')::uuid,(item->>'game_number')::integer,item->'player_names',
       (item->>'ended_at')::timestamptz,coalesce(nullif(item->>'court_number','')::integer,1));
   end loop;
+  perform public.king_fill_courts();
 end;
 $$;
 
@@ -79,3 +89,11 @@ $$;
 
 grant execute on function public.save_operator_undo(text) to authenticated;
 
+-- Repair stale empty rows created by earlier Teams-mode builds. The client
+-- will immediately render correctly numbered placeholders for every open slot.
+delete from public.king_teams t
+where not exists(
+  select 1 from public.waitlist_players p
+  where p.team_id=t.id and p.status<>'left'
+);
+select public.king_fill_courts();

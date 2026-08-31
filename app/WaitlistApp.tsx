@@ -758,10 +758,11 @@ export default function App() {
     await realtimeChannel.current?.send({type:'broadcast',event:'court_rules_changed',payload:{courtNumber,mode,maxWins}});
   }
   async function rotateTeamCourt(courtNumber:number){
+    const occupiedWaitingTeams=kingTeams.filter(team=>team.status==='waiting'&&team.members.length>0).length;
     setBusy(true);if(operator){const {error:snapshotError}=await supabase.rpc('save_operator_undo',{p_label:'start next team game'});if(snapshotError){setBusy(false);setNotice({title:'Could not prepare undo',message:snapshotError.message});return;}}const {data,error}=await supabase.rpc('end_team_rotation',{p_court_number:courtNumber});setBusy(false);
     if(error){setNotice({title:'Could not advance this court',message:error.message});return;}
     await refresh();
-    setNotice({title:'Advancement complete',message:data?.message??'Both teams rotated out and the next two teams entered.',confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success'});
+    setNotice({title:'Advancement complete',message:occupiedWaitingTeams===0?'The game advanced. No teams were waiting, so the same two teams will replay.':data?.message??'Both teams rotated out and the next waiting teams entered.',confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success'});
   }
   async function recordKingWinner(courtNumber:number,winnerId:string){
     setBusy(true);if(operator){const {error:snapshotError}=await supabase.rpc('save_operator_undo',{p_label:'start next king game'});if(snapshotError){setBusy(false);setNotice({title:'Could not prepare undo',message:snapshotError.message});return;}}const {data,error}=await supabase.rpc('end_team_king_game',{p_court_number:courtNumber,p_winning_team_id:winnerId});setBusy(false);

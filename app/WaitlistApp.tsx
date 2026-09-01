@@ -98,7 +98,7 @@ export default function App() {
   const [permissionPlayer,setPermissionPlayer]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0);
   const [pendingNextGameEvent,setPendingNextGameEvent]=useState<{message:string}|null>(null);
   const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null); const refreshTimer=useRef<number|null>(null); const screenRef=useRef(screen); const realtimeChannel=useRef<ReturnType<typeof supabase.channel>|null>(null);
-  const activeStatusRef=useRef<PlayerStatus|null>(null); const waitlistModeRef=useRef<Config['mode']>('regular');
+  const activeStatusRef=useRef<PlayerStatus|null>(null); const waitlistModeRef=useRef<Config['mode']>('regular'); const ownPlayerRef=useRef<Player|null>(null);
   const rejoinLookupAttempts=useRef(0);
   useEffect(()=>{
     if(screen!=='name'){locationIntroShown.current=false;return;}
@@ -131,7 +131,7 @@ export default function App() {
   ownPlayerIdRef.current=me?.id??ownPlayer?.id??null;
   const host=Boolean(meIsVisibleInQueue&&me?.is_host&&!admin); const operator=admin||host;
   adminAccess.current=admin;
-  activeStatusRef.current=activeMe?.status??null;waitlistModeRef.current=config.mode;
+  activeStatusRef.current=activeMe?.status??null;waitlistModeRef.current=config.mode;ownPlayerRef.current=me;
   screenRef.current=screen;
   const displayedPlayers=useMemo(()=>dragging&&dragOver?previewAdminMove(players,dragging,dragOver.status,dragOver.index,config.max_players,dragOver.courtNumber,dragOver.marker):players,[players,dragging,dragOver,config.max_players]);
   const savedQueuePositions=useMemo(()=>{
@@ -300,6 +300,14 @@ export default function App() {
       .on('broadcast',{event:'court_rules_changed'},({payload})=>{
         const update=payload as {courtNumber:number;mode:'rotation'|'king';maxWins:number|null};
         setCourts(items=>items.map(court=>court.court_number===update.courtNumber?{...court,team_mode:update.mode,team_max_wins:update.maxWins}:court));
+      })
+      .on('broadcast',{event:'team_game_advanced'},({payload})=>{
+        const update=payload as {courtNumber:number;actorUserId:string|null;actorName:string};
+        const player=ownPlayerRef.current;
+        const shouldNotify=adminAccess.current||ownHostStatus.current||Boolean(player&&(
+          player.status!=='current'||(player.court_number??1)===update.courtNumber
+        ));
+        if(shouldNotify)setNotice({title:'Next game advanced',message:`${update.actorName} has advanced the next game. If you think this is a mistake, let an admin or host know.`});
       })
       .on('postgres_changes',{event:'*',schema:'public',table:'king_teams'},scheduleRefresh)
       .on('postgres_changes',{event:'*',schema:'public',table:'group_requests'},scheduleRefresh)
@@ -762,21 +770,28 @@ export default function App() {
     await realtimeChannel.current?.send({type:'broadcast',event:'court_rules_changed',payload:{courtNumber,mode,maxWins}});
   }
   async function rotateTeamCourt(courtNumber:number){
+    const actorName=me?.display_name??(admin?'Admin':'Host');
     const occupiedWaitingTeams=kingTeams.filter(team=>team.status==='waiting'&&team.members.length>0).length;
     setBusy(true);if(operator){const {error:snapshotError}=await supabase.rpc('save_operator_undo',{p_label:'start next team game'});if(snapshotError){setBusy(false);setNotice({title:'Could not prepare undo',message:snapshotError.message});return;}}const {data,error}=await supabase.rpc('end_team_rotation',{p_court_number:courtNumber});setBusy(false);
     if(error){setNotice({title:'Could not advance this court',message:error.message});return;}
     const prompts=(data?.rejoin_prompts??[]) as {id:string;user_id:string|null}[];
     for(const prompt of prompts){if(prompt.user_id)await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.id}}});}
+    const {data:nextTeams}=await supabase.from('king_teams').select('name').eq('status','current').eq('court_number',courtNumber).order('court_side');
     await refresh();
-    if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:occupiedWaitingTeams===0?'The game advanced. No teams were waiting, so the same two teams will replay.':data?.message??'Both teams rotated out and the next waiting teams entered.',confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success'});
+    const advancedLabels=(nextTeams??[]).map(team=>team.name).join(' and ');
+    if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:occupiedWaitingTeams===0?'The game advanced. No teams were waiting, so the same two teams will replay.':`${advancedLabels||'The next teams'} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success',cancelAction:()=>notifyTeamGameAdvanced(courtNumber,actorName)});
   }
   async function recordKingWinner(courtNumber:number,winnerId:string){
+    const actorName=me?.display_name??(admin?'Admin':'Host');
     setBusy(true);if(operator){const {error:snapshotError}=await supabase.rpc('save_operator_undo',{p_label:'start next king game'});if(snapshotError){setBusy(false);setNotice({title:'Could not prepare undo',message:snapshotError.message});return;}}const {data,error}=await supabase.rpc('end_team_king_game',{p_court_number:courtNumber,p_winning_team_id:winnerId});setBusy(false);
     if(error){setNotice({title:'Could not advance King of the Court',message:error.message});return;}
     const prompts=(data?.rejoin_prompts??[]) as {id:string;user_id:string|null}[];
     for(const prompt of prompts){if(prompt.user_id)await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.id}}});}
     await refresh();
-    if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:`${data?.winner??'The winning team'} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success'});
+    if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:data?.winner_stays===false?`${data?.winner??'The winning team'} has hit the max number of consecutive games and will sit out. If this was a mistake, reverse the advancement.`:`${data?.winner??'The winning team'} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success',cancelAction:()=>notifyTeamGameAdvanced(courtNumber,actorName)});
+  }
+  async function notifyTeamGameAdvanced(courtNumber:number,actorName:string){
+    await realtimeChannel.current?.send({type:'broadcast',event:'team_game_advanced',payload:{courtNumber,actorUserId:user?.id??null,actorName}});
   }
   async function reverseKingGame(){
     setBusy(true);const {data,error}=await supabase.rpc('reverse_king_game');setBusy(false);
@@ -792,16 +807,16 @@ export default function App() {
     }
     const own=active.find(team=>team.id===me?.team_id);const opponent=active.find(team=>team.id!==me?.team_id);
     if(!own||!opponent)return;
-    setNotice({title:'Did your team win?',message:`Your answer records the result for ${teamLabel(own)} against ${teamLabel(opponent)}.`,confirm:'Yes',actionTone:'success',action:()=>recordKingWinner(courtNumber,own.id),cancelLabel:'No',cancelTone:'danger',cancelAction:()=>recordKingWinner(courtNumber,opponent.id),blocking:true});
+    setNotice({title:'King of the Court Winner',message:`Did your team win? (You are ${teamLabel(own)}).\n\nThis will record the results for ${teamLabel(own)} vs ${teamLabel(opponent)} on Court ${courtNumber}.`,confirm:'Yes',actionTone:'success',action:()=>recordKingWinner(courtNumber,own.id),cancelLabel:'No',cancelTone:'danger',cancelAction:()=>recordKingWinner(courtNumber,opponent.id),blocking:true});
   }
   function confirmKingNext(courtNumber:number){
     const court=courts.find(item=>item.court_number===courtNumber);
     if((court?.team_mode??'rotation')==='rotation'){
-      setNotice({title:`End the game on Court ${courtNumber}?`,message:'Both teams will rotate out and the next two waiting teams will enter.',confirm:'Continue',actionTone:'success',action:()=>rotateTeamCourt(courtNumber),cancelLabel:'Cancel',cancelTone:'danger'});
+      setNotice(operator?{title:`End the game on Court ${courtNumber}?`,message:'Both teams will rotate out and the next two waiting teams will enter.',confirm:'Continue',actionTone:'success',action:()=>rotateTeamCourt(courtNumber),cancelLabel:'Cancel',cancelTone:'danger'}:{title:'Next Game',message:'Make sure the game is finished before continuing — this will notify everyone that you advanced the next game.',confirm:'Continue',actionTone:'success',action:()=>rotateTeamCourt(courtNumber),cancelLabel:'Cancel',cancelTone:'danger'});
       return;
     }
     if(operator){askKingWinner(courtNumber);return;}
-    setNotice({title:`End the game on Court ${courtNumber}?`,message:'This will record the winner and advance this court. Make sure the game is finished before continuing.',confirm:'Continue',actionTone:'success',action:async()=>askKingWinner(courtNumber),cancelLabel:'Cancel',cancelTone:'danger'});
+    setNotice({title:'Next Game',message:'Make sure the game is finished before continuing — this will notify everyone that you advanced the next game.',confirm:'Continue',actionTone:'success',action:async()=>askKingWinner(courtNumber),cancelLabel:'Cancel',cancelTone:'danger'});
   }
   function confirmTeamNext(courtNumber:number){
     confirmKingNext(courtNumber);

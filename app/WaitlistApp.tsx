@@ -740,11 +740,12 @@ export default function App() {
   async function advanceGame(courtNumber=me?.court_number??courts[0]?.court_number??1){
     setBusy(true);const {data,error}=await supabase.rpc('end_court_game',{p_court_number:courtNumber});
     if(error){setBusy(false);setNotice({title:'Could not start the next game',message:error.message});return;}
+    await broadcastQueueRefresh();
     const {data:newCurrent}=await supabase.from('waitlist_players').select('user_id').eq('status','current').eq('court_number',courtNumber);
     const currentIds=(newCurrent??[]).map(row=>row.user_id).filter((id):id is string=>Boolean(id)&&id!==user?.id);
     if(currentIds.length)await supabase.functions.invoke('send-push',{body:{userIds:currentIds,notification:{title:`Game ${data.game_number} has started`,body:'You are in the current game. Head to the court!',kind:'game_started',url:'/'}}});
     for(const prompt of data.rejoin_prompts??[]){await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.response_id}}});}
-    setBusy(false);await broadcastQueueRefresh();await refresh();
+    setBusy(false);await refresh();
   }
   async function changeWaitlistMode(mode:Config['mode']){
     await rpc('set_open_gym_mode',{p_mode:mode},false);
@@ -781,10 +782,11 @@ export default function App() {
     const occupiedWaitingTeams=kingTeams.filter(team=>team.status==='waiting'&&team.members.length>0).length;
     setBusy(true);if(operator){const {error:snapshotError}=await supabase.rpc('save_operator_undo',{p_label:'start next team game'});if(snapshotError){setBusy(false);setNotice({title:'Could not prepare undo',message:snapshotError.message});return;}}const {data,error}=await supabase.rpc('end_team_rotation',{p_court_number:courtNumber});setBusy(false);
     if(error){setNotice({title:'Could not advance this court',message:error.message});return;}
+    await broadcastQueueRefresh();
     const prompts=(data?.rejoin_prompts??[]) as {id:string;user_id:string|null}[];
     for(const prompt of prompts){if(prompt.user_id)await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.id}}});}
     const {data:nextTeams}=await supabase.from('king_teams').select('name').eq('status','current').eq('court_number',courtNumber).order('court_side');
-    await broadcastQueueRefresh();await refresh();
+    await refresh();
     const advancedLabels=(nextTeams??[]).map(team=>team.name).join(' and ');
     if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:occupiedWaitingTeams===0?'The game advanced. No teams were waiting, so the same two teams will replay.':`${advancedLabels||'The next teams'} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success',cancelAction:()=>notifyTeamGameAdvanced(courtNumber,actorName)});
   }
@@ -793,9 +795,10 @@ export default function App() {
     const winnerTeamName=kingTeams.find(team=>team.id===winnerId)?.name??'The winning team';
     setBusy(true);if(operator){const {error:snapshotError}=await supabase.rpc('save_operator_undo',{p_label:'start next king game'});if(snapshotError){setBusy(false);setNotice({title:'Could not prepare undo',message:snapshotError.message});return;}}const {data,error}=await supabase.rpc('end_team_king_game',{p_court_number:courtNumber,p_winning_team_id:winnerId});setBusy(false);
     if(error){setNotice({title:'Could not advance King of the Court',message:error.message});return;}
+    await broadcastQueueRefresh();
     const prompts=(data?.rejoin_prompts??[]) as {id:string;user_id:string|null}[];
     for(const prompt of prompts){if(prompt.user_id)await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.id}}});}
-    await broadcastQueueRefresh();await refresh();
+    await refresh();
     if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:data?.winner_stays===false?`${winnerTeamName} has hit the max number of consecutive games and will sit out. If this was a mistake, reverse the advancement.`:`${winnerTeamName} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success',cancelAction:()=>notifyTeamGameAdvanced(courtNumber,actorName)});
   }
   async function notifyTeamGameAdvanced(courtNumber:number,actorName:string){

@@ -1077,7 +1077,7 @@ function QueueCard({title,subtitle,status,players,start,savedQueuePositions,me,a
 }
 function teamLabel(team:KingTeam){return team.members.length?team.members.map(member=>member.display_name).join(' + '):team.name}
 function KingTeamCard({team,me,canJoin,busy,joinTeam,start,side,showStreak,operator,admin,adminSitOut,adminLeave,permissions,dragging,drop,beginDrag,now}:{team:KingTeam;me:Player|null;canJoin:boolean;busy:boolean;joinTeam:(team:KingTeam,side:number)=>void;start:number;side:number;showStreak:boolean;operator:boolean;admin:boolean;adminSitOut:(player:Player)=>void;adminLeave:(player:Player)=>void;permissions:(player:Player)=>void;dragging:string|null;drop:KingDropPlacement|null;beginDrag:(player:Player,event:ReactPointerEvent<HTMLElement>,start:number)=>void;now:number}){
- const own=team.id===me?.team_id;
+ const own=Boolean(me&&team.members.some(member=>member.id===me.id&&member.user_id===me.user_id));
  const members=team.members.filter(member=>member.id!==dragging);
  const items:(Player|'drop')[]=[...members];
  if(dragging&&drop?.teamId===team.id)items.splice(Math.min(drop.index,items.length),0,'drop');

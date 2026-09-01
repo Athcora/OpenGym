@@ -783,12 +783,13 @@ export default function App() {
   }
   async function recordKingWinner(courtNumber:number,winnerId:string){
     const actorName=me?.display_name??(admin?'Admin':'Host');
+    const winnerTeamName=kingTeams.find(team=>team.id===winnerId)?.name??'The winning team';
     setBusy(true);if(operator){const {error:snapshotError}=await supabase.rpc('save_operator_undo',{p_label:'start next king game'});if(snapshotError){setBusy(false);setNotice({title:'Could not prepare undo',message:snapshotError.message});return;}}const {data,error}=await supabase.rpc('end_team_king_game',{p_court_number:courtNumber,p_winning_team_id:winnerId});setBusy(false);
     if(error){setNotice({title:'Could not advance King of the Court',message:error.message});return;}
     const prompts=(data?.rejoin_prompts??[]) as {id:string;user_id:string|null}[];
     for(const prompt of prompts){if(prompt.user_id)await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.id}}});}
     await refresh();
-    if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:data?.winner_stays===false?`${data?.winner??'The winning team'} has hit the max number of consecutive games and will sit out. If this was a mistake, reverse the advancement.`:`${data?.winner??'The winning team'} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success',cancelAction:()=>notifyTeamGameAdvanced(courtNumber,actorName)});
+    if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:data?.winner_stays===false?`${winnerTeamName} has hit the max number of consecutive games and will sit out. If this was a mistake, reverse the advancement.`:`${winnerTeamName} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success',cancelAction:()=>notifyTeamGameAdvanced(courtNumber,actorName)});
   }
   async function notifyTeamGameAdvanced(courtNumber:number,actorName:string){
     await realtimeChannel.current?.send({type:'broadcast',event:'team_game_advanced',payload:{courtNumber,actorUserId:user?.id??null,actorName}});
@@ -807,7 +808,7 @@ export default function App() {
     }
     const own=active.find(team=>team.id===me?.team_id);const opponent=active.find(team=>team.id!==me?.team_id);
     if(!own||!opponent)return;
-    setNotice({title:'King of the Court Winner',message:`Did your team win? (You are ${teamLabel(own)}).\n\nThis will record the results for ${teamLabel(own)} vs ${teamLabel(opponent)} on Court ${courtNumber}.`,confirm:'Yes',actionTone:'success',action:()=>recordKingWinner(courtNumber,own.id),cancelLabel:'No',cancelTone:'danger',cancelAction:()=>recordKingWinner(courtNumber,opponent.id),blocking:true});
+    setNotice({title:'King of the Court Winner',message:`Did your team win? (You are ${own.name}).\n\nThis will record the results for ${own.name} vs ${opponent.name} on Court ${courtNumber}.`,confirm:'Yes',actionTone:'success',action:()=>recordKingWinner(courtNumber,own.id),cancelLabel:'No',cancelTone:'danger',cancelAction:()=>recordKingWinner(courtNumber,opponent.id),blocking:true});
   }
   function confirmKingNext(courtNumber:number){
     const court=courts.find(item=>item.court_number===courtNumber);

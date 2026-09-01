@@ -97,7 +97,7 @@ export default function App() {
   const [geofenceReturn,setGeofenceReturn]=useState<GeofenceReturn|null>(null); const [returnClock,setReturnClock]=useState(Date.now());
   const [permissionPlayer,setPermissionPlayer]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0);
   const [pendingNextGameEvent,setPendingNextGameEvent]=useState<{message:string}|null>(null);
-  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null); const refreshTimer=useRef<number|null>(null); const screenRef=useRef(screen); const realtimeChannel=useRef<ReturnType<typeof supabase.channel>|null>(null);
+  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const lastFullRefresh=useRef(0); const lastCleanupAt=useRef(0); const realtimeConnected=useRef(false); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null); const refreshTimer=useRef<number|null>(null); const screenRef=useRef(screen); const realtimeChannel=useRef<ReturnType<typeof supabase.channel>|null>(null);
   const activeStatusRef=useRef<PlayerStatus|null>(null); const waitlistModeRef=useRef<Config['mode']>('regular'); const ownPlayerRef=useRef<Player|null>(null);
   const rejoinLookupAttempts=useRef(0);
   useEffect(()=>{
@@ -158,13 +158,13 @@ export default function App() {
     // Realtime delivers notifications immediately. This slower visible-page
     // fallback only covers mobile browsers that suspended the websocket.
     const check=async()=>{const {data}=await supabase.from('group_notifications').select('id,user_id,message,read_at').eq('user_id',user.id).is('read_at',null).order('created_at',{ascending:true}).limit(1).maybeSingle();if(stopped||!data)return;const notification=data as GroupNotification;showPlayerNotification(notification,user.id);await supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id)};
-    void check();const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void check()},15_000);return()=>{stopped=true;window.clearInterval(timer)};
+    void check();const timer=window.setInterval(()=>{if(document.visibilityState==='visible'&&!realtimeConnected.current)void check()},15_000);return()=>{stopped=true;window.clearInterval(timer)};
   },[user?.id,admin]);
   useEffect(()=>{
     if(!user)return;let stopped=false;let refreshing=false;
     // Realtime is primary. A low-frequency visible-page refresh is enough to
     // recover after a suspended or briefly disconnected mobile browser.
-    const sync=async()=>{if(stopped||refreshing||document.visibilityState!=='visible')return;refreshing=true;try{await refresh(user)}finally{refreshing=false}};
+    const sync=async()=>{if(stopped||refreshing||document.visibilityState!=='visible'||realtimeConnected.current)return;refreshing=true;try{await refresh(user)}finally{refreshing=false}};
     const timer=window.setInterval(()=>void sync(),30_000);return()=>{stopped=true;window.clearInterval(timer)};
   },[user?.id]);
   useEffect(()=>{
@@ -207,6 +207,7 @@ export default function App() {
       if(document.visibilityState!=='visible')return;
       const now=Date.now();
       if(now-lastResumeRefresh.current<1_000)return;
+      if(realtimeConnected.current&&now-lastFullRefresh.current<5*60_000)return;
       lastResumeRefresh.current=now;
       void refresh(user);
     };
@@ -338,15 +339,16 @@ export default function App() {
         }
         const quietSitOut=/sit[_-]?out/i.test(event.event_type??'');
         if(event.actor_user_id!==session?.user.id&&event.message&&!quietSitOut&&!quietEvents.has(event.event_type??''))setNotice({title:'Waitlist update',message:event.message});
-      }).subscribe();
+      }).subscribe(status=>{realtimeConnected.current=status==='SUBSCRIBED'});
     realtimeChannel.current=channel;
-    return()=>{if(realtimeChannel.current===channel)realtimeChannel.current=null;void supabase.removeChannel(channel)};
+    return()=>{realtimeConnected.current=false;if(realtimeChannel.current===channel)realtimeChannel.current=null;void supabase.removeChannel(channel)};
   }
   function scheduleRefresh(){if(refreshTimer.current!==null)window.clearTimeout(refreshTimer.current);refreshTimer.current=window.setTimeout(()=>{refreshTimer.current=null;void refresh()},250)}
   async function loadPastGames(){const {data,error}=await supabase.from('past_games').select('id,game_number,court_number,player_names,ended_at').order('game_number',{ascending:false}).limit(60);if(error){setNotice({title:'Past games unavailable',message:error.message});return;}setGames((data??[]) as Game[])}
   function openPastGames(){setScreen('history');void loadPastGames()}
   async function refresh(activeUser?:User|null){
-    await supabase.rpc('cleanup_king_rejoin_expirations');
+    const now=Date.now();
+    if(now-lastCleanupAt.current>=60_000){lastCleanupAt.current=now;await supabase.rpc('cleanup_king_rejoin_expirations');}
     const [{data:p},{data:c},{data:courtRows},{data:teamRows},{data:a},{data:r},{data:s},{data:rejoin,error:rejoinError},{data:geo}]=await Promise.all([
       supabase.from('waitlist_players').select('id,user_id,first_name,last_name,display_name,status,queue_position,restricted,group_id,team_id,is_host,court_number,sitout_priority,sitout_from_game,rejoin_expires_at').neq('status','left').order('queue_position'),
       supabase.from('waitlist_config').select('game_number,max_players,court_count,mode,geofence_enabled,geofence_radius_m,king_max_wins').single(),
@@ -373,6 +375,7 @@ export default function App() {
       setScreen(openScreen=>['welcome','email','name','admin'].includes(openScreen)?'queue':openScreen);
     }
     else if(ownPlayerIdRef.current){setOwnPlayer(previous=>previous?{...previous,status:'left'}:previous);setForceRejoin(true);}
+    lastFullRefresh.current=Date.now();
   }
   async function rpc(name:string,args:Record<string,unknown>={},showSuccess=true){
     setBusy(true); const {data,error}=await supabase.rpc(name,args); setBusy(false);

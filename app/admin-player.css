@@ -38,6 +38,36 @@
   font-weight: 800;
 }
 
+.admin-tools .rejoin-tool {
+  overflow: visible;
+  position: relative;
+}
+
+.admin-tools .rejoin-tool .notification-badge {
+  align-items: center;
+  background: #ff3b30;
+  border: 2px solid #25262b;
+  border-radius: 999px;
+  box-shadow: 0 2px 7px #0007;
+  color: #fff;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  height: 21px;
+  justify-content: center;
+  line-height: 1;
+  min-width: 21px;
+  padding: 0 5px;
+  position: absolute;
+  right: -7px;
+  top: -8px;
+  z-index: 2;
+}
+
+.theme-light .admin-tools .rejoin-tool .notification-badge {
+  border-color: #fff;
+}
+
 .offline-rejoin-row {
   align-items: center;
   display: flex;

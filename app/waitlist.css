@@ -10,3 +10,5 @@
 .theme-light .modal-back-button:hover{background:#f1f3f6}
 main:has(.admin-tools) .queue-team-block,.theme-dark main:has(.admin-tools) .queue-team-block{border-color:#3f424b}
 .theme-light main:has(.admin-tools) .queue-team-block{border-color:#d9dee5}
+.rejoin-only-queue .queue-team-block,.theme-dark .rejoin-only-queue .queue-team-block{border-color:#3f424b}
+.theme-light .rejoin-only-queue .queue-team-block{border-color:#d9dee5}

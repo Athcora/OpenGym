@@ -2,3 +2,9 @@
 .team-block-label{justify-content:flex-start}
 .team-block-label>span{margin-left:auto}
 .team-block-label .king-join-button{width:auto;margin:0 0 0 9px;padding:6px 10px;flex:0 0 auto}
+.modal{position:relative}
+.modal-back-button{position:absolute;top:20px;left:20px;display:grid;place-items:center;width:44px;height:44px;border:1px solid #464953;border-radius:12px;background:#222329;color:#f5f6f8;font-size:1.55rem;line-height:1;cursor:pointer}
+.modal-back-button:hover{background:#303139}
+.modal.has-modal-back .modal-mark{margin-left:56px}
+.theme-light .modal-back-button{background:#fff;color:#252a33;border-color:#d9dee5}
+.theme-light .modal-back-button:hover{background:#f1f3f6}

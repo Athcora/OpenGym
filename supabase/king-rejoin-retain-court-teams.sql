@@ -7,6 +7,7 @@ declare cfg public.waitlist_config; court public.waitlist_courts; winner public.
   prompts jsonb:='[]'::jsonb; expiry timestamptz:=now()+interval '5 minutes'; rec record;
   eligible_waiting integer:=0; vacancies integer:=0; deficit integer:=0;
   keep_loser_current boolean:=false; keep_winner_current boolean:=false;
+  rotate_loser boolean:=true;
 begin
   perform pg_advisory_xact_lock(7429202);
   select * into cfg from public.waitlist_config where id for update;
@@ -31,31 +32,42 @@ begin
   next_game:=greatest(cfg.game_number,(select coalesce(max(game_number),0) from public.waitlist_courts),(select coalesce(max(game_number),0) from public.past_games))+1;
   select coalesce(max(queue_position),0)+1 into next_pos from public.king_teams where status='waiting';
   winner_stays:=court.team_max_wins is null or winner.consecutive_wins+1<court.team_max_wins;
+  -- In the rejoin variant, reaching the winner's streak limit rotates only
+  -- that winner. The losing team remains on court and does not have to rejoin.
+  rotate_loser:=court.team_mode<>'king_rejoin' or winner_stays;
 
   if court.team_mode='king_rejoin' then
     select count(*) into eligible_waiting from public.king_teams t
       where t.status='waiting' and exists(
         select 1 from public.waitlist_players p
         where p.team_id=t.id and p.status in('waiting','current','sitout'));
-    vacancies:=case when winner_stays then 1 else 2 end;
+    vacancies:=1;
     deficit:=greatest(vacancies-eligible_waiting,0);
-    keep_loser_current:=deficit>=1;
-    keep_winner_current:=not winner_stays and deficit>=2;
+    keep_loser_current:=rotate_loser and deficit>=1;
+    keep_winner_current:=not winner_stays and deficit>=1;
   end if;
 
-  update public.king_teams set
-    status=case when keep_loser_current then 'current' else 'waiting' end,
-    queue_position=case when keep_loser_current then 0 else next_pos end,
-    court_number=case when keep_loser_current then p_court_number else null end,
-    court_side=case when keep_loser_current then loser.court_side else null end,
-    consecutive_wins=0,
-    rejoin_expires_at=case when court.team_mode='king_rejoin' then expiry else null end,
-    updated_at=now() where id=loser.id;
-  if court.team_mode='king_rejoin' then
-    update public.waitlist_players set status='rejoin',court_number=null,rejoin_expires_at=expiry,updated_at=now()
-      where team_id=loser.id and status<>'left';
+  if rotate_loser then
+    update public.king_teams set
+      status=case when keep_loser_current then 'current' else 'waiting' end,
+      queue_position=case when keep_loser_current then 0 else next_pos end,
+      court_number=case when keep_loser_current then p_court_number else null end,
+      court_side=case when keep_loser_current then loser.court_side else null end,
+      consecutive_wins=0,
+      rejoin_expires_at=case when court.team_mode='king_rejoin' then expiry else null end,
+      updated_at=now() where id=loser.id;
+    if court.team_mode='king_rejoin' then
+      update public.waitlist_players set status='rejoin',court_number=null,rejoin_expires_at=expiry,updated_at=now()
+        where team_id=loser.id and status<>'left';
+    else
+      update public.waitlist_players set status='waiting',court_number=null,updated_at=now() where team_id=loser.id and status<>'left';
+    end if;
   else
-    update public.waitlist_players set status='waiting',court_number=null,updated_at=now() where team_id=loser.id and status<>'left';
+    update public.king_teams set status='current',queue_position=0,court_number=p_court_number,
+      court_side=loser.court_side,consecutive_wins=0,rejoin_expires_at=null,updated_at=now()
+      where id=loser.id;
+    update public.waitlist_players set status='current',court_number=p_court_number,
+      rejoin_expires_at=null,updated_at=now() where team_id=loser.id and status<>'left';
   end if;
 
   if winner_stays then
@@ -63,7 +75,7 @@ begin
   else
     update public.king_teams set
       status=case when keep_winner_current then 'current' else 'waiting' end,
-      queue_position=case when keep_winner_current then 0 else next_pos+1 end,
+      queue_position=case when keep_winner_current then 0 else next_pos+case when rotate_loser then 1 else 0 end end,
       court_number=case when keep_winner_current then p_court_number else null end,
       court_side=case when keep_winner_current then winner.court_side else null end,
       consecutive_wins=0,

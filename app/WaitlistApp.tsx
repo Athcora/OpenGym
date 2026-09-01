@@ -302,6 +302,7 @@ export default function App() {
         const update=payload as {courtNumber:number;mode:'rotation'|'king';maxWins:number|null};
         setCourts(items=>items.map(court=>court.court_number===update.courtNumber?{...court,team_mode:update.mode,team_max_wins:update.maxWins}:court));
       })
+      .on('broadcast',{event:'queue_refresh'},scheduleRefresh)
       .on('broadcast',{event:'team_game_advanced'},({payload})=>{
         const update=payload as {courtNumber:number;actorUserId:string|null;actorName:string};
         const player=ownPlayerRef.current;
@@ -343,7 +344,10 @@ export default function App() {
     realtimeChannel.current=channel;
     return()=>{realtimeConnected.current=false;if(realtimeChannel.current===channel)realtimeChannel.current=null;void supabase.removeChannel(channel)};
   }
-  function scheduleRefresh(){if(refreshTimer.current!==null)window.clearTimeout(refreshTimer.current);refreshTimer.current=window.setTimeout(()=>{refreshTimer.current=null;void refresh()},250)}
+  function scheduleRefresh(){if(refreshTimer.current!==null)window.clearTimeout(refreshTimer.current);refreshTimer.current=window.setTimeout(()=>{refreshTimer.current=null;void refresh()},60)}
+  async function broadcastQueueRefresh(){
+    await realtimeChannel.current?.send({type:'broadcast',event:'queue_refresh',payload:{at:Date.now()}});
+  }
   async function loadPastGames(){const {data,error}=await supabase.from('past_games').select('id,game_number,court_number,player_names,ended_at').order('game_number',{ascending:false}).limit(60);if(error){setNotice({title:'Past games unavailable',message:error.message});return;}setGames((data??[]) as Game[])}
   function openPastGames(){setScreen('history');void loadPastGames()}
   async function refresh(activeUser?:User|null){
@@ -380,7 +384,7 @@ export default function App() {
   async function rpc(name:string,args:Record<string,unknown>={},showSuccess=true){
     setBusy(true); const {data,error}=await supabase.rpc(name,args); setBusy(false);
     if(error){setNotice({title:'Could not complete that',message:error.message});return false;}
-    if(data?.message&&showSuccess)setNotice({title:'Done',message:data.message}); await refresh(); return true;
+    if(data?.message&&showSuccess)setNotice({title:'Done',message:data.message}); await broadcastQueueRefresh(); await refresh(); return true;
   }
   async function commitCourtCount(input:HTMLInputElement){
     const parsed=Number(input.value);
@@ -702,7 +706,7 @@ export default function App() {
     adminMoveInProgress.current=true;setBusy(true);
     const {error:moveError}=await supabase.rpc('admin_move_player',{p_player_id:playerId,p_status:status,p_index:index,p_court_number:courtNumber});
     if(moveError){adminMoveInProgress.current=false;setBusy(false);setPlayers(beforeMove);setNotice({title:'Could not move that player',message:moveError.message});await refresh();return;}
-    adminMoveInProgress.current=false;setBusy(false);await refresh();
+    adminMoveInProgress.current=false;setBusy(false);await broadcastQueueRefresh();await refresh();
   }
   async function moveKingPlayer(playerId:string,targetTeamId:string,index:number){
     document.querySelectorAll('.king-empty-drop-target').forEach(node=>node.classList.remove('king-empty-drop-target'));
@@ -716,7 +720,7 @@ export default function App() {
       :await supabase.rpc('admin_move_king_player',{p_player_id:playerId,p_target_team_id:targetTeamId,p_target_index:index});
     setBusy(false);
     if(error){setNotice({title:'Could not move that player',message:error.message});await refresh();return;}
-    await refresh();
+    await broadcastQueueRefresh();await refresh();
   }
   function showRejoinOnly(){setOwnPlayer(previous=>previous?{...previous,status:'left'}:previous);setForceRejoin(true);setPlayers(items=>items.filter(player=>player.user_id!==user?.id));}
   async function answerRejoin(choice:'stay'|'leave'){if(choice==='stay'&&!await requireOnSite(()=>answerRejoin('stay')))return;if(rejoinResponse&&await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse.id,p_choice:choice},false)&&choice==='leave')showRejoinOnly();setRejoinResponse(null);}
@@ -740,7 +744,7 @@ export default function App() {
     const currentIds=(newCurrent??[]).map(row=>row.user_id).filter((id):id is string=>Boolean(id)&&id!==user?.id);
     if(currentIds.length)await supabase.functions.invoke('send-push',{body:{userIds:currentIds,notification:{title:`Game ${data.game_number} has started`,body:'You are in the current game. Head to the court!',kind:'game_started',url:'/'}}});
     for(const prompt of data.rejoin_prompts??[]){await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.response_id}}});}
-    setBusy(false);await refresh();
+    setBusy(false);await broadcastQueueRefresh();await refresh();
   }
   async function changeWaitlistMode(mode:Config['mode']){
     await rpc('set_open_gym_mode',{p_mode:mode},false);
@@ -780,7 +784,7 @@ export default function App() {
     const prompts=(data?.rejoin_prompts??[]) as {id:string;user_id:string|null}[];
     for(const prompt of prompts){if(prompt.user_id)await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.id}}});}
     const {data:nextTeams}=await supabase.from('king_teams').select('name').eq('status','current').eq('court_number',courtNumber).order('court_side');
-    await refresh();
+    await broadcastQueueRefresh();await refresh();
     const advancedLabels=(nextTeams??[]).map(team=>team.name).join(' and ');
     if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:occupiedWaitingTeams===0?'The game advanced. No teams were waiting, so the same two teams will replay.':`${advancedLabels||'The next teams'} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success',cancelAction:()=>notifyTeamGameAdvanced(courtNumber,actorName)});
   }
@@ -791,7 +795,7 @@ export default function App() {
     if(error){setNotice({title:'Could not advance King of the Court',message:error.message});return;}
     const prompts=(data?.rejoin_prompts??[]) as {id:string;user_id:string|null}[];
     for(const prompt of prompts){if(prompt.user_id)await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.id}}});}
-    await refresh();
+    await broadcastQueueRefresh();await refresh();
     if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:data?.winner_stays===false?`${winnerTeamName} has hit the max number of consecutive games and will sit out. If this was a mistake, reverse the advancement.`:`${winnerTeamName} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success',cancelAction:()=>notifyTeamGameAdvanced(courtNumber,actorName)});
   }
   async function notifyTeamGameAdvanced(courtNumber:number,actorName:string){
@@ -800,7 +804,7 @@ export default function App() {
   async function reverseKingGame(){
     setBusy(true);const {data,error}=await supabase.rpc('reverse_king_game');setBusy(false);
     if(error){setNotice({title:'Could not reverse the advancement',message:error.message});return;}
-    await refresh();setNotice({title:'Advancement reversed',message:data?.message??'The previous teams and game were restored.'});
+    await broadcastQueueRefresh();await refresh();setNotice({title:'Advancement reversed',message:data?.message??'The previous teams and game were restored.'});
   }
   function askKingWinner(courtNumber:number){
     const active=kingTeams.filter(team=>team.status==='current'&&team.court_number===courtNumber).sort((a,b)=>(a.court_side??1)-(b.court_side??1));

@@ -11,6 +11,7 @@ const zh:TranslationMap={
 };
 
 Object.assign(es,{
+  'This removes you from the current game or queue.':'Esto te elimina del juego actual o de la fila.',
   'Your position is saved. Choose before the timer reaches zero or you’ll automatically leave the waitlist.':'Tu posición está guardada. Elige antes de que el contador llegue a cero o saldrás automáticamente de la lista.',
   'left to rejoin':'restante para reingresar',
   'LIVE QUEUE':'COLA EN VIVO','· ADMIN':'· ADMINISTRADOR','Game':'Juego','＋ Add player':'＋ Agregar jugador','← Back to waitlist':'← Volver a la lista','← Go back':'← Volver',
@@ -43,6 +44,7 @@ Object.assign(es,{
 });
 
 Object.assign(zh,{
+  'This removes you from the current game or queue.':'这会将你移出当前比赛或队列。',
   'Your position is saved. Choose before the timer reaches zero or you’ll automatically leave the waitlist.':'你的位置已保留。请在倒计时归零前选择，否则你将自动离开等候名单。',
   'left to rejoin':'重新加入剩余时间',
   'LIVE QUEUE':'实时队列','· ADMIN':'· 管理员','Game':'第','＋ Add player':'＋ 添加球员','← Back to waitlist':'← 返回等候名单','← Go back':'← 返回',

@@ -12,3 +12,6 @@ main:has(.admin-tools) .queue-team-block,.theme-dark main:has(.admin-tools) .que
 .theme-light main:has(.admin-tools) .queue-team-block{border-color:#d9dee5}
 .rejoin-only-queue .queue-team-block,.theme-dark .rejoin-only-queue .queue-team-block{border-color:#3f424b}
 .theme-light .rejoin-only-queue .queue-team-block{border-color:#d9dee5}
+.king-empty-row.own{background:#24252a;box-shadow:none}
+.king-empty-row.own::after{display:none}
+.theme-light .king-empty-row.own{background:#fff}

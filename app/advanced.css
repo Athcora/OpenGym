@@ -315,6 +315,8 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .team-block-label .king-own-team-label{color:#8ff0c9;font-weight:900;white-space:nowrap}.theme-light .team-block-label .king-own-team-label{color:#16764f}
 .team-fill-in-button{flex:0 0 auto;margin-left:auto;border:1px solid #55c89a;border-radius:9px;padding:7px 10px;background:#2f8b69;color:#fff;font-size:.68rem;font-weight:850;white-space:nowrap;cursor:pointer}.team-fill-in-button:hover{background:#3aa47d;box-shadow:0 0 15px #55c89a55}.theme-light .team-fill-in-button{background:#21865f;border-color:#21865f}
 .team-player-status{font-size:.72em;font-weight:700;opacity:.56;white-space:nowrap}
+.team-sitting-label{position:relative;display:inline-grid;align-items:center;justify-items:start;max-width:100%;line-height:1.05}.team-sitting-name{grid-area:1/1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.22}.team-sitting-label>small{grid-area:1/1;font-size:.72em;font-weight:850;letter-spacing:.025em;color:#a8adb8;white-space:nowrap;text-shadow:0 1px 4px #111}
+.theme-light .team-sitting-label>small{color:#555d69;text-shadow:0 1px 3px #fff}
 .king-join-button.join-action-locked{position:relative;overflow:hidden;opacity:.68;filter:saturate(.3);cursor:not-allowed}
 .king-join-button.join-action-locked::before,.king-join-button.join-action-locked::after{content:"";position:absolute;top:50%;left:-10%;width:120%;height:3px;border-radius:999px;background:rgba(255,255,255,.62);transform-origin:center;pointer-events:none;box-shadow:0 1px 5px rgba(0,0,0,.18)}
 .king-join-button.join-action-locked::before{transform:rotate(24deg)}.king-join-button.join-action-locked::after{transform:rotate(-24deg)}

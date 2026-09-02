@@ -659,6 +659,16 @@ export default function App() {
   }
   function confirmTeamFillIn(sitter:Player,team:KingTeam){
     if(!me)return;
+    if(me.status==='current'&&team.status==='current'){
+      const sameCourt=me.court_number===team.court_number;
+      setNotice({
+        title:'Unable to fill in',
+        message:sameCourt
+          ?'You cannot fill in for this player because they are in the same game as you.'
+          :'You cannot fill in for this player because you are already playing in a current game on another court.',
+      });
+      return;
+    }
     setNotice({title:`Fill in for ${sitter.display_name}?`,message:`You will fill in for ${sitter.display_name} on ${team.name} for one game. Your original position will be saved.`,confirm:'Fill in',actionTone:'success',cancelLabel:'Cancel',cancelTone:'danger',action:async()=>{await rpc('fill_in_team_spot',{p_sitter_id:sitter.id},false)}});
   }
   async function cancelTeamFillIn(){

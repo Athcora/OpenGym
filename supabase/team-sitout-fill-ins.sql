@@ -31,6 +31,12 @@ begin
   select * into destination from public.king_teams where id=sitter.team_id;
   select * into source from public.king_teams where id=filler.team_id;
   if destination.id is null or source.id is null then raise exception 'Both players need an active team.'; end if;
+  if filler.status='current' and destination.status='current' then
+    if source.court_number=destination.court_number then
+      raise exception 'You cannot fill in for this player because they are in the same game as you.';
+    end if;
+    raise exception 'You cannot fill in for this player because you are already playing in a current game on another court.';
+  end if;
   target_game:=coalesce((select game_number from public.waitlist_courts where court_number=destination.court_number),(select game_number+1 from public.waitlist_config where id));
   insert into public.team_fill_ins(sitter_id,filler_id,destination_team_id,source_team_id,court_number,game_number)
     values(sitter.id,filler.id,destination.id,source.id,destination.court_number,target_game);

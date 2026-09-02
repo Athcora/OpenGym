@@ -39,6 +39,19 @@ begin
 end;$$;
 grant execute on function public.fill_in_team_spot(uuid) to authenticated;
 
+create or replace function public.cancel_team_fill_in()
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare assignment public.team_fill_ins;
+begin
+  select * into assignment from public.team_fill_ins where filler_id in(
+    select id from public.waitlist_players where user_id=auth.uid()
+  ) for update;
+  if assignment.id is null then raise exception 'You are not currently filling in for another player.'; end if;
+  delete from public.team_fill_ins where id=assignment.id;
+  return jsonb_build_object('message','Your one-game fill-in was canceled.');
+end;$$;
+grant execute on function public.cancel_team_fill_in() to authenticated;
+
 create or replace function public.cancel_team_sitout()
 returns jsonb language plpgsql security definer set search_path=public as $$
 declare player public.waitlist_players; team public.king_teams;

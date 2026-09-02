@@ -260,8 +260,9 @@ export default function App() {
     void (async()=>{
       const {error}=await supabase.rpc('leave_waitlist');
       if(error){expiredRejoinHandled.current=false;setNotice({title:'Could not update the waitlist',message:error.message});return;}
-      await refresh();
-      setNotice({title:'Rejoin time expired',message:'You did not rejoin within the allotted time, so you were removed from the waitlist.',onClose:()=>setScreen('queue')});
+      await broadcastQueueRefresh();
+      await logout();
+      setNotice({title:'Rejoin time expired',message:'You did not rejoin within the allotted time, so you were removed from the waitlist. Join again normally if you want to return.'});
     })();
   },[me?.status,rejoinResponse,rejoinChecked]);
   async function boot(){
@@ -511,7 +512,12 @@ export default function App() {
   }
   async function turnOnNotifications(){setBusy(true);try{await enablePush();setNotifications(true);setNotice({title:'Notifications are on',message:"Weâ€™ll alert you when your game starts or needs a response."});}catch(error){setNotice({title:'Notifications unavailable',message:error instanceof Error?error.message:'Could not enable notifications.'});}setBusy(false);}
   async function saveName(player:Player){if(isInappropriateName(editName)){setNotice(inappropriateNameNotice);return;}const parts=cleanName(editName).split(' ');const f=parts.shift()??'';const l=parts.join(' ');if(await rpc('rename_waitlist_player',{p_player_id:player.id,p_first_name:f,p_last_name:l}))setEditing(null);}
-  async function logout(){await supabase.auth.signOut();setPlayers([]);setUser(null);setScreen('welcome');await boot();}
+  async function logout(){
+    await supabase.auth.signOut();
+    setPlayers([]);setKingTeams([]);setUser(null);setOwnPlayer(null);setForceRejoin(false);setRejoinResponse(null);setPendingNextGameEvent(null);setAdmin(false);setScreen('welcome');
+    ownPlayerIdRef.current=null;ownHostStatus.current=false;hostTrackedUserId.current=null;
+    await boot();
+  }
   async function startGuestFlow(){
     setBusy(true);
     const signOutResult=await supabase.auth.signOut();
@@ -722,9 +728,8 @@ export default function App() {
     if(error){setNotice({title:'Could not move that player',message:error.message});await refresh();return;}
     await broadcastQueueRefresh();await refresh();
   }
-  function showRejoinOnly(){setOwnPlayer(previous=>previous?{...previous,status:'left'}:previous);setForceRejoin(true);setPlayers(items=>items.filter(player=>player.user_id!==user?.id));}
-  async function answerRejoin(choice:'stay'|'leave'){if(choice==='stay'&&!await requireOnSite(()=>answerRejoin('stay')))return;if(rejoinResponse&&await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse.id,p_choice:choice},false)&&choice==='leave')showRejoinOnly();setRejoinResponse(null);}
-  async function leaveOwnWaitlist(){if(await rpc('leave_waitlist',{},false))showRejoinOnly();}
+  async function answerRejoin(choice:'stay'|'leave'){if(choice==='stay'&&!await requireOnSite(()=>answerRejoin('stay')))return;if(rejoinResponse&&await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse.id,p_choice:choice},false)&&choice==='leave')await logout();setRejoinResponse(null);}
+  async function leaveOwnWaitlist(){if(await rpc('leave_waitlist',{},false))await logout();}
   async function rejoinAtBack(){if(!me)return;if(!await requireOnSite(rejoinAtBack))return;if(await rpc('join_waitlist',{p_first_name:me.first_name,p_last_name:me.last_name},false))setForceRejoin(false);}
   async function returnToFacility(){
     if(!geofenceReturn)return;setBusy(true);

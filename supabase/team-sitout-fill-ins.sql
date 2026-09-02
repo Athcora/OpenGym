@@ -41,13 +41,19 @@ grant execute on function public.fill_in_team_spot(uuid) to authenticated;
 
 create or replace function public.cancel_team_fill_in()
 returns jsonb language plpgsql security definer set search_path=public as $$
-declare assignment public.team_fill_ins;
+declare assignment_id uuid;
 begin
-  select * into assignment from public.team_fill_ins where filler_id in(
-    select id from public.waitlist_players where user_id=auth.uid()
-  ) for update;
-  if assignment.id is null then raise exception 'You are not currently filling in for another player.'; end if;
-  delete from public.team_fill_ins where id=assignment.id;
+  delete from public.team_fill_ins assignment
+  using public.waitlist_players player
+  where assignment.filler_id=player.id
+    and player.user_id=auth.uid()
+  returning assignment.id into assignment_id;
+
+  -- Realtime delivery can leave the button visible for a fraction of a second
+  -- after another tab has already canceled it. Treat that repeat as success.
+  if assignment_id is null then
+    return jsonb_build_object('message','Your one-game fill-in is already canceled.');
+  end if;
   return jsonb_build_object('message','Your one-game fill-in was canceled.');
 end;$$;
 grant execute on function public.cancel_team_fill_in() to authenticated;

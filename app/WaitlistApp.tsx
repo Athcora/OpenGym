@@ -661,7 +661,11 @@ export default function App() {
     if(!me)return;
     setNotice({title:`Fill in for ${sitter.display_name}?`,message:`You will fill in for ${sitter.display_name} on ${team.name} for one game. Your original position will be saved.`,confirm:'Fill in',actionTone:'success',cancelLabel:'Cancel',cancelTone:'danger',action:async()=>{await rpc('fill_in_team_spot',{p_sitter_id:sitter.id},false)}});
   }
-  async function cancelTeamFillIn(){await rpc('cancel_team_fill_in',{},false)}
+  async function cancelTeamFillIn(){
+    if(await rpc('cancel_team_fill_in',{},false)){
+      setNotice({title:'Fill-in canceled',message:'You are back in your original position.'});
+    }
+  }
   function startAdminGrouping(){
     cancelSubstitute();setNotice({title:'Create a group',message:'Select between two and six players to become a team. Tap each player card, then choose Done.',onClose:()=>{setAdminGroupIds([]);setAdminGrouping(true);}});
   }

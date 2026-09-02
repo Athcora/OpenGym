@@ -264,6 +264,7 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .past-games-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; align-items:start; }
 .past-games-grid .past-game { margin:0; min-width:0; }
 .past-games-grid .past-game>strong { display:block; margin-bottom:12px; font-size:1.05rem; }
+.past-game-teams{display:grid;gap:10px}.past-game-team{overflow:hidden;border:3px solid #54b88f;border-radius:14px;background:#24252a}.past-game-team>header{padding:8px 12px;border-bottom:1px solid #367c64;background:#183d31;color:#a1efd0;font-size:.7rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase}.past-game-team ol{padding:0 12px}.past-game-team li:first-child{border-top:0}.theme-light .past-game-team{border-color:#26966a;background:#fff}.theme-light .past-game-team>header{border-color:#b8dfcf;background:#e6f6ef;color:#176b4a}
 .past-games-grid ol { margin:0; padding:0; list-style:none; counter-reset:past-player; }
 .past-games-grid li { counter-increment:past-player; display:flex; gap:8px; align-items:baseline; padding:7px 0; border-top:1px solid rgba(139,144,160,.18); line-height:1.25; }
 .past-games-grid li::before { content:counter(past-player); min-width:1.2em; color:#8b90a0; font-size:.72rem; font-weight:750; }

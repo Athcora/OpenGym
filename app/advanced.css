@@ -315,6 +315,9 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .team-block-label .king-own-team-label{color:#8ff0c9;font-weight:900;white-space:nowrap}.theme-light .team-block-label .king-own-team-label{color:#16764f}
 .team-fill-in-button{flex:0 0 auto;margin-left:auto;border:1px solid #55c89a;border-radius:9px;padding:7px 10px;background:#2f8b69;color:#fff;font-size:.68rem;font-weight:850;white-space:nowrap;cursor:pointer}.team-fill-in-button:hover{background:#3aa47d;box-shadow:0 0 15px #55c89a55}.theme-light .team-fill-in-button{background:#21865f;border-color:#21865f}
 .team-player-status{font-size:.72em;font-weight:700;opacity:.56;white-space:nowrap}
+.king-join-button.join-action-locked{position:relative;overflow:hidden;opacity:.68;filter:saturate(.3);cursor:not-allowed}
+.king-join-button.join-action-locked::before,.king-join-button.join-action-locked::after{content:"";position:absolute;top:50%;left:-10%;width:120%;height:3px;border-radius:999px;background:rgba(255,255,255,.62);transform-origin:center;pointer-events:none;box-shadow:0 1px 5px rgba(0,0,0,.18)}
+.king-join-button.join-action-locked::before{transform:rotate(24deg)}.king-join-button.join-action-locked::after{transform:rotate(-24deg)}
 @media(max-width:720px){.king-mode-heading{align-items:flex-start}.king-win-limit{width:100%;justify-content:space-between}.king-win-limit select{flex:1}.queue-team-block{margin:8px}.team-block-label{padding:8px 11px}}
 
 /* Compact, per-court Teams Mode rules replace the old page-level heading. */

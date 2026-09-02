@@ -12,8 +12,15 @@ begin
     select coalesce(jsonb_agg(jsonb_build_object(
       'team', t.name,
       'players', coalesce((
-        select jsonb_agg(p.display_name order by p.queue_position,p.created_at)
+        select jsonb_agg(case
+          when sitter_fill.id is not null then fill_player.display_name||' (fill-in for '||p.display_name||')'
+          when player_fill.id is not null then p.display_name||' (filled in for '||fill_team.name||')'
+          else p.display_name end order by p.queue_position,p.created_at)
         from public.waitlist_players p
+        left join public.team_fill_ins sitter_fill on sitter_fill.sitter_id=p.id
+        left join public.waitlist_players fill_player on fill_player.id=sitter_fill.filler_id
+        left join public.team_fill_ins player_fill on player_fill.filler_id=p.id
+        left join public.king_teams fill_team on fill_team.id=player_fill.destination_team_id
         where p.team_id=t.id and p.status<>'left'
       ), '[]'::jsonb)
     ) order by t.court_side), '[]'::jsonb)

@@ -30,12 +30,16 @@ begin
   end if;
   update public.king_teams set status=case when keep_first then 'current' else 'waiting' end,
     queue_position=case when keep_first then 0 else next_pos end,court_number=case when keep_first then p_court_number else null end,
-    court_side=case when keep_first then 1 else null end,consecutive_wins=0,rejoin_expires_at=case when cfg.mode='teams_rejoin' then expiry else null end,updated_at=now() where id=first_team.id;
+    court_side=case when keep_first then 1 else null end,consecutive_wins=0,rejoin_expires_at=case when cfg.mode='teams_rejoin' and not keep_first then expiry else null end,updated_at=now() where id=first_team.id;
   update public.king_teams set status=case when keep_second then 'current' else 'waiting' end,
     queue_position=case when keep_second then 0 else next_pos+1 end,court_number=case when keep_second then p_court_number else null end,
-    court_side=case when keep_second then 2 else null end,consecutive_wins=0,rejoin_expires_at=case when cfg.mode='teams_rejoin' then expiry else null end,updated_at=now() where id=second_team.id;
+    court_side=case when keep_second then 2 else null end,consecutive_wins=0,rejoin_expires_at=case when cfg.mode='teams_rejoin' and not keep_second then expiry else null end,updated_at=now() where id=second_team.id;
   if cfg.mode='teams_rejoin' then
-    update public.waitlist_players set status='rejoin',court_number=null,rejoin_expires_at=expiry,updated_at=now() where team_id in(first_team.id,second_team.id) and status<>'left';
+    update public.waitlist_players set status='rejoin',court_number=null,rejoin_expires_at=expiry,updated_at=now()
+      where team_id in(first_team.id,second_team.id) and status<>'left'
+        and not (team_id=first_team.id and keep_first) and not (team_id=second_team.id and keep_second);
+    update public.waitlist_players set status='current',court_number=p_court_number,rejoin_expires_at=null,updated_at=now()
+      where status<>'left' and ((team_id=first_team.id and keep_first) or (team_id=second_team.id and keep_second));
   else
     update public.waitlist_players set status='waiting',court_number=null,rejoin_expires_at=null,updated_at=now() where team_id in(first_team.id,second_team.id) and status<>'left';
   end if;
@@ -54,4 +58,3 @@ begin
   return jsonb_build_object('message','Both teams rotated out and the next two teams entered.','game_number',next_game,'rejoin_prompts',prompts);
 end; $$;
 grant execute on function public.end_team_rotation(integer) to authenticated;
-

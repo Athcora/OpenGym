@@ -122,6 +122,49 @@ Object.assign(zh,{
   'After you play, you will be taken off the waitlist. To keep your saved place, press Rejoin within five minutes.':'比赛结束后，你会被移出等候名单。若要保留原来的位置，请在五分钟内点击“重新加入”。'
 });
 
+Object.assign(es,{
+  'Your team':'Tu equipo','Join another team':'Unirse a otro equipo','Court format':'Formato de cancha','Current teams':'Equipos actuales','Team waitlist':'Lista de equipos','Move Players':'Mover jugadores','Action History':'Historial de acciones',
+  'When your team is playing, this button advances only your court. In King of the Court, you will also report whether your team won.':'Cuando tu equipo está jugando, este botón avanza solo tu cancha. En Rey de la Cancha, también indicarás si tu equipo ganó.',
+  'Your team is marked with a green border and a “Your team” label so you can quickly find yourself and your teammates.':'Tu equipo aparece con un borde verde y la etiqueta “Tu equipo” para que puedas encontrar rápidamente a tus compañeros.',
+  'Use Join + to move to a team with an open spot. Moving teams removes you from your previous team.':'Usa Unirse + para pasar a un equipo con un lugar libre. Al cambiarte, sales de tu equipo anterior.',
+  'Each court shows whether it uses 2 on, 2 off or King of the Court. In King of the Court, the winner stays until losing or reaching the displayed game limit.':'Cada cancha muestra si usa 2 entran, 2 salen o Rey de la Cancha. En Rey de la Cancha, el ganador permanece hasta perder o alcanzar el límite mostrado.',
+  'Substitute action button':'Botón de sustitución','Substitute sends another player a request to permanently swap positions with you.':'Sustituir envía a otro jugador una solicitud para intercambiar posiciones permanentemente contigo.',
+  'Sit Out makes you skip one game while keeping priority for the following game.':'Descansar hace que omitas un juego y conserves prioridad para el siguiente.',
+  'Leave removes only you from your team and the waitlist, so use it when you do not want to play anymore.':'Salir te elimina solo a ti de tu equipo y de la lista; úsalo cuando ya no quieras jugar.',
+  'The two teams shown on each court are playing its current game. Only players on that court can advance it.':'Los dos equipos mostrados en cada cancha juegan el partido actual. Solo sus jugadores pueden avanzarlo.',
+  'Waiting teams stay together in one shared line for all courts. Open spots can be filled with Join +.':'Los equipos en espera permanecen juntos en una sola fila para todas las canchas. Los lugares libres se llenan con Unirse +.',
+  'After your team rotates off the court, you MUST rejoin within five minutes to keep your place.':'Después de que tu equipo salga de la cancha, DEBES reingresar dentro de cinco minutos para conservar tu lugar.',
+  'Next Game':'Siguiente juego','Advance the correct court here. For King of the Court, select the winning team; for 2 on, 2 off, both teams rotate while remaining intact.':'Avanza aquí la cancha correcta. En Rey de la Cancha, selecciona al ganador; en 2 entran, 2 salen, ambos equipos rotan sin separarse.',
+  'Court Format':'Formato de cancha','Choose 2 on, 2 off or King of the Court separately for each court, including the maximum game streak for King of the Court.':'Elige 2 entran, 2 salen o Rey de la Cancha por separado en cada cancha, incluido el máximo de juegos consecutivos.',
+  'Use Add Player to check in someone who does not have their phone. They enter the first available team spot.':'Usa Agregar jugador para registrar a alguien sin teléfono. Entrará en el primer lugar disponible de un equipo.',
+  'Rejoin Requests are usually for players without a phone who joined through you. After they play, they can ask you to help them rejoin.':'Las solicitudes de reingreso suelen ser para jugadores sin teléfono que entraron contigo. Después de jugar, pueden pedirte ayuda para reingresar.',
+  'Press and hold a player on mobile, or drag them on desktop, to move them into any team with an open spot.':'Mantén presionado a un jugador en móvil, o arrástralo en computadora, para moverlo a cualquier equipo con espacio.',
+  'Use Substitute to select two players and permanently swap their positions. Their teams stay unchanged unless the swap moves them to another team.':'Usa Sustituir para elegir dos jugadores e intercambiar sus posiciones permanentemente. Sus equipos no cambian salvo que el intercambio los mueva de equipo.',
+  'Use Sit Out beside a player to skip that player for one game. Use Remove to take that player out of the waitlist.':'Usa Descansar junto a un jugador para omitir un juego. Usa Eliminar para sacarlo de la lista.',
+  'Action History records the player and queue changes made during this waitlist.':'El Historial de acciones registra los cambios de jugadores y de la fila durante esta lista.'
+});
+Object.assign(zh,{
+  'Your team':'你的球队','Join another team':'加入其他球队','Court format':'球场模式','Current teams':'当前球队','Team waitlist':'球队等候名单','Move Players':'移动球员','Action History':'操作记录',
+  'When your team is playing, this button advances only your court. In King of the Court, you will also report whether your team won.':'当你的球队正在比赛时，此按钮只推进你的球场。擂主赛中，你还需要报告本队是否获胜。',
+  'Your team is marked with a green border and a “Your team” label so you can quickly find yourself and your teammates.':'你的球队会显示绿色边框和“你的球队”标签，方便你快速找到自己和队友。',
+  'Use Join + to move to a team with an open spot. Moving teams removes you from your previous team.':'使用“加入 +”移动到有空位的球队。更换球队后，你会离开原球队。',
+  'Each court shows whether it uses 2 on, 2 off or King of the Court. In King of the Court, the winner stays until losing or reaching the displayed game limit.':'每个球场都会显示“两队轮换”或“擂主赛”。擂主赛获胜者会留场，直到输球或达到显示的场次上限。',
+  'Substitute action button':'替换操作按钮','Substitute sends another player a request to permanently swap positions with you.':'“替换”会向另一名球员发送永久交换位置的请求。',
+  'Sit Out makes you skip one game while keeping priority for the following game.':'轮休会让你跳过一场，同时保留下一场的优先权。',
+  'Leave removes only you from your team and the waitlist, so use it when you do not want to play anymore.':'离开只会将你本人移出球队和等候名单；不想继续比赛时请使用。',
+  'The two teams shown on each court are playing its current game. Only players on that court can advance it.':'每个球场显示的两支球队正在进行当前比赛。只有该球场的球员可以推进比赛。',
+  'Waiting teams stay together in one shared line for all courts. Open spots can be filled with Join +.':'所有球场共用一条球队等候队列，等候球队会保持完整。空位可通过“加入 +”填补。',
+  'After your team rotates off the court, you MUST rejoin within five minutes to keep your place.':'球队离场轮换后，你必须在五分钟内重新加入，才能保留位置。',
+  'Next Game':'下一场','Advance the correct court here. For King of the Court, select the winning team; for 2 on, 2 off, both teams rotate while remaining intact.':'在这里推进正确的球场。擂主赛请选择获胜球队；两队轮换模式下，两支球队会保持完整并一起轮换。',
+  'Court Format':'球场模式','Choose 2 on, 2 off or King of the Court separately for each court, including the maximum game streak for King of the Court.':'可为每个球场分别选择两队轮换或擂主赛，并设置擂主赛的最长连胜场次。',
+  'Use Add Player to check in someone who does not have their phone. They enter the first available team spot.':'使用“添加球员”为没有手机的人登记；他们会进入球队的第一个可用空位。',
+  'Rejoin Requests are usually for players without a phone who joined through you. After they play, they can ask you to help them rejoin.':'重新加入请求通常用于通过你登记、没有手机的球员。比赛后，他们可以请你帮助重新加入。',
+  'Press and hold a player on mobile, or drag them on desktop, to move them into any team with an open spot.':'在手机上长按球员，或在电脑上拖动球员，即可将其移动到任何有空位的球队。',
+  'Use Substitute to select two players and permanently swap their positions. Their teams stay unchanged unless the swap moves them to another team.':'使用“替换”选择两名球员并永久交换位置。除非交换使其进入另一支球队，否则球队不变。',
+  'Use Sit Out beside a player to skip that player for one game. Use Remove to take that player out of the waitlist.':'使用球员旁的“轮休”让其跳过一场；使用“移除”将其移出等候名单。',
+  'Action History records the player and queue changes made during this waitlist.':'操作记录会保存本次等候名单中的球员和队列变更。'
+});
+
 function translateDynamic(value:string,language:AppLanguage){
   if(language==='en')return value;
   const game=value.match(/^Game (\d+)$/);if(game)return language==='es'?`Juego ${game[1]}`:`第 ${game[1]} 场`;

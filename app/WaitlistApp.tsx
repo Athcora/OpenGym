@@ -625,6 +625,18 @@ export default function App() {
   function confirmMySitOut(){
     if(isTeamsMode(config.mode)&&me?.status==='sitout'){void rpc('cancel_team_sitout',{},false);return;}
     const skippedGame=me?.status==='current'?config.game_number:(me?projectedGames.get(me.id):null)??config.game_number+1;
+    if(isTeamsMode(config.mode)){
+      ask(
+        'Are you sure you want to sit out one game?',
+        'This will allow another player to replace you for one game.',
+        'Sit out',
+        async()=>{
+          const completed=await rpc('sit_out_one_game',{p_skip_game:skippedGame},false);
+          if(completed)setNotice({title:'You have been successfully sat out',message:'Make sure to come back after one game to play again.'});
+        }
+      );
+      return;
+    }
     const groupMembers=me?.group_id?players.filter(player=>player.id!==me.id&&player.group_id===me.group_id):[];
     const groupIsPlaying=groupMembers.some(player=>player.status==='current');
     const groupPlaysNext=groupMembers.some(player=>projectedGames.get(player.id)===config.game_number+1);

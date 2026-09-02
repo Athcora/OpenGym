@@ -10,6 +10,10 @@
 .next-game-control small { color:#8b90a0; font-size:.62rem; font-weight:750; line-height:1.25; text-align:center; }
 .theme-light .next-game-control.unavailable .next::before,
 .theme-light .next-game-control.unavailable .next::after { background:rgba(255,255,255,.72); }
+.my-actions button.teams-action-locked{position:relative;overflow:hidden;opacity:.68;filter:saturate(.3);cursor:not-allowed}
+.my-actions button.teams-action-locked::before,.my-actions button.teams-action-locked::after{content:"";position:absolute;top:50%;left:-10%;width:120%;height:3px;border-radius:999px;background:rgba(255,255,255,.58);transform-origin:center;pointer-events:none;box-shadow:0 1px 5px rgba(0,0,0,.18)}
+.my-actions button.teams-action-locked::before{transform:rotate(24deg)}.my-actions button.teams-action-locked::after{transform:rotate(-24deg)}
+.theme-light .my-actions button.teams-action-locked::before,.theme-light .my-actions button.teams-action-locked::after{background:rgba(255,255,255,.72)}
 .theme-light .next-game-control small { color:#69717e; }
 @media(max-width:520px){.my-actions .next.next-with-substitute{grid-column:auto}}
 .rejoin-actions button { min-height:54px; border:0; border-radius:14px; color:#fff; font-weight:800; }

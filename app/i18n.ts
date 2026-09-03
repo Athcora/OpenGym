@@ -166,7 +166,7 @@ Object.assign(zh,{
 });
 
 Object.assign(es,{
-  '# of courts':'# de canchas','Increase courts':'Aumentar canchas','Decrease courts':'Disminuir canchas','Number of courts':'Número de canchas',
+  '# of courts':'# de canchas','Increase courts':'Aumentar canchas','Decrease courts':'Disminuir canchas','Number of courts':'Número de canchas','Team':'Equipo','playing':'jugando','Next game (Court':'Siguiente juego (Cancha',
   '2 on, 2 off':'2 entran, 2 salen','2 ON, 2 OFF':'2 ENTRAN, 2 SALEN','King of the Court':'Rey de la Cancha','KING OF THE COURT':'REY DE LA CANCHA','Unlimited':'Sin límite','with':'con','consecutive games MAX':'juegos consecutivos MÁX.','No game limit':'Sin límite de juegos',
   'Open spot':'Lugar disponible','Join +':'Unirse +','Team full':'Equipo completo','Game streak:':'Racha:','Teams will appear here after the active courts are filled.':'Los equipos aparecerán aquí después de llenar las canchas activas.',
   'Sitting 1 game':'Descansa 1 juego','Fill in':'Reemplazar','Unfill':'Dejar reemplazo','(1 game replacement)':'(reemplazo por 1 juego)','Player drop position':'Posición para soltar jugador',
@@ -177,7 +177,7 @@ Object.assign(es,{
   'Create a group':'Crear un grupo','Select between two and six players to become a team. Tap each player card, then choose Done.':'Selecciona entre dos y seis jugadores para formar un equipo. Toca cada tarjeta y luego elige Listo.','Select one waitlist player':'Selecciona un jugador de la lista'
 });
 Object.assign(zh,{
-  '# of courts':'球场数量','Increase courts':'增加球场','Decrease courts':'减少球场','Number of courts':'球场数量',
+  '# of courts':'球场数量','Increase courts':'增加球场','Decrease courts':'减少球场','Number of courts':'球场数量','Team':'球队','playing':'人上场','Next game (Court':'下一场（球场',
   '2 on, 2 off':'两队轮换','2 ON, 2 OFF':'两队轮换','King of the Court':'擂主赛','KING OF THE COURT':'擂主赛','Unlimited':'无限制','with':'最多','consecutive games MAX':'场连续比赛','No game limit':'无场次限制',
   'Open spot':'空位','Join +':'加入 +','Team full':'球队已满','Game streak:':'连胜场次：','Teams will appear here after the active courts are filled.':'当前球场填满后，等候球队将显示在这里。',
   'Sitting 1 game':'轮休 1 场','Fill in':'替补上场','Unfill':'取消替补','(1 game replacement)':'（替补 1 场）','Player drop position':'球员放置位置',
@@ -191,6 +191,7 @@ Object.assign(zh,{
 function translateDynamic(value:string,language:AppLanguage){
   if(language==='en')return value;
   const game=value.match(/^Game (\d+)$/);if(game)return language==='es'?`Juego ${game[1]}`:`第 ${game[1]} 场`;
+  const gameList=value.match(/^Game ([\d ·]+)$/);if(gameList)return language==='es'?`Juegos ${gameList[1]}`:`比赛 ${gameList[1]}`;
   const playing=value.match(/^(\d+) playing$/);if(playing)return language==='es'?`${playing[1]} jugando`:`${playing[1]} 人上场`;
   const waiting=value.match(/^(\d+) waiting$/);if(waiting)return language==='es'?`${waiting[1]} esperando`:`${waiting[1]} 人等候`;
   const projected=value.match(/^Projected: Game (\d+)$/);if(projected)return language==='es'?`Proyección: Juego ${projected[1]}`:`预计：第 ${projected[1]} 场`;

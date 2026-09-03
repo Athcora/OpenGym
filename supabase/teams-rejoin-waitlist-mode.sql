@@ -75,7 +75,7 @@ begin
   select * into second_team from public.king_teams where status='current' and court_number=p_court_number and court_side=2 for update;
   if first_team.id is null or second_team.id is null then raise exception 'Two active teams are required on this court.'; end if;
   select * into caller from public.waitlist_players where user_id=auth.uid();
-  if not public.is_waitlist_operator() and (caller.id is null or caller.team_id not in(first_team.id,second_team.id) or caller.restricted) then raise exception 'Only a player on this court or an admin/host can advance the game.'; end if;
+  if not public.is_waitlist_operator() and (caller.id is null or caller.restricted or (caller.team_id not in(first_team.id,second_team.id) and not exists(select 1 from public.team_substitutes s where s.player_id=caller.id and s.team_id in(first_team.id,second_team.id)))) then raise exception 'Only a player on this court or an admin/host can advance the game.'; end if;
   snap:=jsonb_build_object(
     'teams',(select jsonb_agg(to_jsonb(t) order by t.created_at) from public.king_teams t),
     'players',(select jsonb_agg(jsonb_build_object('id',p.id,'status',p.status,'court_number',p.court_number,'team_id',p.team_id,'queue_position',p.queue_position,'rejoin_expires_at',p.rejoin_expires_at)) from public.waitlist_players p),
@@ -131,7 +131,7 @@ begin
   select * into loser from public.king_teams where status='current' and court_number=p_court_number and id<>p_winning_team_id order by court_side limit 1 for update;
   if winner.id is null or loser.id is null then raise exception 'Two active teams are required on this court.'; end if;
   select * into caller from public.waitlist_players where user_id=auth.uid();
-  if not public.is_waitlist_operator() and (caller.id is null or caller.team_id not in(winner.id,loser.id) or caller.restricted) then raise exception 'Only a player on this court or an admin/host can record the winner.'; end if;
+  if not public.is_waitlist_operator() and (caller.id is null or caller.restricted or (caller.team_id not in(winner.id,loser.id) and not exists(select 1 from public.team_substitutes s where s.player_id=caller.id and s.team_id in(winner.id,loser.id)))) then raise exception 'Only a player on this court or an admin/host can record the winner.'; end if;
   snap:=jsonb_build_object('teams',(select jsonb_agg(to_jsonb(t) order by t.created_at) from public.king_teams t),'players',(select jsonb_agg(jsonb_build_object('id',p.id,'status',p.status,'court_number',p.court_number,'team_id',p.team_id,'queue_position',p.queue_position,'rejoin_expires_at',p.rejoin_expires_at)) from public.waitlist_players p),'court',to_jsonb(court),'config_game_number',cfg.game_number);
   insert into public.past_games(game_number,court_number,player_names) select court.game_number,p_court_number,coalesce(jsonb_agg(p.display_name order by t.court_side,p.queue_position,p.created_at),'[]'::jsonb) from public.king_teams t left join public.waitlist_players p on p.team_id=t.id and p.status<>'left' where t.id in(winner.id,loser.id);
   next_game:=greatest(cfg.game_number,(select coalesce(max(game_number),0) from public.waitlist_courts),(select coalesce(max(game_number),0) from public.past_games))+1;

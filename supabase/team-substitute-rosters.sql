@@ -42,12 +42,14 @@ begin
   if requester.id is not null and requester.team_id<>requested_team.id and not public.is_waitlist_operator() then raise exception 'Only this team or an admin or host can invite substitutes.'; end if;
   if target.id is null then raise exception 'Select a player who is currently in the waitlist.'; end if;
   if target.team_id=requested_team.id then raise exception 'You cannot invite someone who is already on your team.'; end if;
+  if exists(select 1 from public.team_substitute_requests where team_id=requested_team.id and target_id=target.id and status='pending') then raise exception 'This player already has a pending substitute invitation from your team.'; end if;
   select count(*) into active_count from public.waitlist_players where team_id=requested_team.id and status<>'left' and not exists(select 1 from public.team_substitutes s where s.player_id=waitlist_players.id);
   if active_count<6 then raise exception 'Fill all six team positions before adding substitutes.'; end if;
   select count(*) into sub_count from public.team_substitutes where team_id=requested_team.id;
   if sub_count>=6 then raise exception 'This team already has six substitutes.'; end if;
   if exists(select 1 from public.team_substitutes where player_id=target.id) then raise exception 'That player is already a substitute.'; end if;
   insert into public.team_substitute_requests(team_id,requester_id,target_id) values(requested_team.id,requester.id,target.id);
+  insert into public.waitlist_events(actor_user_id,actor_name,event_type,message) values(auth.uid(),coalesce(requester.display_name,'Admin'),'team_substitute_invite',coalesce(requester.display_name,'An admin or host')||' invited '||target.display_name||' to substitute for '||requested_team.name||'.');
   return jsonb_build_object('message','Substitute invitation sent.');
 end;$$;
 grant execute on function public.request_team_substitute(uuid,uuid) to authenticated;
@@ -74,9 +76,25 @@ begin
   update public.team_substitute_requests set status='accepted',answered_at=now() where id=request.id;
   update public.team_substitute_requests set status='expired',answered_at=now() where target_id=target.id and status='pending' and id<>request.id;
   if old_team is not null and not exists(select 1 from public.waitlist_players where team_id=old_team and status<>'left') then delete from public.king_teams where id=old_team; end if;
+  insert into public.waitlist_events(actor_user_id,actor_name,event_type,message) values(auth.uid(),target.display_name,'team_substitute_accept',target.display_name||' became a substitute for '||public.king_team_label(request.team_id)||'.');
   return jsonb_build_object('message','You are now a substitute for '||public.king_team_label(request.team_id)||'.');
 end;$$;
 grant execute on function public.answer_team_substitute(uuid,boolean) to authenticated;
+
+create or replace function public.admin_remove_team_substitute(p_substitute_id uuid)
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare assignment public.team_substitutes; player public.waitlist_players; team_name text;
+begin
+  if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
+  select * into assignment from public.team_substitutes where id=p_substitute_id for update;
+  if assignment.id is null then raise exception 'That substitute is no longer assigned.'; end if;
+  select * into player from public.waitlist_players where id=assignment.player_id;
+  team_name:=public.king_team_label(assignment.team_id);
+  delete from public.team_substitutes where id=assignment.id;
+  insert into public.waitlist_events(actor_user_id,actor_name,event_type,message) values(auth.uid(),coalesce(player.display_name,'Substitute'),'team_substitute_remove',coalesce(player.display_name,'A substitute')||' was removed from '||team_name||'''s substitute roster.');
+  return jsonb_build_object('message','Substitute removed.');
+end;$$;
+grant execute on function public.admin_remove_team_substitute(uuid) to authenticated;
 
 create or replace function public.cleanup_team_substitute_membership()
 returns trigger language plpgsql security definer set search_path=public as $$

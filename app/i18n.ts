@@ -165,6 +165,29 @@ Object.assign(zh,{
   'Action History records the player and queue changes made during this waitlist.':'操作记录会保存本次等候名单中的球员和队列变更。'
 });
 
+Object.assign(es,{
+  '# of courts':'# de canchas','Increase courts':'Aumentar canchas','Decrease courts':'Disminuir canchas','Number of courts':'Número de canchas',
+  '2 on, 2 off':'2 entran, 2 salen','2 ON, 2 OFF':'2 ENTRAN, 2 SALEN','King of the Court':'Rey de la Cancha','KING OF THE COURT':'REY DE LA CANCHA','Unlimited':'Sin límite','with':'con','consecutive games MAX':'juegos consecutivos MÁX.','No game limit':'Sin límite de juegos',
+  'Open spot':'Lugar disponible','Join +':'Unirse +','Team full':'Equipo completo','Game streak:':'Racha:','Teams will appear here after the active courts are filled.':'Los equipos aparecerán aquí después de llenar las canchas activas.',
+  'Sitting 1 game':'Descansa 1 juego','Fill in':'Reemplazar','Unfill':'Dejar reemplazo','(1 game replacement)':'(reemplazo por 1 juego)','Player drop position':'Posición para soltar jugador',
+  '+ Add Substitutes':'+ Agregar suplentes','Substitutes':'Suplentes','Substitute invitation':'Invitación para ser suplente','Invite a Sub':'Invitar a un suplente','Select one player in the waitlist to invite as a sub. They must accept before becoming a substitute.':'Selecciona a un jugador de la lista para invitarlo como suplente. Debe aceptar antes de convertirse en suplente.','Select one waitlist player':'Selecciona un jugador de la lista','Send invite':'Enviar invitación','Substitute invitation sent':'Invitación de suplente enviada','this substitute':'este suplente','They will remain in the waitlist and may join another available team.':'Permanecerá en la lista y podrá unirse a otro equipo disponible.',
+  'Substitute players':'Sustituir jugadores','Choose exactly two players to swap positions. Each selected player will have a blue border.':'Elige exactamente dos jugadores para intercambiar posiciones. Cada jugador seleccionado tendrá un borde azul.','Choose two players':'Elige dos jugadores','Select exactly two players to swap positions.':'Selecciona exactamente dos jugadores para intercambiar posiciones.','Swap these players?':'¿Intercambiar estos jugadores?','Either player will leave their existing group.':'Cualquiera de los jugadores saldrá de su grupo actual.',
+  'Next Game':'Siguiente juego','Yes':'Sí','No':'No','Reverse':'Revertir','Advancement complete':'Avance completado','Next game reversed':'Siguiente juego revertido','The previous game and queue order have been restored.':'Se restauraron el juego anterior y el orden de la fila.','Select the team that won this game.':'Selecciona el equipo que ganó este juego.','Both teams will rotate out and the next two waiting teams will enter.':'Ambos equipos saldrán y entrarán los dos siguientes equipos en espera.','Make sure the game is finished before continuing — this will notify everyone that you advanced the next game.':'Asegúrate de que el juego haya terminado antes de continuar; esto notificará a todos que avanzaste al siguiente juego.',
+  'No teams were waiting, so the same two teams will replay.':'No había equipos esperando, así que los mismos dos equipos volverán a jugar.','The game advanced. No teams were waiting, so the same two teams will replay.':'El juego avanzó. No había equipos esperando, así que los mismos dos equipos volverán a jugar.',
+  'Create a group':'Crear un grupo','Select between two and six players to become a team. Tap each player card, then choose Done.':'Selecciona entre dos y seis jugadores para formar un equipo. Toca cada tarjeta y luego elige Listo.','Select one waitlist player':'Selecciona un jugador de la lista'
+});
+Object.assign(zh,{
+  '# of courts':'球场数量','Increase courts':'增加球场','Decrease courts':'减少球场','Number of courts':'球场数量',
+  '2 on, 2 off':'两队轮换','2 ON, 2 OFF':'两队轮换','King of the Court':'擂主赛','KING OF THE COURT':'擂主赛','Unlimited':'无限制','with':'最多','consecutive games MAX':'场连续比赛','No game limit':'无场次限制',
+  'Open spot':'空位','Join +':'加入 +','Team full':'球队已满','Game streak:':'连胜场次：','Teams will appear here after the active courts are filled.':'当前球场填满后，等候球队将显示在这里。',
+  'Sitting 1 game':'轮休 1 场','Fill in':'替补上场','Unfill':'取消替补','(1 game replacement)':'（替补 1 场）','Player drop position':'球员放置位置',
+  '+ Add Substitutes':'+ 添加替补','Substitutes':'替补球员','Substitute invitation':'替补邀请','Invite a Sub':'邀请替补','Select one player in the waitlist to invite as a sub. They must accept before becoming a substitute.':'从等候名单中选择一名球员并邀请其成为替补。对方接受后才会成为替补。','Select one waitlist player':'选择一名等候球员','Send invite':'发送邀请','Substitute invitation sent':'替补邀请已发送','this substitute':'该替补','They will remain in the waitlist and may join another available team.':'该球员会留在等候名单中，并可加入其他有空位的球队。',
+  'Substitute players':'替换球员','Choose exactly two players to swap positions. Each selected player will have a blue border.':'请选择两名球员交换位置，选中的球员会显示蓝色边框。','Choose two players':'请选择两名球员','Select exactly two players to swap positions.':'请选择两名球员交换位置。','Swap these players?':'交换这两名球员？','Either player will leave their existing group.':'球员交换后会离开原来的小组。',
+  'Next Game':'下一场','Yes':'是','No':'否','Reverse':'撤销','Advancement complete':'推进完成','Next game reversed':'已撤销下一场','The previous game and queue order have been restored.':'上一场比赛和队列顺序已恢复。','Select the team that won this game.':'请选择本场获胜的球队。','Both teams will rotate out and the next two waiting teams will enter.':'两支球队都会离场，接下来的两支等候球队将上场。','Make sure the game is finished before continuing — this will notify everyone that you advanced the next game.':'继续前请确认比赛已经结束；此操作会通知所有人你已推进下一场。',
+  'No teams were waiting, so the same two teams will replay.':'没有球队等候，因此原来的两支球队将再次比赛。','The game advanced. No teams were waiting, so the same two teams will replay.':'比赛已推进。没有球队等候，因此原来的两支球队将再次比赛。',
+  'Create a group':'创建小组','Select between two and six players to become a team. Tap each player card, then choose Done.':'选择两至六名球员组成球队。点击每张球员卡片，然后选择“完成”。'
+});
+
 function translateDynamic(value:string,language:AppLanguage){
   if(language==='en')return value;
   const game=value.match(/^Game (\d+)$/);if(game)return language==='es'?`Juego ${game[1]}`:`第 ${game[1]} 场`;
@@ -175,6 +198,26 @@ function translateDynamic(value:string,language:AppLanguage){
   const rejoin=value.match(/^Rejoin requests \((\d+)\)$/);if(rejoin)return language==='es'?`Solicitudes de reingreso (${rejoin[1]})`:`重新加入请求（${rejoin[1]}）`;
   const hostTour=value.match(/^HOST TOUR · (\d+) OF (\d+)$/);if(hostTour)return language==='es'?`RECORRIDO DEL ANFITRIÓN · ${hostTour[1]} DE ${hostTour[2]}`:`主持人教程 · ${hostTour[1]}/${hostTour[2]}`;
   const selected=value.match(/^(\d+)\/6 selected$/);if(selected)return language==='es'?`${selected[1]}/6 seleccionados`:`已选择 ${selected[1]}/6`;
+  const selectedAny=value.match(/^(\d+)\/(\d+) selected$/);if(selectedAny)return language==='es'?`${selectedAny[1]}/${selectedAny[2]} seleccionados`:`已选择 ${selectedAny[1]}/${selectedAny[2]}`;
+  const court=value.match(/^COURT (\d+) - (.+)$/);if(court)return language==='es'?`CANCHA ${court[1]} - ${translateUiText(court[2],language)}`:`球场 ${court[1]} - ${translateUiText(court[2],language)}`;
+  const currentGame=value.match(/^CURRENT GAME - (.+)$/);if(currentGame)return language==='es'?`JUEGO ACTUAL - ${translateUiText(currentGame[1],language)}`:`当前比赛 - ${translateUiText(currentGame[1],language)}`;
+  const team=value.match(/^Team (\d+)$/);if(team)return language==='es'?`Equipo ${team[1]}`:`球队 ${team[1]}`;
+  const matchup=value.match(/^Team (\d+) vs Team (\d+)$/);if(matchup)return language==='es'?`Equipo ${matchup[1]} vs Equipo ${matchup[2]}`:`球队 ${matchup[1]} 对 球队 ${matchup[2]}`;
+  const nextCourt=value.match(/^Next game \(Court (\d+)\)$/);if(nextCourt)return language==='es'?`Siguiente juego (Cancha ${nextCourt[1]})`:`下一场（球场 ${nextCourt[1]}）`;
+  const courtFormat=value.match(/^Court (\d+) format$/);if(courtFormat)return language==='es'?`Formato de la cancha ${courtFormat[1]}`:`球场 ${courtFormat[1]} 模式`;
+  const courtGames=value.match(/^Court (\d+) consecutive games$/);if(courtGames)return language==='es'?`Juegos consecutivos de la cancha ${courtGames[1]}`:`球场 ${courtGames[1]} 连续比赛场次`;
+  const teamsWaiting=value.match(/^(\d+) teams? waiting$/);if(teamsWaiting)return language==='es'?`${teamsWaiting[1]} equipo${teamsWaiting[1]==='1'?'':'s'} esperando`:`${teamsWaiting[1]} 支球队等候`;
+  const streak=value.match(/^Game streak: (\d+)$/);if(streak)return language==='es'?`Racha: ${streak[1]}`:`连胜场次：${streak[1]}`;
+  const maxGames=value.match(/^\((\d+) CONSECUTIVE GAMES MAX\)$/);if(maxGames)return language==='es'?`(${maxGames[1]} JUEGOS CONSECUTIVOS MÁX.)`:`（最多连续 ${maxGames[1]} 场）`;
+  const substitutes=value.match(/^Substitutes \((\d+)\)$/);if(substitutes)return language==='es'?`Suplentes (${substitutes[1]})`:`替补球员（${substitutes[1]}）`;
+  const rejoinTimer=value.match(/^(\d+:\d{2}) to rejoin$/);if(rejoinTimer)return language==='es'?`${rejoinTimer[1]} para reingresar`:`${rejoinTimer[1]} 内重新加入`;
+  const removeTimer=value.match(/^Team (\d+) \((\d+:\d{2}) until removed\)$/);if(removeTimer)return language==='es'?`Equipo ${removeTimer[1]} (${removeTimer[2]} hasta eliminarse)`:`球队 ${removeTimer[1]}（${removeTimer[2]} 后移除）`;
+  const invitePlayer=value.match(/^Invite (.+) as a sub\?$/);if(invitePlayer)return language==='es'?`¿Invitar a ${invitePlayer[1]} como suplente?`:`邀请 ${invitePlayer[1]} 成为替补？`;
+  const inviteMessage=value.match(/^This will invite (.+) to become a substitute for Team (\d+)\.$/);if(inviteMessage)return language==='es'?`Esto invitará a ${inviteMessage[1]} a ser suplente del Equipo ${inviteMessage[2]}.`:`这会邀请 ${inviteMessage[1]} 成为球队 ${inviteMessage[2]} 的替补。`;
+  const inviteSent=value.match(/^(.+) must accept before joining Team (\d+) as a substitute\.$/);if(inviteSent)return language==='es'?`${inviteSent[1]} debe aceptar antes de unirse al Equipo ${inviteSent[2]} como suplente.`:`${inviteSent[1]} 必须接受邀请，才能成为球队 ${inviteSent[2]} 的替补。`;
+  const joinTeam=value.match(/^Join Team (\d+)\?$/);if(joinTeam)return language==='es'?`¿Unirse al Equipo ${joinTeam[1]}?`:`加入球队 ${joinTeam[1]}？`;
+  const winnerCourt=value.match(/^Which team won on Court (\d+)\?$/);if(winnerCourt)return language==='es'?`¿Qué equipo ganó en la Cancha ${winnerCourt[1]}?`:`球场 ${winnerCourt[1]} 哪支球队获胜？`;
+  const endCourt=value.match(/^End the game on Court (\d+)\?$/);if(endCourt)return language==='es'?`¿Terminar el juego en la Cancha ${endCourt[1]}?`:`结束球场 ${endCourt[1]} 的比赛？`;
   const permissions=value.match(/^Permissions for (.+)$/);if(permissions)return language==='es'?`Permisos para ${permissions[1]}`:`${permissions[1]} 的权限`;
   const started=value.match(/^(.+) started Game (\d+)\.$/);if(started)return language==='es'?`${started[1]} inició el Juego ${started[2]}.`:`${started[1]} 开始了第 ${started[2]} 场比赛。`;
   const startedRejoin=value.match(/^(.+) started Game (\d+)\. Do you want to rejoin\? Your position is saved\.$/);if(startedRejoin)return language==='es'?`${startedRejoin[1]} inició el Juego ${startedRejoin[2]}. ¿Quieres reingresar? Tu posición está guardada.`:`${startedRejoin[1]} 开始了第 ${startedRejoin[2]} 场比赛。你要重新加入吗？你的位置已保留。`;

@@ -87,6 +87,9 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .admin-group-toolbar button { min-height:42px; border:0; border-radius:11px; color:#fff; font-weight:850; cursor:pointer; }
 .admin-group-toolbar .group-done { background:#2f8b69; }
 .admin-group-toolbar .group-cancel { background:#a64f59; }
+.team-sub-invite-toolbar button{min-width:0;padding:0 14px;white-space:nowrap}
+.team-sub-invite-toolbar .group-done:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:520px){.team-sub-invite-toolbar{left:12px;right:12px;min-width:0;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.team-sub-invite-toolbar button{width:100%;font-size:.85rem;padding:0 8px}}
 .facility-menu { margin:-8px 0 16px; padding:16px; border:1px solid #3b3e47; border-radius:16px; background:#25262b; box-shadow:0 14px 38px rgba(0,0,0,.28); }
 .facility-menu>strong { display:block; margin-bottom:4px; }
 .facility-menu>p { margin:0 0 12px; color:#9ea4af; font-size:.78rem; }

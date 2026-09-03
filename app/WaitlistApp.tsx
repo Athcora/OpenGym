@@ -1260,8 +1260,8 @@ function KingBoard({teams,courts,me,admin,host,busy,fillIns,teamSubstitutes,invi
  const [expandedSubs,setExpandedSubs]=useState<Set<string>>(new Set());
  useEffect(()=>{
   if(!inviteSubTeamId)return;
-  const choose=(event:MouseEvent)=>{const target=event.target as HTMLElement;if(target.closest('button,input'))return;const row=target.closest<HTMLElement>('[data-player-id]');if(!row)return;const player=players.find(item=>item.id===row.dataset.playerId);if(!player||player.status!=='waiting')return;event.preventDefault();event.stopPropagation();selectSubTarget(player)};
-  document.addEventListener('click',choose,true);return()=>document.removeEventListener('click',choose,true);
+  const choose=(event:PointerEvent)=>{const target=event.target as HTMLElement;if(target.closest('button,input'))return;const row=target.closest<HTMLElement>('[data-player-id]');if(!row)return;const player=players.find(item=>item.id===row.dataset.playerId);if(!player||player.status!=='waiting')return;event.preventDefault();event.stopImmediatePropagation();selectSubTarget(player)};
+  document.addEventListener('pointerdown',choose,true);return()=>document.removeEventListener('pointerdown',choose,true);
  },[inviteSubTeamId,players,selectSubTarget]);
  const dragRef=useRef<{player:Player|null;row:HTMLElement|null;pointerId:number|null;preview:HTMLElement|null;timer:number|null;active:boolean;scrolling?:boolean;lastX:number;lastY:number;startX:number;startY:number;frame:number|null}>({player:null,row:null,pointerId:null,preview:null,timer:null,active:false,scrolling:false,lastX:0,lastY:0,startX:0,startY:0,frame:null});
  const dropRef=useRef<KingDropPlacement|null>(null);

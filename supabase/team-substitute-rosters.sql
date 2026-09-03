@@ -35,12 +35,12 @@ declare requester public.waitlist_players; target public.waitlist_players; reque
 begin
   update public.team_substitute_requests set status='expired',answered_at=now() where status='pending' and created_at<=now()-interval '5 minutes';
   select * into requester from public.waitlist_players where user_id=auth.uid() and status in('current','waiting') for update;
-  select * into target from public.waitlist_players where id=p_target_id and status='waiting' for update;
+  select * into target from public.waitlist_players where id=p_target_id and status in('current','waiting') for update;
   select * into requested_team from public.king_teams where id=p_team_id for update;
   if requested_team.id is null then raise exception 'That team is unavailable.'; end if;
   if requester.id is null and not public.is_waitlist_operator() then raise exception 'You must be an active player to invite a substitute.'; end if;
   if requester.id is not null and requester.team_id<>requested_team.id and not public.is_waitlist_operator() then raise exception 'Only this team or an admin or host can invite substitutes.'; end if;
-  if target.id is null then raise exception 'Select a player who is currently in the waitlist.'; end if;
+  if target.id is null then raise exception 'Select an active player.'; end if;
   if target.team_id=requested_team.id then raise exception 'You cannot invite someone who is already on your team.'; end if;
   if exists(select 1 from public.team_substitute_requests where team_id=requested_team.id and target_id=target.id and status='pending') then raise exception 'This player already has a pending substitute invitation from your team.'; end if;
   select count(*) into active_count from public.waitlist_players where team_id=requested_team.id and status<>'left' and not exists(select 1 from public.team_substitutes s where s.player_id=waitlist_players.id);
@@ -61,8 +61,8 @@ begin
   perform pg_advisory_xact_lock(7429204);
   select * into request from public.team_substitute_requests where id=p_request_id and status='pending' and created_at>now()-interval '5 minutes' for update;
   if request.id is null then raise exception 'This substitute invitation is no longer available.'; end if;
-  select * into target from public.waitlist_players where id=request.target_id and user_id=auth.uid() and status='waiting' for update;
-  if target.id is null then raise exception 'Only the invited waitlist player can answer this request.'; end if;
+  select * into target from public.waitlist_players where id=request.target_id and user_id=auth.uid() and status in('current','waiting') for update;
+  if target.id is null then raise exception 'Only the invited active player can answer this request.'; end if;
   if not p_accept then
     update public.team_substitute_requests set status='declined',answered_at=now() where id=request.id;
     return jsonb_build_object('message','Substitute invitation declined.');

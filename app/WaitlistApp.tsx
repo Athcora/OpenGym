@@ -212,9 +212,9 @@ export default function App() {
     return()=>{document.body.classList.remove('admin-group-selecting');document.removeEventListener('pointerdown',selectPlayer,true);};
   },[adminGrouping,adminSubstituting,playerSubstituting,adminGroupIds,substituteIds,players,me?.id]);
   useEffect(()=>{
-    if(!user||!me||admin||onboarding!=='idle'||me.status==='left'||me.status==='rejoin')return;
+    if(!user||!me||admin||onboarding!=='idle'||hostTutorial||hostAppointmentNotice||me.status==='left'||me.status==='rejoin')return;
     if(needsTutorial(user,config.mode))setOnboarding('disclaimer');
-  },[user?.id,user?.user_metadata?.opengym_tutorial_version,me?.id,me?.status,admin,config.mode,onboarding]);
+  },[user?.id,user?.user_metadata?.opengym_tutorial_version,me?.id,me?.status,admin,config.mode,onboarding,hostTutorial,hostAppointmentNotice]);
   useEffect(()=>{const saved=localStorage.getItem('opengym-language');if(saved==='en'||saved==='es'||saved==='zh-CN')setLanguage(saved)},[]);
   useEffect(()=>{
     localStorage.setItem('opengym-language',language);document.documentElement.lang=language;
@@ -553,7 +553,7 @@ export default function App() {
   }
   function acknowledgeHostAppointment(){
     hostAppointmentActive.current=false;setHostAppointmentNotice(null);setNotice(null);setOnboarding('idle');setScreen('queue');
-    window.setTimeout(()=>{setHostTutorialStep(0);setHostTutorial(true)},120);
+    setHostTutorialStep(0);setHostTutorial(true);
   }
   async function turnOnNotifications(){setBusy(true);try{await enablePush();setNotifications(true);setNotice({title:'Notifications are on',message:"We’ll alert you when your game starts or needs a response."});}catch(error){setNotice({title:'Notifications unavailable',message:error instanceof Error?error.message:'Could not enable notifications.'});}setBusy(false);}
   async function saveName(player:Player){if(isInappropriateName(editName)){setNotice(inappropriateNameNotice);return;}const parts=cleanName(editName).split(' ');const f=parts.shift()??'';const l=parts.join(' ');if(await rpc('rename_waitlist_player',{p_player_id:player.id,p_first_name:f,p_last_name:l}))setEditing(null);}

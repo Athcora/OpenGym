@@ -27,7 +27,8 @@ assert.match(app,/const badge=item\.is_host\?' \(Host\)'/);
 assert.match(app,/HostAppointmentModal message=\{hostAppointmentNotice\} start=\{acknowledgeHostAppointment\}/);
 assert.match(app,/modal-backdrop host-appointment-backdrop/);
 assert.match(advancedCss,/\.host-appointment-backdrop\s*\{\s*z-index:100;/);
-assert.match(app,/setHostTutorialStep\(0\);setHostTutorial\(true\)/);
+assert.match(app,/setOnboarding\('idle'\);setScreen\('queue'\);\s*setHostTutorialStep\(0\);setHostTutorial\(true\)/);
+assert.match(app,/onboarding!==\'idle\'\|\|hostTutorial\|\|hostAppointmentNotice/);
 assert.match(app,/previous===false&&host.*setHostAppointmentNotice/s);
 assert.doesNotMatch(app,/â|Ã|Â|ï¿½|�/);
 

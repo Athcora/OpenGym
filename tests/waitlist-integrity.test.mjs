@@ -3,6 +3,7 @@ import {readFileSync} from 'node:fs';
 
 const app=readFileSync(new URL('../app/WaitlistApp.tsx',import.meta.url),'utf8');
 const advancedCss=readFileSync(new URL('../app/advanced.css',import.meta.url),'utf8');
+const iconCss=readFileSync(new URL('../app/icon-fixes.css',import.meta.url),'utf8');
 const conversion=readFileSync(new URL('../supabase/fix-team-mode-conversion.sql',import.meta.url),'utf8');
 const undo=readFileSync(new URL('../supabase/fix-operator-undo-safe-update.sql',import.meta.url),'utf8');
 const substitute=readFileSync(new URL('../supabase/team-substitute-next-game.sql',import.meta.url),'utf8');
@@ -31,6 +32,12 @@ assert.match(app,/setOnboarding\('idle'\);setScreen\('queue'\);\s*setHostTutoria
 assert.match(app,/onboarding!==\'idle\'\|\|hostTutorial\|\|hostAppointmentNotice/);
 assert.match(app,/previous===false&&host.*setHostAppointmentNotice/s);
 assert.match(app,/if\(!hostStatusReady\)\{renderedHostStatus\.current=null;return;\}/);
+assert.match(app,/const MOBILE_DRAG_HOLD_MS=450/);
+assert.match(app,/const MOBILE_SCROLL_CANCEL_DISTANCE=8/);
+assert.match(app,/const cancelHoldOnScroll=/);
+assert.doesNotMatch(app,/const scrollBeforeHold=/);
+assert.match(advancedCss,/\.king-player-row:has\(\.admin-player-actions\).*touch-action:pan-y/);
+assert.match(iconCss,/\.king-player-row:has\(\.admin-player-actions\).*touch-action:pan-y/);
 assert.doesNotMatch(app,/â|Ã|Â|ï¿½|�/);
 
 console.log('waitlist integrity regression checks passed');

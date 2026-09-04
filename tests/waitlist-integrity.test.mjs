@@ -6,6 +6,7 @@ const conversion=readFileSync(new URL('../supabase/fix-team-mode-conversion.sql'
 const undo=readFileSync(new URL('../supabase/fix-operator-undo-safe-update.sql',import.meta.url),'utf8');
 const substitute=readFileSync(new URL('../supabase/team-substitute-next-game.sql',import.meta.url),'utf8');
 const courts=readFileSync(new URL('../supabase/fix-team-court-count.sql',import.meta.url),'utf8');
+const modes=readFileSync(new URL('../supabase/fix-mode-switch-preserve-players.sql',import.meta.url),'utf8');
 
 assert.match(conversion,/\(player_no-1\)%6=0/);
 assert.match(conversion,/queue_position=\(\(player_no-1\)%6\)\+1/);
@@ -17,6 +18,10 @@ assert.match(substitute,/end_team_king_game/);
 assert.match(courts,/cfg\.mode in\('teams','teams_rejoin'\)/);
 assert.match(courts,/update public\.king_teams set status='waiting'/);
 assert.match(courts,/perform public\.king_fill_courts\(\)/);
+assert.doesNotMatch(modes,/restore_waitlist_state/);
+assert.match(modes,/left join public\.king_teams t on t\.id=p\.team_id/);
+assert.match(modes,/perform public\.fill_open_court_slots\(\)/);
+assert.match(modes,/perform public\.save_admin_undo\('change waitlist mode'\)/);
 assert.doesNotMatch(app,/â|Ã|Â|ï¿½|�/);
 
 console.log('waitlist integrity regression checks passed');

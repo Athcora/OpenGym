@@ -30,6 +30,7 @@ assert.match(advancedCss,/\.host-appointment-backdrop\s*\{\s*z-index:100;/);
 assert.match(app,/setOnboarding\('idle'\);setScreen\('queue'\);\s*setHostTutorialStep\(0\);setHostTutorial\(true\)/);
 assert.match(app,/onboarding!==\'idle\'\|\|hostTutorial\|\|hostAppointmentNotice/);
 assert.match(app,/previous===false&&host.*setHostAppointmentNotice/s);
+assert.match(app,/if\(!hostStatusReady\)\{renderedHostStatus\.current=null;return;\}/);
 assert.doesNotMatch(app,/â|Ã|Â|ï¿½|�/);
 
 console.log('waitlist integrity regression checks passed');

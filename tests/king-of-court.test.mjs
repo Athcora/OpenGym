@@ -6,7 +6,7 @@ const sql=readFileSync(new URL('../supabase/king-of-the-court.sql',import.meta.u
 const courtRules=readFileSync(new URL('../supabase/teams-court-rules.sql',import.meta.url),'utf8');
 
 assert.match(app,/Did your team win\?/);
-assert.match(app,/Which team won\?/);
+assert.match(app,/Which team won(?: on Court \$\{courtNumber\})?\?/);
 assert.match(app,/cancelLabel:'Cancel',cancelTone:'danger'/);
 assert.match(app,/title:'Advancement complete'/);
 assert.match(app,/confirm:'Reverse',actionTone:'danger'/);

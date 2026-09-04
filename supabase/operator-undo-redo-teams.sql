@@ -21,7 +21,9 @@ begin
     where game_number<>court_number
   ) then return; end if;
 
-  update public.king_teams set name='Repair '||id::text;
+  -- Supabase's safe-update guard requires an explicit predicate even when the
+  -- whole table is intentionally being canonicalized.
+  update public.king_teams set name='Repair '||id::text where true;
 
   update public.king_teams t set name='Team '||(2*(t.court_number-1)+t.court_side)
   where t.status='current' and t.court_number is not null and t.court_side in(1,2);

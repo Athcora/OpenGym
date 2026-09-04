@@ -28,6 +28,7 @@ assert.match(app,/HostAppointmentModal message=\{hostAppointmentNotice\} start=\
 assert.match(app,/modal-backdrop host-appointment-backdrop/);
 assert.match(advancedCss,/\.host-appointment-backdrop\s*\{\s*z-index:100;/);
 assert.match(app,/setHostTutorialStep\(0\);setHostTutorial\(true\)/);
+assert.match(app,/previous===false&&host.*setHostAppointmentNotice/s);
 assert.doesNotMatch(app,/â|Ã|Â|ï¿½|�/);
 
 console.log('waitlist integrity regression checks passed');

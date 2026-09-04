@@ -109,7 +109,7 @@ export default function App() {
   const [geofenceReturn,setGeofenceReturn]=useState<GeofenceReturn|null>(null); const [returnClock,setReturnClock]=useState(Date.now());
   const [permissionPlayer,setPermissionPlayer]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0);
   const [pendingNextGameEvent,setPendingNextGameEvent]=useState<{message:string}|null>(null);
-  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const lastFullRefresh=useRef(0); const lastCleanupAt=useRef(0); const realtimeConnected=useRef(false); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null); const refreshTimer=useRef<number|null>(null); const screenRef=useRef(screen); const realtimeChannel=useRef<ReturnType<typeof supabase.channel>|null>(null);
+  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const lastFullRefresh=useRef(0); const lastCleanupAt=useRef(0); const realtimeConnected=useRef(false); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const renderedHostStatus=useRef<boolean|null>(null); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null); const refreshTimer=useRef<number|null>(null); const screenRef=useRef(screen); const realtimeChannel=useRef<ReturnType<typeof supabase.channel>|null>(null);
   const activeStatusRef=useRef<PlayerStatus|null>(null); const waitlistModeRef=useRef<Config['mode']>('regular'); const ownPlayerRef=useRef<Player|null>(null);
   const rejoinLookupAttempts=useRef(0);
   useEffect(()=>{
@@ -145,6 +145,11 @@ export default function App() {
   const rejoinOnly=Boolean(!admin&&me&&(!meIsVisibleInQueue||!['current','waiting','sitout'].includes(me.status)));
   ownPlayerIdRef.current=me?.id??ownPlayer?.id??null;
   const host=Boolean(meIsVisibleInQueue&&me?.is_host&&!admin); const operator=admin||host;
+  useEffect(()=>{
+    if(!user||admin||!me){renderedHostStatus.current=null;return;}
+    const previous=renderedHostStatus.current;renderedHostStatus.current=host;
+    if(previous===false&&host){hostAppointmentActive.current=true;setHostAppointmentNotice('The admin appointed you as a Session Host.');}
+  },[user?.id,admin,me?.id,host]);
   adminAccess.current=admin;
   activeStatusRef.current=activeMe?.status??null;waitlistModeRef.current=config.mode;ownPlayerRef.current=me;
   screenRef.current=screen;

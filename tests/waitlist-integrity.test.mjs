@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
 const app=readFileSync(new URL('../app/WaitlistApp.tsx',import.meta.url),'utf8');
+const advancedCss=readFileSync(new URL('../app/advanced.css',import.meta.url),'utf8');
 const conversion=readFileSync(new URL('../supabase/fix-team-mode-conversion.sql',import.meta.url),'utf8');
 const undo=readFileSync(new URL('../supabase/fix-operator-undo-safe-update.sql',import.meta.url),'utf8');
 const substitute=readFileSync(new URL('../supabase/team-substitute-next-game.sql',import.meta.url),'utf8');
@@ -24,6 +25,8 @@ assert.match(modes,/perform public\.fill_open_court_slots\(\)/);
 assert.match(modes,/perform public\.save_admin_undo\('change waitlist mode'\)/);
 assert.match(app,/const badge=item\.is_host\?' \(Host\)'/);
 assert.match(app,/HostAppointmentModal message=\{hostAppointmentNotice\} start=\{acknowledgeHostAppointment\}/);
+assert.match(app,/modal-backdrop host-appointment-backdrop/);
+assert.match(advancedCss,/\.host-appointment-backdrop\s*\{\s*z-index:100;/);
 assert.match(app,/setHostTutorialStep\(0\);setHostTutorial\(true\)/);
 assert.doesNotMatch(app,/â|Ã|Â|ï¿½|�/);
 

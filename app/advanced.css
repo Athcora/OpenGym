@@ -102,6 +102,7 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .theme-light .facility-menu>button small { color:#616a76; }
 .theme-light .admin-group-toolbar { border-color:#d5dbe1; background:#fff; color:#20242c; }
 .onboarding-backdrop { position:fixed; inset:0; z-index:80; display:grid; place-items:center; padding:20px; background:rgba(10,11,14,.76); backdrop-filter:blur(8px); }
+.host-appointment-backdrop { z-index:100; }
 .onboarding-card { width:min(100%,410px); padding:27px; border:1px solid #444751; border-radius:22px; background:#292a30; color:#f6f7f9; box-shadow:0 30px 90px rgba(0,0,0,.58); }
 .onboarding-kicker { color:#9da3b0; font-size:.68rem; font-weight:850; letter-spacing:.13em; }
 .onboarding-card h2 { margin:10px 0; font-size:1.65rem; letter-spacing:-.035em; }

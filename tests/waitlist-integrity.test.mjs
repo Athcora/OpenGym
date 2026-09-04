@@ -22,6 +22,9 @@ assert.doesNotMatch(modes,/restore_waitlist_state/);
 assert.match(modes,/left join public\.king_teams t on t\.id=p\.team_id/);
 assert.match(modes,/perform public\.fill_open_court_slots\(\)/);
 assert.match(modes,/perform public\.save_admin_undo\('change waitlist mode'\)/);
+assert.match(app,/const badge=item\.is_host\?' \(Host\)'/);
+assert.match(app,/HostAppointmentModal message=\{hostAppointmentNotice\} start=\{acknowledgeHostAppointment\}/);
+assert.match(app,/setHostTutorialStep\(0\);setHostTutorial\(true\)/);
 assert.doesNotMatch(app,/â|Ã|Â|ï¿½|�/);
 
 console.log('waitlist integrity regression checks passed');

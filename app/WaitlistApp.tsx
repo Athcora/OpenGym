@@ -1073,7 +1073,7 @@ const tutorialSteps=[
 ];
 const rejoinTutorialStep={title:'Rejoin after every game',message:'After you play, you will be taken off the waitlist. To keep your saved place, press Rejoin within five minutes.',demo:true};
 const teamTutorialSteps=[
- {title:'Next Game action button',message:'When your team is playing, this button advances only your court. In King of the Court, you will also report whether your team won.',target:'.my-actions .next'},
+ {title:'Next Game action button',message:'When your team is playing, this button advances only your court.',target:'.my-actions .next'},
  {title:'Join another team',message:'Use Join + to move to a team with an open spot. Moving teams removes you from your previous team.',target:'.king-join-button:not(.king-own-team-label)'},
  {title:'Court format',message:'Each court shows whether it uses 2 on, 2 off or King of the Court. In King of the Court, the winner stays until losing or reaching the displayed game limit.',target:'.court-team-rule'},
  {title:'Substitute action button',message:'Substitute sends another player a request to permanently swap positions with you.',target:'.my-actions .substitute-action'},

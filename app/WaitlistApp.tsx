@@ -401,7 +401,11 @@ export default function App() {
       supabase.from('rejoin_responses').select('id,expires_at').is('choice',null).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false}).limit(1).maybeSingle(),
       supabase.from('geofence_return_prompts').select('id,removed_at,saved_position_until,expires_at').is('resolved_at',null).gt('expires_at',new Date().toISOString()).order('removed_at',{ascending:false}).limit(1).maybeSingle()
     ]);
-    const playerRows=(p??[]) as Player[];setPlayers(playerRows); if(c)setConfig(c as Config);setCourts((courtRows??[]) as Court[]);setAdmin(Boolean(a));
+    const playerRows=(p??[]) as Player[];setPlayers(playerRows);
+    if(c)setConfig(c as Config);
+    const configuredCourtCount=Math.max(1,Number((c as Config|null)?.court_count??config.court_count));
+    setCourts(((courtRows??[]) as Court[]).filter(court=>court.court_number<=configuredCourtCount));
+    setAdmin(Boolean(a));
     const [{data:fillRows},{data:teamSubRows},{data:teamSubRequestRows}]=await Promise.all([
       supabase.from('team_fill_ins').select('id,sitter_id,filler_id,destination_team_id,source_team_id,court_number,game_number'),
       supabase.from('team_substitutes').select('id,team_id,player_id'),

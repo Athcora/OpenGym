@@ -35,6 +35,13 @@ const needsTutorial=(activeUser:User|null,mode:Config['mode'])=>Boolean(activeUs
 const isTeamsMode = (mode:Config['mode']) => mode==='teams'||mode==='teams_rejoin';
 const MOBILE_DRAG_HOLD_MS=450;
 const MOBILE_SCROLL_CANCEL_DISTANCE=8;
+const DEVICE_ID_KEY='opengym-device-id';
+
+function getDeviceId(){
+  let value=localStorage.getItem(DEVICE_ID_KEY);
+  if(!value){value=crypto.randomUUID();localStorage.setItem(DEVICE_ID_KEY,value);}
+  return value;
+}
 
 const cleanName = (value:string) => value.replace(/[^\p{L}\s]/gu, '').replace(/\s+/g, ' ').trim();
 const blockedNameTerms = [
@@ -112,6 +119,7 @@ export default function App() {
   const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const lastFullRefresh=useRef(0); const lastCleanupAt=useRef(0); const realtimeConnected=useRef(false); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const renderedHostStatus=useRef<boolean|null>(null); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null); const refreshTimer=useRef<number|null>(null); const screenRef=useRef(screen); const realtimeChannel=useRef<ReturnType<typeof supabase.channel>|null>(null);
   const activeStatusRef=useRef<PlayerStatus|null>(null); const waitlistModeRef=useRef<Config['mode']>('regular'); const ownPlayerRef=useRef<Player|null>(null);
   const rejoinLookupAttempts=useRef(0);
+  const claimedDeviceForUser=useRef<string|null>(null);
   useEffect(()=>{
     if(screen!=='name'){locationIntroShown.current=false;return;}
     if(!config.geofence_enabled||locationIntroShown.current)return;
@@ -425,6 +433,10 @@ export default function App() {
     const uid=(activeUser??user)?.id; let own=playerRows.find(item=>item.user_id===uid)??null;
     if(uid&&!own){const {data:storedOwn}=await supabase.from('waitlist_players').select('*').eq('user_id',uid).maybeSingle();own=(storedOwn as Player|null)??null;}
     if(own){
+      if(uid&&claimedDeviceForUser.current!==uid){
+        const {error}=await supabase.rpc('claim_waitlist_device',{p_device_id:getDeviceId()});
+        if(!error)claimedDeviceForUser.current=uid;
+      }
       setOwnPlayer(own);setForceRejoin(false);
       setScreen(openScreen=>['welcome','email','name','admin'].includes(openScreen)?'queue':openScreen);
     }
@@ -451,7 +463,7 @@ export default function App() {
     input.value=String(value);
     await commitCourtCount(input);
   }
-  async function finishJoin(f:string,l:string){if(await rpc('join_waitlist',{p_first_name:f,p_last_name:l},false)){if(isTeamsMode(config.mode)){const joined=players.find(player=>player.user_id===user?.id);const {data:fresh}=joined?{data:joined}:await supabase.from('waitlist_players').select('id').eq('user_id',user?.id).single();if(fresh?.id)await rpc('king_prepare_player',{p_player_id:fresh.id},false);}setScreen('queue');if(needsTutorial(user,config.mode))setOnboarding('disclaimer');}}
+  async function finishJoin(f:string,l:string){if(await rpc('join_waitlist_for_device',{p_first_name:f,p_last_name:l,p_device_id:getDeviceId()},false)){if(isTeamsMode(config.mode)){const joined=players.find(player=>player.user_id===user?.id);const {data:fresh}=joined?{data:joined}:await supabase.from('waitlist_players').select('id').eq('user_id',user?.id).single();if(fresh?.id)await rpc('king_prepare_player',{p_player_id:fresh.id},false);}setScreen('queue');if(needsTutorial(user,config.mode))setOnboarding('disclaimer');}}
   async function join(event:FormEvent){event.preventDefault(); const f=cleanName(first),l=cleanName(last); if(!f){setNotice({title:'Enter your name',message:'Your name needs to contain letters.'});return;}
     if(isInappropriateName(`${first} ${last}`)){setNotice(inappropriateNameNotice);return;}
     if(!await requireOnSite(()=>finishJoin(f,l)))return;
@@ -566,6 +578,7 @@ export default function App() {
     await supabase.auth.signOut();
     setPlayers([]);setKingTeams([]);setUser(null);setOwnPlayer(null);setForceRejoin(false);setRejoinResponse(null);setPendingNextGameEvent(null);setAdmin(false);setScreen('welcome');
     ownPlayerIdRef.current=null;ownHostStatus.current=false;hostTrackedUserId.current=null;renderedHostStatus.current=null;setHostStatusReady(false);
+    claimedDeviceForUser.current=null;
     await boot();
   }
   async function startGuestFlow(){

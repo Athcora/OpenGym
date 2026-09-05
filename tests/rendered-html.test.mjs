@@ -31,7 +31,7 @@ test("keeps metadata and the interactive app wired to the root route", async () 
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(page, /import WaitlistApp from "\.\/WaitlistApp"/);
-  assert.match(page, /<WaitlistApp \/>/);
+  assert.match(page, /<AppErrorBoundary><WaitlistApp \/><\/AppErrorBoundary>/);
   assert.match(page, /serviceWorker\.register\("\/sw\.js"\)/);
   assert.match(layout, /export const metadata:\s*Metadata/);
   assert.match(layout, /title:\s*"OpenGym Volleyball Waitlist"/);

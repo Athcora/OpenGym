@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+.app-crash-recovery{min-height:100dvh;display:grid;place-content:center;justify-items:center;gap:14px;padding:28px;text-align:center;background:#17181c;color:#f5f6f8;font-family:Arial,sans-serif}.app-crash-recovery img{width:64px;height:64px;border-radius:16px}.app-crash-recovery h1{margin:4px 0 0;font-size:clamp(1.5rem,5vw,2.2rem)}.app-crash-recovery p{margin:0;color:#b8bdc8}.app-crash-recovery button{min-width:190px;margin-top:8px;padding:14px 20px;border:0;border-radius:13px;background:#31956f;color:white;font-weight:800;font-size:1rem}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

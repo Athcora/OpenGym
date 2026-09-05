@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import AppErrorBoundary from "./AppErrorBoundary";
 import WaitlistApp from "./WaitlistApp";
 import "./waitlist.css";
 import "./advanced.css";
@@ -13,5 +14,5 @@ export default function Home() {
     }
   }, []);
 
-  return <WaitlistApp />;
+  return <AppErrorBoundary><WaitlistApp /></AppErrorBoundary>;
 }

@@ -207,6 +207,23 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .queue-page:has(.king-board) .admin-tools .members-tool { grid-column:4; grid-row:4; }
 .queue-page:has(.king-board) .admin-tools .reset-tool { grid-column:1/-1; grid-row:5; }
 .queue-page:has(.king-board) .host-tools .host-actions-title { grid-column:1/-1; grid-row:1; }
+/* Keep regular and rejoin operator controls organized like Teams mode: the
+   four primary action buttons share one row in the same visual order. */
+.queue-page:not(:has(.king-board)) .admin-tools { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));width:100%;gap:9px; }
+.queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>select { grid-column:1/-1;grid-row:1; }
+.queue-page:not(:has(.king-board)) .admin-tools .host-actions-title { grid-column:1/-1;grid-row:1; }
+.queue-page:not(:has(.king-board)) .admin-tools .next-game-tool { grid-column:1;grid-row:2; }
+.queue-page:not(:has(.king-board)) .admin-tools .add-player-tool { grid-column:2;grid-row:2; }
+.queue-page:not(:has(.king-board)) .admin-tools .group-create-tool { grid-column:3;grid-row:2; }
+.queue-page:not(:has(.king-board)) .admin-tools .substitute-tool { grid-column:4;grid-row:2; }
+.queue-page:not(:has(.king-board)) .admin-tools .facility-tool { grid-column:1/3;grid-row:3; }
+.queue-page:not(:has(.king-board)) .admin-tools .rejoin-tool { grid-column:3;grid-row:3; }
+.queue-page:not(:has(.king-board)) .admin-tools .undo-redo-controls { grid-column:4;grid-row:3;width:100%;min-width:0; }
+.queue-page:not(:has(.king-board)) .admin-tools .history-tool { grid-column:1/3;grid-row:4; }
+.queue-page:not(:has(.king-board)) .admin-tools .members-tool { grid-column:3;grid-row:4; }
+.queue-page:not(:has(.king-board)) .admin-tools .reset-tool { grid-column:4;grid-row:4; }
+.queue-page:not(:has(.king-board)) .host-tools .rejoin-tool { grid-column:1/3;grid-row:3; }
+.queue-page:not(:has(.king-board)) .host-tools .undo-redo-controls { grid-column:3/5;grid-row:3; }
 .host-appointment-actions { flex-direction:row; }
 .host-tutorial { max-width:540px; }
 .host-tutorial.host-tutorial-top { top:max(14px,env(safe-area-inset-top)); bottom:auto; }
@@ -243,6 +260,7 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .theme-light .past-game { background:#f5f7f9; border-color:#e0e5ea; }
 @media (max-width:620px) { .host-tools{width:100%;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.host-tools .host-actions-title{grid-column:1/-1;grid-row:1}.host-tools>button,.host-tools .undo-redo-controls{width:100%;min-height:48px;padding:10px 7px;font-size:.74rem}.host-tools .next-game-tool{grid-column:1;grid-row:2}.host-tools .add-player-tool{grid-column:2;grid-row:2}.host-tools .rejoin-tool{grid-column:1;grid-row:3}.host-tools .group-create-tool{grid-column:2;grid-row:3}.host-tools .undo-redo-controls{grid-column:1;grid-row:4}.host-tools .substitute-tool{grid-column:2;grid-row:4}.host-tools .history-tool{grid-column:1/-1;grid-row:5}.host-tutorial{width:min(calc(100% - 20px),540px);max-height:42vh;overflow:auto;padding:16px}.host-tutorial-focus{scroll-margin-top:190px;scroll-margin-bottom:240px} }
 @media (max-width:620px) { .queue-page:has(.king-board) .admin-tools{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.queue-page:has(.king-board) .admin-tools>button,.queue-page:has(.king-board) .admin-tools .undo-redo-controls{min-height:48px;padding:8px 3px;font-size:.61rem;line-height:1.12}.queue-page:has(.king-board) .admin-tools .undo-redo-controls{gap:2px}.queue-page:has(.king-board) .admin-tools .undo-redo-controls button{padding:6px 1px;font-size:.56rem}.queue-page:has(.king-board) .admin-tools .facility-tool{grid-column:1/3}.queue-page:has(.king-board) .admin-tools .history-tool{grid-column:3}.queue-page:has(.king-board) .admin-tools .members-tool{grid-column:4} }
+@media (max-width:620px) { .queue-page:not(:has(.king-board)) .admin-tools{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.queue-page:not(:has(.king-board)) .admin-tools>button,.queue-page:not(:has(.king-board)) .admin-tools .undo-redo-controls{min-height:48px;padding:8px 3px;font-size:.61rem;line-height:1.12}.queue-page:not(:has(.king-board)) .admin-tools .undo-redo-controls{gap:2px}.queue-page:not(:has(.king-board)) .admin-tools .undo-redo-controls button{padding:6px 1px;font-size:.56rem} }
 .theme-light .past-game p,.theme-light .add-player-card>p,.theme-light .add-player-card label { color:#5f6876; }
 .theme-light .drawer { background:#29303a77; }
 .theme-light .modal-backdrop { background:#3b43557a; }

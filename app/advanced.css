@@ -196,14 +196,14 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .queue-page:has(.king-board) .admin-tools .next-game-tool { grid-column:1/-1; grid-row:2; }
 .queue-page:has(.king-board) .admin-tools .add-player-tool { grid-column:1; grid-row:3; }
 .queue-page:has(.king-board) .admin-tools .rejoin-tool { grid-column:2; grid-row:3; }
-.queue-page:has(.king-board) .admin-tools .undo-redo-controls { grid-column:3; grid-row:3; width:100%; min-width:0; }
+.queue-page:has(.king-board) .admin-tools .undo-redo-controls { grid-column:3; grid-row:4; width:100%; min-width:0; }
 .queue-page:has(.king-board) .admin-tools .substitute-tool { grid-column:4; grid-row:3; }
 .queue-page:has(.king-board) .admin-tools:not(:has(.next-game-tool)) .add-player-tool,
 .queue-page:has(.king-board) .admin-tools:not(:has(.next-game-tool)) .rejoin-tool,
 .queue-page:has(.king-board) .admin-tools:not(:has(.next-game-tool)) .undo-redo-controls,
 .queue-page:has(.king-board) .admin-tools:not(:has(.next-game-tool)) .substitute-tool { grid-row:2; }
 .queue-page:has(.king-board) .admin-tools .facility-tool { grid-column:1/3; grid-row:4; }
-.queue-page:has(.king-board) .admin-tools .history-tool { grid-column:3; grid-row:4; }
+.queue-page:has(.king-board) .admin-tools .history-tool { grid-column:3; grid-row:3; }
 .queue-page:has(.king-board) .admin-tools .members-tool { grid-column:4; grid-row:4; }
 .queue-page:has(.king-board) .admin-tools .reset-tool { grid-column:1/-1; grid-row:5; }
 .queue-page:has(.king-board) .host-tools .host-actions-title { grid-column:1/-1; grid-row:1; }
@@ -215,7 +215,7 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .queue-page:not(:has(.king-board)) .admin-tools .next-game-tool { grid-column:1/-1;grid-row:2; }
 .queue-page:not(:has(.king-board)) .admin-tools .add-player-tool { grid-column:1;grid-row:3; }
 .queue-page:not(:has(.king-board)) .admin-tools .rejoin-tool { grid-column:2;grid-row:3; }
-.queue-page:not(:has(.king-board)) .admin-tools .undo-redo-controls { grid-column:3;grid-row:3;width:100%;min-width:0; }
+.queue-page:not(:has(.king-board)) .admin-tools .undo-redo-controls { grid-column:1/3;grid-row:5;width:100%;min-width:0; }
 .queue-page:not(:has(.king-board)) .admin-tools .substitute-tool { grid-column:4;grid-row:3; }
 .queue-page:not(:has(.king-board)) .admin-tools:not(:has(.next-game-tool)) .add-player-tool,
 .queue-page:not(:has(.king-board)) .admin-tools:not(:has(.next-game-tool)) .rejoin-tool,
@@ -223,7 +223,7 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .queue-page:not(:has(.king-board)) .admin-tools:not(:has(.next-game-tool)) .substitute-tool { grid-row:2; }
 .queue-page:not(:has(.king-board)) .admin-tools .facility-tool { grid-column:1/3;grid-row:4; }
 .queue-page:not(:has(.king-board)) .admin-tools .group-create-tool { grid-column:3/5;grid-row:4; }
-.queue-page:not(:has(.king-board)) .admin-tools .history-tool { grid-column:1/3;grid-row:5; }
+.queue-page:not(:has(.king-board)) .admin-tools .history-tool { grid-column:3;grid-row:3; }
 .queue-page:not(:has(.king-board)) .admin-tools .members-tool { grid-column:3;grid-row:5; }
 .queue-page:not(:has(.king-board)) .admin-tools .reset-tool { grid-column:4;grid-row:5; }
 .queue-page:not(:has(.king-board)) .host-tools .group-create-tool { grid-column:1/-1;grid-row:4; }

@@ -132,7 +132,7 @@ on conflict(facility_id,username) do update set display_username=excluded.displa
 alter table public.facility_admin_credentials enable row level security;
 
 create or replace function public.sign_in_waitlist_admin(p_username text,p_password text)
-returns jsonb language plpgsql security definer set search_path=public as $$
+returns jsonb language plpgsql security definer set search_path=public,extensions as $$
 declare credential public.facility_admin_credentials; fid uuid:=public.current_facility_id();
 begin
   if auth.uid() is null then raise exception 'You must be signed in.'; end if;
@@ -153,7 +153,7 @@ grant execute on function public.sign_in_waitlist_admin(text,text) to authentica
 create or replace function public.create_facility(
   p_name text,p_slug text,p_code text,p_admin_username text,p_admin_password text,
   p_address text default null,p_city text default null,p_region text default null
-) returns public.facilities language plpgsql security definer set search_path=public as $$
+) returns public.facilities language plpgsql security definer set search_path=public,extensions as $$
 declare created public.facilities; new_slug text:=lower(trim(p_slug));
 begin
   if not exists(select 1 from public.admin_sessions where user_id=auth.uid() and facility_id=public.current_facility_id()) then

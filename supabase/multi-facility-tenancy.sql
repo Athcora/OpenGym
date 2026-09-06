@@ -76,7 +76,7 @@ begin
     execute format('alter table public.%I alter column facility_id set not null',t);
     execute format('alter table public.%I enable row level security',t);
     execute format('drop policy if exists facility_isolation on public.%I',t);
-    execute format('create policy facility_isolation on public.%I as restrictive for all to authenticated using(facility_id=public.current_facility_id()) with check(facility_id=public.current_facility_id())',t);
+    execute format('create policy facility_isolation on public.%I as restrictive for all to public using(facility_id=public.current_facility_id()) with check(facility_id=public.current_facility_id())',t);
   end loop;
 end $$;
 

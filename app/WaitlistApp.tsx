@@ -323,7 +323,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     if(!selected){localStorage.removeItem(FACILITY_KEY);setScreen('facility');setNotice({title:'Facility not found',message:'Choose a facility below or enter its facility code.'});return;}
     const {error:facilityError}=await supabase.rpc('select_facility',{p_slug:selected.slug});
     if(facilityError){setScreen('facility');setNotice({title:'Could not open this facility',message:facilityError.message});return;}
-    setFacility(selected);localStorage.setItem(FACILITY_KEY,selected.slug);
+    setFacility(selected);localStorage.setItem(FACILITY_KEY,selected.slug);setScreen('welcome');
     if(!pathMatch)window.history.replaceState(null,'',`/g/${selected.slug}`);
     await refresh(session?.user??null);
     if(session?.user){

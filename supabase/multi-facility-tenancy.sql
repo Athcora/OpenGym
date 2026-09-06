@@ -77,6 +77,8 @@ begin
     execute format('alter table public.%I enable row level security',t);
     execute format('drop policy if exists facility_isolation on public.%I',t);
     execute format('create policy facility_isolation on public.%I as restrictive for all to public using(facility_id=public.current_facility_id()) with check(facility_id=public.current_facility_id())',t);
+    execute format('drop policy if exists runtime_facility_access on public.%I',t);
+    execute format('create policy runtime_facility_access on public.%I for all to opengym_runtime using(true) with check(true)',t);
   end loop;
 end $$;
 
@@ -101,6 +103,9 @@ create unique index waitlist_players_one_active_device on public.waitlist_player
 do $$ begin create role opengym_runtime nologin; exception when duplicate_object then null; end $$;
 grant opengym_runtime to postgres;
 grant usage,create on schema public to opengym_runtime;
+grant usage on schema auth to opengym_runtime;
+grant execute on all functions in schema auth to opengym_runtime;
+grant authenticated to opengym_runtime;
 grant select,insert,update,delete on all tables in schema public to opengym_runtime;
 grant usage,select on all sequences in schema public to opengym_runtime;
 grant execute on all functions in schema public to opengym_runtime;
@@ -130,6 +135,10 @@ from public.facilities f cross join public.admin_credentials c
 where f.slug='pacific-highlands-ranch'
 on conflict(facility_id,username) do update set display_username=excluded.display_username,password_hash=excluded.password_hash;
 alter table public.facility_admin_credentials enable row level security;
+alter table public.admin_sessions drop constraint if exists admin_sessions_username_fkey;
+alter table public.admin_sessions drop constraint if exists admin_sessions_facility_username_fkey;
+alter table public.admin_sessions add constraint admin_sessions_facility_username_fkey
+  foreign key(facility_id,username) references public.facility_admin_credentials(facility_id,username) on update cascade;
 
 create or replace function public.sign_in_waitlist_admin(p_username text,p_password text)
 returns jsonb language plpgsql security definer set search_path=public,extensions as $$
@@ -142,7 +151,7 @@ begin
     raise exception 'Incorrect username or password.';
   end if;
   insert into public.admin_sessions(user_id,username,facility_id)
-    values(auth.uid(),credential.display_username,fid)
+    values(auth.uid(),credential.username,fid)
     on conflict(user_id) do update set username=excluded.username,facility_id=excluded.facility_id,created_at=now();
   return jsonb_build_object('message','Signed in.');
 end $$;

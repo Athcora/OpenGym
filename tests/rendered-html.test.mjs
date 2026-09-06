@@ -19,8 +19,8 @@ test("server-renders the OpenGym entry screen", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
   assert.match(html, /<title>OpenGym Volleyball Waitlist<\/title>/i);
-  assert.match(html, /Continue as guest/);
-  assert.match(html, /Join the live volleyball queue from your phone\./);
+  assert.match(html, /Choose your facility/);
+  assert.match(html, /Facility name or code/);
   assert.match(html, /open-gym-app-icon\.png/);
   assert.doesNotMatch(html, /Your site is taking shape|Building your site/);
 });

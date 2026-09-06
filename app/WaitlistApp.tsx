@@ -12,6 +12,7 @@ type Player = { id:string; user_id:string|null; first_name:string; last_name:str
 type PastTeam = { team:string; players:string[] };
 type Game = { id:string; game_number:number; court_number:number; player_names:string[]; team_rosters?:PastTeam[]|null; ended_at:string };
 type Config = { game_number:number; max_players:number; court_count:number; mode:'regular'|'rejoin'|'teams'|'teams_rejoin'; geofence_enabled:boolean; geofence_radius_m:number; king_max_wins:number|null };
+type Facility = { id:string; slug:string; code:string; name:string; address:string|null; city:string|null; region:string|null };
 type TeamCourtMode = 'rotation'|'king';
 type Court = { court_number:number; game_number:number; started_at:string; team_mode?:TeamCourtMode; team_max_wins?:number|null };
 type KingTeam = { id:string;name:string;status:'waiting'|'current';queue_position:number;court_number:number|null;court_side:1|2|null;consecutive_wins:number;rejoin_expires_at?:string|null;members:Player[] };
@@ -36,6 +37,7 @@ const isTeamsMode = (mode:Config['mode']) => mode==='teams'||mode==='teams_rejoi
 const MOBILE_DRAG_HOLD_MS=450;
 const MOBILE_SCROLL_CANCEL_DISTANCE=8;
 const DEVICE_ID_KEY='opengym-device-id';
+const FACILITY_KEY='opengym-facility-slug';
 
 function getDeviceId(){
   let value=localStorage.getItem(DEVICE_ID_KEY);
@@ -90,7 +92,9 @@ export default function App() {
   const [inviteSubTeamId,setInviteSubTeamId]=useState<string|null>(null);
   const [inviteSubTargetId,setInviteSubTargetId]=useState<string|null>(null);
   useEffect(()=>{document.body.classList.toggle('team-sub-invite-selecting',Boolean(inviteSubTeamId));document.querySelectorAll<HTMLElement>('[data-player-id]').forEach(row=>row.classList.toggle('substitute-selected',row.dataset.playerId===inviteSubTargetId));return()=>document.body.classList.remove('team-sub-invite-selecting')},[inviteSubTeamId,inviteSubTargetId,players]);
-  const [screen,setScreen]=useState<'welcome'|'email'|'name'|'admin'|'queue'|'history'|'player-history'|'members'|'restricted'|'add-player'|'offline-rejoin'|'admin-history'>('welcome');
+  const [screen,setScreen]=useState<'facility'|'facility-create'|'welcome'|'email'|'name'|'admin'|'queue'|'history'|'player-history'|'members'|'restricted'|'add-player'|'offline-rejoin'|'admin-history'>('facility');
+  const [facilities,setFacilities]=useState<Facility[]>([]); const [facility,setFacility]=useState<Facility|null>(null); const [facilitySearch,setFacilitySearch]=useState('');
+  const [newFacility,setNewFacility]=useState({name:'',slug:'',code:'',username:'',password:'',address:'',city:'',region:''});
   const [first,setFirst]=useState(''); const [last,setLast]=useState('');
   const [email,setEmail]=useState(''); const [authMode,setAuthMode]=useState<'signin'|'signup'>('signin');
   const [busy,setBusy]=useState(false); const [notice,setNotice]=useState<Notice>(null);
@@ -309,13 +313,25 @@ export default function App() {
   async function boot(){
     let {data:{session}}=await supabase.auth.getSession();
     if(!session){const result=await supabase.auth.signInAnonymously(); if(result.error){setNotice({title:'Connection needed',message:result.error.message});return;} session=result.data.session;}
-    setUser(session?.user??null); await refresh(session?.user??null);
+    setUser(session?.user??null);
+    const pathMatch=window.location.pathname.match(/^\/g\/([^/]+)\/?$/i);
+    const requested=pathMatch?.[1]||localStorage.getItem(FACILITY_KEY);
+    const {data:facilityRows}=await supabase.from('facilities').select('id,slug,code,name,address,city,region').eq('active',true).order('name');
+    const available=(facilityRows??[]) as Facility[];setFacilities(available);
+    if(!requested){setScreen('facility');return;}
+    const selected=available.find(item=>item.slug===requested||item.code.toLowerCase()===requested.toLowerCase());
+    if(!selected){localStorage.removeItem(FACILITY_KEY);setScreen('facility');setNotice({title:'Facility not found',message:'Choose a facility below or enter its facility code.'});return;}
+    const {error:facilityError}=await supabase.rpc('select_facility',{p_slug:selected.slug});
+    if(facilityError){setScreen('facility');setNotice({title:'Could not open this facility',message:facilityError.message});return;}
+    setFacility(selected);localStorage.setItem(FACILITY_KEY,selected.slug);
+    if(!pathMatch)window.history.replaceState(null,'',`/g/${selected.slug}`);
+    await refresh(session?.user??null);
     if(session?.user){
       const {data:unread}=await supabase.from('group_notifications').select('id,user_id,message,read_at').eq('user_id',session.user.id).is('read_at',null).order('created_at',{ascending:true}).limit(1).maybeSingle();
       if(unread){const notification=unread as GroupNotification;showPlayerNotification(notification,session.user.id);await supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id);}
     }
     if(realtimeChannel.current){await supabase.removeChannel(realtimeChannel.current);realtimeChannel.current=null;}
-    const channel=supabase.channel('live-waitlist')
+    const channel=supabase.channel(`live-waitlist:${selected.id}`)
       .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_players'},payload=>{
         const changed=payload.new as Player;const isOwnChange=changed.user_id===session.user.id||changed.id===ownPlayerIdRef.current;
         if(isOwnChange){setOwnPlayer(changed);setForceRejoin(!['current','waiting','sitout'].includes(changed.status));ownPlayerIdRef.current=changed.id;syncOwnHostStatus(Boolean(changed.is_host),session.user.id);if(changed.status==='rejoin'){rejoinLookupAttempts.current=0;setRejoinChecked(false);window.setTimeout(()=>void refresh(),150);}}
@@ -388,6 +404,18 @@ export default function App() {
       }).subscribe(status=>{realtimeConnected.current=status==='SUBSCRIBED'});
     realtimeChannel.current=channel;
     return()=>{realtimeConnected.current=false;if(realtimeChannel.current===channel)realtimeChannel.current=null;void supabase.removeChannel(channel)};
+  }
+  async function chooseActiveFacility(selected:Facility){
+    setBusy(true);const {error}=await supabase.rpc('select_facility',{p_slug:selected.slug});setBusy(false);
+    if(error){setNotice({title:'Could not open this facility',message:error.message});return;}
+    setFacility(selected);localStorage.setItem(FACILITY_KEY,selected.slug);window.history.pushState(null,'',`/g/${selected.slug}`);setScreen('welcome');await refresh(user);
+  }
+  function changeFacility(){localStorage.removeItem(FACILITY_KEY);setFacility(null);setAdmin(false);setPlayers([]);setKingTeams([]);window.history.pushState(null,'','/');setScreen('facility')}
+  async function createFacility(event:FormEvent){
+    event.preventDefault();setBusy(true);
+    const {data,error}=await supabase.rpc('create_facility',{p_name:newFacility.name,p_slug:newFacility.slug,p_code:newFacility.code,p_admin_username:newFacility.username,p_admin_password:newFacility.password,p_address:newFacility.address,p_city:newFacility.city,p_region:newFacility.region});setBusy(false);
+    if(error){setNotice({title:'Could not create facility',message:error.message});return;}
+    const created=data as Facility;setFacilities(items=>[...items,created].sort((a,b)=>a.name.localeCompare(b.name)));setNotice({title:'Facility created',message:`${created.name} is ready at playopengym.com/g/${created.slug}. Its queue and administrator access are separate from every other facility.`});setScreen('queue');
   }
   function scheduleRefresh(){if(refreshTimer.current!==null)window.clearTimeout(refreshTimer.current);refreshTimer.current=window.setTimeout(()=>{refreshTimer.current=null;void refresh()},60)}
   async function broadcastQueueRefresh(){
@@ -960,7 +988,12 @@ export default function App() {
     await refresh();setNotice({title:'Next game reversed',message:data?.message??'The previous game and queue order have been restored.'});
   }
 
-  if(screen==='welcome')return <Shell><section className="auth-card"><Logo/><button className="hero-button" disabled={busy} onClick={()=>void startGuestFlow()}>{busy?'Starting guest mode…':'Continue as guest'}</button><button className="admin-link" onClick={()=>setScreen('admin')}>Admin</button><p className="fine">Join the live volleyball queue from your phone.</p></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
+  if(screen==='facility'){
+    const query=facilitySearch.trim().toLowerCase();const matches=facilities.filter(item=>!query||`${item.name} ${item.code} ${item.city??''} ${item.region??''}`.toLowerCase().includes(query));
+    return <Shell><section className="auth-card facility-finder"><Logo/><span className="kicker">FIND YOUR GYM</span><h1>Choose your facility</h1><p>Enter the facility code printed beside its QR code, or search by name or city.</p><label><span className="field-label">Facility name or code</span><input autoFocus value={facilitySearch} onChange={event=>setFacilitySearch(event.target.value)} placeholder="Search facilities" autoCapitalize="none"/></label><div className="facility-results">{matches.map(item=><button key={item.id} disabled={busy} onClick={()=>void chooseActiveFacility(item)}><span><strong>{item.name}</strong><small>{[item.city,item.region].filter(Boolean).join(', ')||item.address||'OpenGym facility'}</small></span><b>{item.code}</b></button>)}{matches.length===0&&<p className="empty">No matching facility. Check the code and try again.</p>}</div></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
+  }
+  if(screen==='facility-create')return <Shell><section className="auth-card facility-create"><button className="back" onClick={()=>setScreen('queue')}>← Go back</button><span className="kicker">NEW FACILITY</span><h1>Add an OpenGym facility</h1><p>This creates a separate queue, settings, history, and administrator sign-in.</p><form onSubmit={createFacility}><label>Facility name<input required value={newFacility.name} onChange={e=>setNewFacility(v=>({...v,name:e.target.value,slug:v.slug||e.target.value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}))}/></label><label>Facility URL<input required value={newFacility.slug} onChange={e=>setNewFacility(v=>({...v,slug:e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,'')}))} placeholder="facility-name"/></label><label>Facility code<input required maxLength={10} value={newFacility.code} onChange={e=>setNewFacility(v=>({...v,code:e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'')}))} placeholder="GYM123"/></label><label>Address<input value={newFacility.address} onChange={e=>setNewFacility(v=>({...v,address:e.target.value}))}/></label><div className="facility-location-fields"><label>City<input value={newFacility.city} onChange={e=>setNewFacility(v=>({...v,city:e.target.value}))}/></label><label>State / region<input value={newFacility.region} onChange={e=>setNewFacility(v=>({...v,region:e.target.value}))}/></label></div><label>Administrator username<input required autoCapitalize="none" value={newFacility.username} onChange={e=>setNewFacility(v=>({...v,username:e.target.value}))}/></label><label>Administrator password<input required type="password" minLength={8} value={newFacility.password} onChange={e=>setNewFacility(v=>({...v,password:e.target.value}))}/></label><button className="hero-button" disabled={busy}>{busy?'Creating…':'Create facility'}</button></form></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
+  if(screen==='welcome')return <Shell><section className="auth-card"><Logo/><div className="selected-facility"><span>FACILITY</span><strong>{facility?.name}</strong><button onClick={changeFacility}>Change</button></div><button className="hero-button" disabled={busy} onClick={()=>void startGuestFlow()}>{busy?'Starting guest mode…':'Continue as guest'}</button><button className="admin-link" onClick={()=>setScreen('admin')}>Admin</button><p className="fine">Join the live volleyball queue from your phone.</p></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
   if(screen==='email')return <Shell><section className="auth-card"><button className="back" onClick={()=>setScreen('welcome')}>← Go back</button><span className="kicker">{authMode==='signup'?'CREATE ACCOUNT':'ACCOUNT SIGN IN'}</span><h1>{authMode==='signup'?'Create your OpenGym account':'Welcome back'}</h1><p>We’ll email you a secure link—no password needed.</p><form onSubmit={emailSignIn}>{authMode==='signup'&&<><label>First name<input autoFocus value={first} onChange={e=>setFirst(e.target.value)} placeholder="First name" autoComplete="given-name" required/></label><label>Last name<input value={last} onChange={e=>setLast(e.target.value)} placeholder="Last name" autoComplete="family-name" required/></label></>}<label>Email address<input autoFocus={authMode==='signin'} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required/></label><button className="hero-button" disabled={busy}>{busy?'Sending…':'Email me a sign-in link'}</button></form><p className="fine">The link expires for your security.</p></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
   if(screen==='admin')return <Shell><section className="auth-card"><div className="admin-access-heading"><button className="back" onClick={()=>setScreen('welcome')}>← Go back</button><span className="kicker">ADMIN ACCESS</span></div><h1>Manage OpenGym</h1><p>Sign in to choose a waitlist mode and manage players.</p><form onSubmit={adminLogin}><label>Username<input autoFocus value={adminUser} onChange={e=>setAdminUser(e.target.value)} autoCapitalize="none"/></label><label>Password<input type="password" value={adminPassword} onChange={e=>setAdminPassword(e.target.value)}/></label><button className="hero-button" disabled={busy}>Sign in</button></form></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>;
   if(!admin&&geofenceReturn){const remaining=Math.max(0,Math.ceil((new Date(geofenceReturn.expires_at).getTime()-returnClock)/1000));const saved=new Date(geofenceReturn.saved_position_until).getTime()>returnClock;return <Shell><section className="auth-card geofence-return-card"><Logo/><span className="kicker">RETURN TO THE GYM</span><h1>You’re too far away</h1><p>It seems you moved too far from the gym, so you were taken off the waitlist. Go back to the facility and press “I’m back!” below. If this looks like a mistake, please let an admin know.</p><div className="return-countdown"><strong>{formatCountdown(remaining)}</strong><span>left to return</span></div><p className="return-position-note">{saved?'Your previous position is saved for the first minute.':'Your saved-position minute has ended. You can still rejoin at the back.'}</p><button className="hero-button rejoin-at-back" disabled={busy||remaining===0} onClick={()=>void returnToFacility()}>{remaining===0?'Return window expired':busy?'Checking location…':"I’m back!"}</button></section>{notice&&<Modal notice={notice} close={()=>setNotice(null)} busy={busy}/>}</Shell>}

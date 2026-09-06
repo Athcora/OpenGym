@@ -79,7 +79,7 @@ function preventNativeTouchScroll(event:TouchEvent){
   if(document.body.classList.contains('mobile-admin-dragging'))event.preventDefault();
 }
 
-export default function App() {
+export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}={}) {
   const [user,setUser]=useState<User|null>(null);
   const [players,setPlayers]=useState<Player[]>([]);
   const [games,setGames]=useState<Game[]>([]);
@@ -315,7 +315,7 @@ export default function App() {
     if(!session){const result=await supabase.auth.signInAnonymously(); if(result.error){setNotice({title:'Connection needed',message:result.error.message});return;} session=result.data.session;}
     setUser(session?.user??null);
     const pathMatch=window.location.pathname.match(/^\/g\/([^/]+)\/?$/i);
-    const requested=pathMatch?.[1]||localStorage.getItem(FACILITY_KEY);
+    const requested=initialFacilitySlug||pathMatch?.[1]||localStorage.getItem(FACILITY_KEY);
     const {data:facilityRows}=await supabase.from('facilities').select('id,slug,code,name,address,city,region').eq('active',true).order('name');
     const available=(facilityRows??[]) as Facility[];setFacilities(available);
     if(!requested){setScreen('facility');return;}

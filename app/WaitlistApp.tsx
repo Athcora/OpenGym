@@ -618,6 +618,9 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     if(signOutResult.error){setBusy(false);setNotice({title:'Could not start guest mode',message:signOutResult.error.message});return;}
     const signInResult=await supabase.auth.signInAnonymously();
     if(signInResult.error||!signInResult.data.user){setBusy(false);setNotice({title:'Could not start guest mode',message:signInResult.error?.message??'Please try again.'});return;}
+    if(!facility){setBusy(false);setNotice({title:'Choose a facility',message:'Select the gym whose waitlist you want to join.'});setScreen('facility');return;}
+    const {error:facilityError}=await supabase.rpc('select_facility',{p_slug:facility.slug});
+    if(facilityError){setBusy(false);setNotice({title:'Could not open this facility',message:facilityError.message});return;}
     setAdmin(false);setAdminGrouping(false);setAdminGroupIds([]);setOwnPlayer(null);setUser(signInResult.data.user);
     await refresh(signInResult.data.user);
     setScreen('name');setBusy(false);

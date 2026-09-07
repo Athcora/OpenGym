@@ -198,6 +198,8 @@ begin
     definition:=replace(definition,'on conflict(court_number)','on conflict(facility_id,court_number)');
     definition:=replace(definition,'ON CONFLICT (game_number)','ON CONFLICT (facility_id, game_number)');
     definition:=replace(definition,'on conflict(game_number)','on conflict(facility_id,game_number)');
+    definition:=replace(definition,'ON CONFLICT (user_id)','ON CONFLICT (facility_id, user_id)');
+    definition:=replace(definition,'on conflict(user_id)','on conflict(facility_id,user_id)');
     definition:=replace(definition,'ON CONFLICT (id)','ON CONFLICT (facility_id, id)');
     definition:=replace(definition,'on conflict(id)','on conflict(facility_id,id)');
     if definition<>f.definition then execute definition; end if;

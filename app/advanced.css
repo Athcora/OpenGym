@@ -411,6 +411,6 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .queue-page .admin-tools:not(.host-tools)>.history-tool{grid-column:3;grid-row:var(--admin-action-row)}
 .queue-page .admin-tools:not(.host-tools)>.substitute-tool{grid-column:4;grid-row:var(--admin-action-row)}
 .queue-page .admin-tools:not(.host-tools)>.facility-tool{grid-column:1/3;grid-row:var(--admin-detail-row)}
-.queue-page .admin-tools:not(.host-tools)>.undo-redo-controls{grid-column:3;grid-row:var(--admin-detail-row)}
+.queue-page .admin-tools:not(.host-tools)>.undo-redo-controls{grid-column:3!important;grid-row:var(--admin-detail-row)!important}
 .queue-page .admin-tools:not(.host-tools)>.members-tool{grid-column:4;grid-row:var(--admin-detail-row)}
 .queue-page .admin-tools:not(.host-tools)>.reset-tool{grid-column:1/-1;grid-row:var(--admin-reset-row)}

@@ -414,3 +414,24 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .queue-page .admin-tools:not(.host-tools)>.undo-redo-controls{grid-column:3!important;grid-row:var(--admin-detail-row)!important}
 .queue-page .admin-tools:not(.host-tools)>.members-tool{grid-column:4;grid-row:var(--admin-detail-row)}
 .queue-page .admin-tools:not(.host-tools)>.reset-tool{grid-column:1/-1;grid-row:var(--admin-reset-row)}
+
+/* Regular and rejoin modes also expose Create Group, so use a complete five-item row. */
+.queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools){grid-template-columns:repeat(5,minmax(0,1fr))}
+.queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.group-create-tool{grid-column:4;grid-row:var(--admin-action-row)}
+.queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.substitute-tool{grid-column:5;grid-row:var(--admin-action-row)}
+.queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.facility-tool{grid-column:1/4;grid-row:var(--admin-detail-row)}
+.queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.undo-redo-controls{grid-column:4!important}
+.queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.members-tool{grid-column:5}
+
+@media (max-width:620px){
+  .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools){grid-template-columns:repeat(2,minmax(0,1fr));--admin-action-row:2;--admin-detail-row:5;--admin-reset-row:7}
+  .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools):has(.next-game-tool){--admin-action-row:3;--admin-detail-row:6;--admin-reset-row:8}
+  .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.add-player-tool{grid-column:1}
+  .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.rejoin-tool{grid-column:2}
+  .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.history-tool{grid-column:1;grid-row:calc(var(--admin-action-row) + 1)}
+  .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.group-create-tool{grid-column:2;grid-row:calc(var(--admin-action-row) + 1)}
+  .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.substitute-tool{grid-column:1;grid-row:calc(var(--admin-action-row) + 2)}
+  .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.facility-tool{grid-column:2;grid-row:calc(var(--admin-action-row) + 2)}
+  .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.undo-redo-controls{grid-column:1!important;grid-row:var(--admin-detail-row)!important}
+  .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.members-tool{grid-column:2;grid-row:var(--admin-detail-row)}
+}

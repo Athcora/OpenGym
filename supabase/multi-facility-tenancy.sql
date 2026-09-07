@@ -134,6 +134,11 @@ select f.id,c.username,c.display_username,c.password_hash
 from public.facilities f cross join public.admin_credentials c
 where f.slug='pacific-highlands-ranch'
 on conflict(facility_id,username) do update set display_username=excluded.display_username,password_hash=excluded.password_hash;
+-- Pacific Highlands Ranch uses its facility-specific administrator name.
+update public.facility_admin_credentials
+set username='phr',display_username='PHR'
+where facility_id=(select id from public.facilities where slug='pacific-highlands-ranch')
+  and username<>'phr';
 alter table public.facility_admin_credentials enable row level security;
 alter table public.admin_sessions drop constraint if exists admin_sessions_username_fkey;
 alter table public.admin_sessions drop constraint if exists admin_sessions_facility_username_fkey;

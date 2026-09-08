@@ -327,7 +327,9 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     if(!session){const result=await supabase.auth.signInAnonymously(); if(result.error){setNotice({title:'Connection needed',message:result.error.message});return;} session=result.data.session;}
     setUser(session?.user??null);
     const pathMatch=window.location.pathname.match(/^\/g\/([^/]+)\/?$/i);
-    const requested=initialFacilitySlug||pathMatch?.[1]||localStorage.getItem(FACILITY_KEY);
+    // Client-side facility changes update the URL without remounting this route,
+    // so the current pathname must win over the slug captured on first render.
+    const requested=pathMatch?.[1]||initialFacilitySlug||localStorage.getItem(FACILITY_KEY);
     const {data:facilityRows}=await supabase.from('facilities').select('id,slug,code,name,address,city,region').eq('active',true).order('name');
     const available=(facilityRows??[]) as Facility[];setFacilities(available);
     if(!requested){setScreen('facility');return;}

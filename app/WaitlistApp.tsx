@@ -208,10 +208,10 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   },[user?.id,admin]);
   useEffect(()=>{
     if(!user)return;let stopped=false;let refreshing=false;
-    // Realtime is primary. A low-frequency visible-page refresh is enough to
-    // recover after a suspended or briefly disconnected mobile browser.
+    // Realtime is primary. While a mobile browser is reconnecting, keep every
+    // role current with a one-second visible-page fallback.
     const sync=async()=>{if(stopped||refreshing||document.visibilityState!=='visible'||realtimeConnected.current)return;refreshing=true;try{await refresh(user)}finally{refreshing=false}};
-    const timer=window.setInterval(()=>void sync(),30_000);return()=>{stopped=true;window.clearInterval(timer)};
+    void sync();const timer=window.setInterval(()=>void sync(),1_000);return()=>{stopped=true;window.clearInterval(timer)};
   },[user?.id]);
   useEffect(()=>{
     const substituting=adminSubstituting||playerSubstituting;
@@ -408,7 +408,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   async function chooseActiveFacility(selected:Facility){
     setBusy(true);const {error}=await supabase.rpc('select_facility',{p_slug:selected.slug});setBusy(false);
     if(error){setNotice({title:'Could not open this facility',message:error.message});return;}
-    setFacility(selected);localStorage.setItem(FACILITY_KEY,selected.slug);window.history.pushState(null,'',`/g/${selected.slug}`);setScreen('welcome');await refresh(user);
+    setFacility(selected);localStorage.setItem(FACILITY_KEY,selected.slug);window.history.pushState(null,'',`/g/${selected.slug}`);setScreen('welcome');await boot();
   }
   function changeFacility(){localStorage.removeItem(FACILITY_KEY);setFacility(null);setAdmin(false);setPlayers([]);setKingTeams([]);window.history.pushState(null,'','/');setScreen('facility')}
   async function createFacility(event:FormEvent){
@@ -622,7 +622,9 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     const {error:facilityError}=await supabase.rpc('select_facility',{p_slug:facility.slug});
     if(facilityError){setBusy(false);setNotice({title:'Could not open this facility',message:facilityError.message});return;}
     setAdmin(false);setAdminGrouping(false);setAdminGroupIds([]);setOwnPlayer(null);setUser(signInResult.data.user);
-    await refresh(signInResult.data.user);
+    // Signing out closes the previous authenticated realtime socket. Reboot
+    // after the new anonymous session is selected so joins broadcast instantly.
+    await boot();
     setScreen('name');setBusy(false);
   }
   function openEmailAuth(mode:'signin'|'signup'){setAuthMode(mode);setEmail('');if(mode==='signin'){setFirst('');setLast('');}setScreen('email');}

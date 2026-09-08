@@ -120,7 +120,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   const [geofenceReturn,setGeofenceReturn]=useState<GeofenceReturn|null>(null); const [returnClock,setReturnClock]=useState(Date.now());
   const [permissionPlayer,setPermissionPlayer]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0); const [hostStatusReady,setHostStatusReady]=useState(false);
   const [pendingNextGameEvent,setPendingNextGameEvent]=useState<{message:string}|null>(null);
-  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const lastFullRefresh=useRef(0); const lastCleanupAt=useRef(0); const realtimeConnected=useRef(false); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const renderedHostStatus=useRef<boolean|null>(null); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null); const facilityMenuRef=useRef<HTMLElement|null>(null); const refreshTimer=useRef<number|null>(null); const screenRef=useRef(screen); const realtimeChannel=useRef<ReturnType<typeof supabase.channel>|null>(null);
+  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const lastFullRefresh=useRef(0); const lastCleanupAt=useRef(0); const realtimeConnected=useRef(false); const lastEventRevision=useRef<string|null>(null); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const renderedHostStatus=useRef<boolean|null>(null); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null); const facilityMenuRef=useRef<HTMLElement|null>(null); const refreshTimer=useRef<number|null>(null); const screenRef=useRef(screen); const realtimeChannel=useRef<ReturnType<typeof supabase.channel>|null>(null);
   const activeStatusRef=useRef<PlayerStatus|null>(null); const waitlistModeRef=useRef<Config['mode']>('regular'); const ownPlayerRef=useRef<Player|null>(null);
   const rejoinLookupAttempts=useRef(0);
   const claimedDeviceForUser=useRef<string|null>(null);
@@ -207,12 +207,24 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     void check();const timer=window.setInterval(()=>{if(document.visibilityState==='visible'&&!realtimeConnected.current)void check()},15_000);return()=>{stopped=true;window.clearInterval(timer)};
   },[user?.id,admin]);
   useEffect(()=>{
-    if(!user)return;let stopped=false;let refreshing=false;
-    // Realtime is primary. While a mobile browser is reconnecting, keep every
-    // role current with a one-second visible-page fallback.
-    const sync=async()=>{if(stopped||refreshing||document.visibilityState!=='visible'||realtimeConnected.current)return;refreshing=true;try{await refresh(user)}finally{refreshing=false}};
+    if(!user||!facility)return;let stopped=false;let refreshing=false;
+    lastEventRevision.current=null;
+    // Broadcasts remain the fastest path. This tiny event-revision check makes
+    // every visible role self-heal within a second if a websocket event is lost.
+    const sync=async()=>{
+      if(stopped||refreshing||document.visibilityState!=='visible')return;
+      refreshing=true;
+      try{
+        if(!realtimeConnected.current){await refresh(user);return;}
+        const {data,error}=await supabase.from('waitlist_events').select('id').order('created_at',{ascending:false}).limit(1).maybeSingle();
+        if(error)return;
+        const revision=`${facility.id}:${data?.id??'empty'}`;
+        if(lastEventRevision.current===null){lastEventRevision.current=revision;return;}
+        if(lastEventRevision.current!==revision){lastEventRevision.current=revision;await refresh(user);}
+      }finally{refreshing=false;}
+    };
     void sync();const timer=window.setInterval(()=>void sync(),1_000);return()=>{stopped=true;window.clearInterval(timer)};
-  },[user?.id]);
+  },[user?.id,facility?.id]);
   useEffect(()=>{
     const substituting=adminSubstituting||playerSubstituting;
     const selecting=adminGrouping||substituting;

@@ -12,7 +12,7 @@ type Player = { id:string; user_id:string|null; first_name:string; last_name:str
 type PastTeam = { team:string; players:string[] };
 type Game = { id:string; game_number:number; court_number:number; player_names:string[]; team_rosters?:PastTeam[]|null; ended_at:string };
 type Config = { game_number:number; max_players:number; court_count:number; mode:'regular'|'rejoin'|'teams'|'teams_rejoin'; geofence_enabled:boolean; geofence_radius_m:number; king_max_wins:number|null };
-type Facility = { id:string; slug:string; code:string; name:string; address:string|null; city:string|null; region:string|null };
+type Facility = { id:string; slug:string; code:string; name:string; address:string|null; city:string|null; region:string|null; latitude:number|null; longitude:number|null };
 type TeamCourtMode = 'rotation'|'king';
 type Court = { court_number:number; game_number:number; started_at:string; team_mode?:TeamCourtMode; team_max_wins?:number|null };
 type KingTeam = { id:string;name:string;status:'waiting'|'current';queue_position:number;court_number:number|null;court_side:1|2|null;consecutive_wins:number;rejoin_expires_at?:string|null;members:Player[] };
@@ -38,6 +38,12 @@ const MOBILE_DRAG_HOLD_MS=450;
 const MOBILE_SCROLL_CANCEL_DISTANCE=8;
 const DEVICE_ID_KEY='opengym-device-id';
 const FACILITY_KEY='opengym-facility-slug';
+const FACILITY_COORDINATE_FALLBACKS:Record<string,{latitude:number;longitude:number}>={
+  OAIR:{latitude:32.92788,longitude:-117.21702},
+};
+const facilityCoordinates=(item:Facility|null)=>item?.latitude!=null&&item.longitude!=null
+  ?{latitude:item.latitude,longitude:item.longitude}
+  :item?FACILITY_COORDINATE_FALLBACKS[item.code.toUpperCase()]??null:null;
 
 function getDeviceId(){
   let value=localStorage.getItem(DEVICE_ID_KEY);
@@ -330,7 +336,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     // Client-side facility changes update the URL without remounting this route,
     // so the current pathname must win over the slug captured on first render.
     const requested=pathMatch?.[1]||initialFacilitySlug||localStorage.getItem(FACILITY_KEY);
-    const {data:facilityRows}=await supabase.from('facilities').select('id,slug,code,name,address,city,region').eq('active',true).order('name');
+    const {data:facilityRows}=await supabase.from('facilities').select('id,slug,code,name,address,city,region,latitude,longitude').eq('active',true).order('name');
     const available=(facilityRows??[]) as Facility[];setFacilities(available);
     if(!requested){setScreen('facility');return;}
     const selected=available.find(item=>item.slug===requested||item.code.toLowerCase()===requested.toLowerCase());
@@ -586,10 +592,16 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     setFacilityMenu(true);
     window.requestAnimationFrame(()=>window.requestAnimationFrame(()=>facilityMenuRef.current?.scrollIntoView({behavior:'smooth',block:'center'})));
   }
-  async function chooseFacility(code:'PHR'|'NA'){
-    if(await rpc('admin_select_facility',{p_facility_code:code},false)){
+  async function chooseFacility(code:string|'NA'){
+    const coordinates=facilityCoordinates(facility);
+    const selectedLocation=code==='NA'
+      ?await rpc('admin_select_facility',{p_facility_code:'NA'},false)
+      :coordinates
+        ?await rpc('admin_set_facility_location',{p_latitude:coordinates.latitude,p_longitude:coordinates.longitude,p_radius_m:150},false)
+        :false;
+    if(selectedLocation){
       setFacilityMenu(false);
-      setNotice(code==='PHR'?{title:'Pacific Highlands Ranch selected',message:'Players must be within about 150 meters of 5977 Village Center Loop Rd, San Diego, CA 92130.'}:{title:'Facility location disabled',message:'Players can join without an on-site location check.'});
+      setNotice(code==='NA'?{title:'Facility location disabled',message:'Players can join without an on-site location check.'}:{title:`${facility?.name??'Facility'} selected`,message:`Players must be within about 150 meters of ${[facility?.address,facility?.city,facility?.region].filter(Boolean).join(', ')}.`});
     }
   }
   function ask(title:string,message:string,confirm:string,action:()=>Promise<void>,actionTone:'danger'|'success'='danger',cancelTone:'neutral'|'danger'='neutral'){setNotice({title,message,confirm,action,actionTone,cancelTone});}
@@ -1032,7 +1044,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     <main className={`queue-page ${!admin&&me&&!meIsVisibleInQueue?'rejoin-only-queue':''}`}>
       <section className="game-heading"><div><span className="kicker">{admin?'LIVE QUEUE · ADMIN':host?'LIVE QUEUE · HOST':'LIVE QUEUE'}</span><h1>{translateUiText(courts.length>1?`Game ${courts.map(court=>court.game_number).join(' · ')}`:`Game ${courts[0]?.game_number??config.game_number}`,language)}</h1></div><span className="live-pill"><i/>Live</span></section>
       {operator&&<section className="court-count-control"><label htmlFor="court-count"># of courts</label><div className="court-count-input"><input ref={courtCountInputRef} key={config.court_count} id="court-count" type="text" inputMode="numeric" pattern="[0-9]*" defaultValue={config.court_count} aria-label="Number of courts" onInput={event=>{event.currentTarget.value=event.currentTarget.value.replace(/\D/g,'').slice(0,2)}} onBlur={event=>void commitCourtCount(event.currentTarget)} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();event.currentTarget.blur()}}}/><div className="court-count-steppers"><button type="button" aria-label="Increase courts" disabled={busy||config.court_count>=12} onClick={()=>void stepCourtCount(1)}>&uarr;</button><button type="button" aria-label="Decrease courts" disabled={busy||config.court_count<=1} onClick={()=>void stepCourtCount(-1)}>&darr;</button></div></div></section>}
-      {admin&&facilityMenu&&<section ref={facilityMenuRef} className="facility-menu"><strong>Select facility</strong><p>Choose the affiliated recreation center for on-site check-in.</p><button className={config.geofence_enabled?'selected':''} onClick={()=>void chooseFacility('PHR')}><span>PHR</span><small>Pacific Highlands Ranch<br/>5977 Village Center Loop Rd, San Diego, CA 92130</small></button><button className={!config.geofence_enabled?'selected':''} onClick={()=>void chooseFacility('NA')}><span>N/A</span><small>No facility location requirement</small></button></section>}
+      {admin&&facilityMenu&&<section ref={facilityMenuRef} className="facility-menu"><strong>Select facility</strong><p>Choose the affiliated recreation center for on-site check-in.</p><button className={config.geofence_enabled?'selected':''} disabled={!facilityCoordinates(facility)} onClick={()=>void chooseFacility(facility?.code??'')}><span>{facility?.code}</span><small>{facility?.name}<br/>{[facility?.address,facility?.city,facility?.region].filter(Boolean).join(', ')}</small></button><button className={!config.geofence_enabled?'selected':''} onClick={()=>void chooseFacility('NA')}><span>N/A</span><small>No facility location requirement</small></button></section>}
       {adminGrouping&&<aside className="admin-group-toolbar"><span>{adminGroupIds.length}/6 selected</span><button className="group-cancel" onClick={cancelAdminGrouping}>Cancel</button><button className="group-done" onClick={previewAdminGroup}>Done</button></aside>}
       {(adminSubstituting||playerSubstituting)&&<aside className="admin-group-toolbar substitute-toolbar"><span>{substituteIds.length}/{adminSubstituting?2:1} selected</span><button className="group-cancel" onClick={cancelSubstitute}>Cancel</button><button className="group-done" onClick={adminSubstituting?previewAdminSubstitute:previewPlayerSubstitute}>Continue</button></aside>}
       {inviteSubTeamId&&<aside className="admin-group-toolbar team-sub-invite-toolbar"><span>Select a player</span><button className="group-cancel" onClick={()=>{setInviteSubTeamId(null);setInviteSubTargetId(null)}}>Cancel</button><button className="group-done" disabled={!inviteSubTargetId} onClick={confirmTeamSubTarget}>Confirm</button></aside>}

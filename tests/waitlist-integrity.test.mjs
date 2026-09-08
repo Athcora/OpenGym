@@ -36,6 +36,8 @@ assert.match(app,/onboarding!==\'idle\'\|\|hostTutorial\|\|hostAppointmentNotice
 assert.match(app,/admin\|\|host\|\|onboarding!==\'idle\'/);
 assert.match(app,/setOnboarding\('idle'\);setTutorialStep\(0\);setHostTutorial\(false\)/);
 assert.match(app,/function TutorialCoach.*const safeStep=Math\.max\(0,Math\.min\(step,steps\.length-1\)\)/s);
+assert.match(app,/function KingTeamCard\(\{team,me,canJoin,busy,joinTeam,start,side,showStreak,operator,admin,host,/);
+assert.match(app,/<KingTeamCard[^>]+admin=\{admin\} host=\{host\}/);
 assert.match(app,/previous===false&&host.*setHostAppointmentNotice/s);
 assert.match(app,/if\(!hostStatusReady\)\{renderedHostStatus\.current=null;return;\}/);
 assert.match(app,/const MOBILE_DRAG_HOLD_MS=450/);

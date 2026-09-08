@@ -134,7 +134,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     if(screen!=='name'){locationIntroShown.current=false;return;}
     if(!config.geofence_enabled||locationIntroShown.current)return;
     locationIntroShown.current=true;
-    setNotice({title:'Location is required to join',message:'This facility requires location access before you can join the waitlist. OpenGym only uses your location to confirm that you are at the facility—it does not show your location to other players or continuously track where you go.',cancelLabel:'OK'});
+    setNotice({title:'Location is * REQUIRED * to join',message:'This facility requires location access before you can join the waitlist. OpenGym only uses your location to confirm that you are at the facility—it does not show your location to other players or continuously track where you go.',cancelLabel:'OK'});
   },[screen,config.geofence_enabled]);
 
   useEffect(()=>{

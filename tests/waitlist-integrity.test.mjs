@@ -40,6 +40,7 @@ assert.match(app,/function KingTeamCard\(\{team,me,canJoin,busy,joinTeam,start,s
 assert.match(app,/<KingTeamCard[^>]+admin=\{admin\} host=\{host\}/);
 assert.match(app,/previous===false&&host.*setHostAppointmentNotice/s);
 assert.match(app,/if\(!hostStatusReady\)\{renderedHostStatus\.current=null;return;\}/);
+assert.match(app,/Location is \* REQUIRED \* to join/);
 assert.match(app,/const MOBILE_DRAG_HOLD_MS=450/);
 assert.match(app,/const MOBILE_SCROLL_CANCEL_DISTANCE=8/);
 assert.match(app,/const cancelHoldOnScroll=/);

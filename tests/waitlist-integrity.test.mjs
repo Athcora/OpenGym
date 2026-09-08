@@ -9,6 +9,8 @@ const undo=readFileSync(new URL('../supabase/fix-operator-undo-safe-update.sql',
 const substitute=readFileSync(new URL('../supabase/team-substitute-next-game.sql',import.meta.url),'utf8');
 const courts=readFileSync(new URL('../supabase/fix-team-court-count.sql',import.meta.url),'utf8');
 const modes=readFileSync(new URL('../supabase/fix-mode-switch-preserve-players.sql',import.meta.url),'utf8');
+const layout=readFileSync(new URL('../app/layout.tsx',import.meta.url),'utf8');
+const worker=readFileSync(new URL('../worker/index.ts',import.meta.url),'utf8');
 
 assert.match(conversion,/\(player_no-1\)%6=0/);
 assert.match(conversion,/queue_position=\(\(player_no-1\)%6\)\+1/);
@@ -47,6 +49,9 @@ assert.match(advancedCss,/Final action-panel layout/);
 assert.match(advancedCss,/teams-tools\.host-tools.*repeat\(4/s);
 assert.match(advancedCss,/standard-tools\.host-tools.*repeat\(6/s);
 assert.match(advancedCss,/multi-court-tools:not\(\.host-tools\).*--admin-action-row:2/);
+assert.match(layout,/opengym-asset-recovery/);
+assert.match(layout,/asset\.includes\('\/assets\/'\)/);
+assert.match(worker,/Cache-Control", "no-store, no-cache, must-revalidate"/);
 assert.match(app,/const MOBILE_DRAG_HOLD_MS=450/);
 assert.match(app,/const MOBILE_SCROLL_CANCEL_DISTANCE=8/);
 assert.match(app,/const cancelHoldOnScroll=/);

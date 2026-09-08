@@ -40,7 +40,17 @@ const worker = {
       }, allowedWidths);
     }
 
-    return handler.fetch(request, env, ctx);
+    const response = await handler.fetch(request, env, ctx);
+    const acceptsHtml = request.headers.get("accept")?.includes("text/html") ?? false;
+    if (request.method === "GET" && acceptsHtml) {
+      const headers = new Headers(response.headers);
+      // Deployment assets are content-hashed. Never cache the HTML shell that
+      // points at them, or an older shell can reference bundles no longer live.
+      headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+      headers.set("Pragma", "no-cache");
+      return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+    }
+    return response;
   },
 };
 

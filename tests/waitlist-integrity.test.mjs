@@ -65,10 +65,13 @@ assert.match(app,/find\(request=>!handledSwapRequestIds\.current\.has\(request\.
 assert.match(app,/handledGroupRequestIds=useRef\(new Set<string>\(\)\)/);
 assert.match(app,/find\(request=>!handledGroupRequestIds\.current\.has\(request\.id\).*handledGroupRequestIds\.current\.add\(incoming\.id\)/s);
 assert.ok(app.includes("if(/ wants to group with you\\. \\(Current game: Game \\d+\\)$/.test(notification.message))return;"));
-assert.match(hardenedGrouping,/combined_size>6/);
+assert.match(hardenedGrouping,/requester_size>=6/);
 assert.match(hardenedGrouping,/facility_id=fid and status in\('current','waiting'\)/);
 assert.match(hardenedGrouping,/A group request is already pending between these players/);
 assert.match(hardenedGrouping,/court_number=null/);
+assert.match(hardenedGrouping,/destination_group:=coalesce\(requester\.group_id,gen_random_uuid\(\)\)/);
+assert.match(hardenedGrouping,/old_target_group:=target\.group_id/);
+assert.match(hardenedGrouping,/where facility_id=fid and group_id=old_target_group/);
 assert.match(app,/The generic RPC helper refreshes before sign-out/);
 assert.match(app,/await supabase\.rpc\('leave_waitlist'\)/);
 assert.match(app,/Tabs share one authenticated Supabase facility session/);

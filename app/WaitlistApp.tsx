@@ -295,7 +295,10 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     return()=>document.removeEventListener('click',closeDrawerFromBackdrop);
   },[]);
   useEffect(()=>{
-    if(!me||me.status==='left'||me.status==='rejoin'||admin||isTeamsMode(config.mode)||!config.geofence_enabled||!navigator.geolocation)return;
+    // Hosts are still players for facility-presence purposes. Keep the admin
+    // exemption, but run the same live geofence watch for every player mode,
+    // including both team modes and players who have host permissions.
+    if(!me||me.status==='left'||me.status==='rejoin'||admin||!config.geofence_enabled||!navigator.geolocation)return;
     let active=true;
     const watch=navigator.geolocation.watchPosition(async position=>{
       if(!active)return;

@@ -54,6 +54,8 @@ assert.match(layout,/asset\.includes\('\/assets\/'\)/);
 assert.match(worker,/Cache-Control", "no-store, no-cache, must-revalidate"/);
 assert.match(app,/const MOBILE_DRAG_HOLD_MS=450/);
 assert.match(app,/const MOBILE_SCROLL_CANCEL_DISTANCE=8/);
+assert.match(app,/me\.status==='rejoin'\|\|admin\|\|!config\.geofence_enabled/);
+assert.doesNotMatch(app,/admin\|\|isTeamsMode\(config\.mode\)\|\|!config\.geofence_enabled/);
 assert.match(app,/The generic RPC helper refreshes before sign-out/);
 assert.match(app,/await supabase\.rpc\('leave_waitlist'\)/);
 assert.match(app,/Tabs share one authenticated Supabase facility session/);

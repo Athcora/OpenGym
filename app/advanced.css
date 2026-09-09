@@ -355,6 +355,9 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .field-label { display:inline-flex; align-items:center; gap:4px; }
 .required-marker { color:#ef5d68; font-weight:900; }
 .optional-marker { color:#8f95a4; font-size:.74rem; font-weight:600; }
+.auth-card label,.add-player-card label { position:relative; }
+.name-limit-counter { display:block; margin:5px 2px 0; color:#8f95a4; font-size:.7rem; font-weight:700; line-height:1; text-align:right; }
+.theme-light .name-limit-counter { color:#66717e; }
 .theme-dark .drawer { background:#0009; }
 .theme-dark .modal-backdrop { background:#0c0d10bb; }
 .theme-dark .neutral { background:#4b5362!important; }

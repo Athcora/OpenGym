@@ -60,6 +60,7 @@ assert.equal((app.match(/maxLength=\{NAME_CHARACTER_LIMIT\}/g)??[]).length,6);
 assert.match(app,/used>=NAME_CHARACTER_LIMIT-5/);
 assert.match(app,/First and last names can each contain up to/);
 assert.match(advancedCss,/\.name-limit-counter/);
+assert.match(advancedCss,/@media \(max-width:520px\) \{ \.topbar\{position:relative;padding-left:0\}\.topbar>\.logo\{position:absolute;top:40px;left:0\}/);
 assert.match(app,/me\.status==='rejoin'\|\|admin\|\|!config\.geofence_enabled/);
 assert.doesNotMatch(app,/admin\|\|isTeamsMode\(config\.mode\)\|\|!config\.geofence_enabled/);
 assert.match(app,/className="facility-heading-label"><span>Facility<\/span> <strong>\{facility\?\.name\?\?'OpenGym'\}<\/strong><button type="button" onClick=\{confirmFacilityChange\}>Change<\/button>/);

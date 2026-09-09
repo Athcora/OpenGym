@@ -126,7 +126,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   const [geofenceReturn,setGeofenceReturn]=useState<GeofenceReturn|null>(null); const [returnClock,setReturnClock]=useState(Date.now());
   const [permissionPlayer,setPermissionPlayer]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0); const [hostStatusReady,setHostStatusReady]=useState(false);
   const [pendingNextGameEvent,setPendingNextGameEvent]=useState<{message:string}|null>(null);
-  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const lastFullRefresh=useRef(0); const lastCleanupAt=useRef(0); const realtimeConnected=useRef(false); const lastEventRevision=useRef<string|null>(null); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const renderedHostStatus=useRef<boolean|null>(null); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null); const facilityMenuRef=useRef<HTMLElement|null>(null); const refreshTimer=useRef<number|null>(null); const screenRef=useRef(screen); const realtimeChannel=useRef<ReturnType<typeof supabase.channel>|null>(null);
+  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const lastFullRefresh=useRef(0); const lastCleanupAt=useRef(0); const realtimeConnected=useRef(false); const lastEventRevision=useRef<string|null>(null); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const renderedHostStatus=useRef<boolean|null>(null); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null); const facilityMenuRef=useRef<HTMLElement|null>(null); const refreshTimer=useRef<number|null>(null); const screenRef=useRef(screen); const realtimeChannel=useRef<ReturnType<typeof supabase.channel>|null>(null); const facilityRef=useRef<Facility|null>(null);
   const activeStatusRef=useRef<PlayerStatus|null>(null); const waitlistModeRef=useRef<Config['mode']>('regular'); const ownPlayerRef=useRef<Player|null>(null);
   const rejoinLookupAttempts=useRef(0);
   const claimedDeviceForUser=useRef<string|null>(null);
@@ -172,6 +172,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   adminAccess.current=admin;
   activeStatusRef.current=activeMe?.status??null;waitlistModeRef.current=config.mode;ownPlayerRef.current=me;
   screenRef.current=screen;
+  facilityRef.current=facility;
   const displayedPlayers=useMemo(()=>dragging&&dragOver?previewAdminMove(players,dragging,dragOver.status,dragOver.index,config.max_players,dragOver.courtNumber,dragOver.marker):players,[players,dragging,dragOver,config.max_players]);
   const savedQueuePositions=useMemo(()=>{
     const positions=new Map<string,number>();
@@ -343,9 +344,9 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     if(!selected){localStorage.removeItem(FACILITY_KEY);setScreen('facility');setNotice({title:'Facility not found',message:'Choose a facility below or enter its facility code.'});return;}
     const {error:facilityError}=await supabase.rpc('select_facility',{p_slug:selected.slug});
     if(facilityError){setScreen('facility');setNotice({title:'Could not open this facility',message:facilityError.message});return;}
-    setFacility(selected);localStorage.setItem(FACILITY_KEY,selected.slug);setScreen('welcome');
+    facilityRef.current=selected;setFacility(selected);localStorage.setItem(FACILITY_KEY,selected.slug);setScreen('welcome');
     if(!pathMatch)window.history.replaceState(null,'',`/g/${selected.slug}`);
-    await refresh(session?.user??null);
+    await refresh(session?.user??null,selected,true);
     if(session?.user){
       const {data:unread}=await supabase.from('group_notifications').select('id,user_id,message,read_at').eq('user_id',session.user.id).is('read_at',null).order('created_at',{ascending:true}).limit(1).maybeSingle();
       if(unread){const notification=unread as GroupNotification;showPlayerNotification(notification,session.user.id);await supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id);}
@@ -428,22 +429,35 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   async function chooseActiveFacility(selected:Facility){
     setBusy(true);const {error}=await supabase.rpc('select_facility',{p_slug:selected.slug});setBusy(false);
     if(error){setNotice({title:'Could not open this facility',message:error.message});return;}
-    setFacility(selected);localStorage.setItem(FACILITY_KEY,selected.slug);window.history.pushState(null,'',`/g/${selected.slug}`);setScreen('welcome');await boot();
+    facilityRef.current=selected;setFacility(selected);localStorage.setItem(FACILITY_KEY,selected.slug);window.history.pushState(null,'',`/g/${selected.slug}`);setScreen('welcome');await boot();
   }
-  function changeFacility(){localStorage.removeItem(FACILITY_KEY);setFacility(null);setAdmin(false);setPlayers([]);setKingTeams([]);window.history.pushState(null,'','/');setScreen('facility')}
+  function changeFacility(){localStorage.removeItem(FACILITY_KEY);facilityRef.current=null;setFacility(null);setAdmin(false);setPlayers([]);setKingTeams([]);window.history.pushState(null,'','/');setScreen('facility')}
   async function createFacility(event:FormEvent){
     event.preventDefault();setBusy(true);
     const {data,error}=await supabase.rpc('create_facility',{p_name:newFacility.name,p_slug:newFacility.slug,p_code:newFacility.code,p_admin_username:newFacility.username,p_admin_password:newFacility.password,p_address:newFacility.address,p_city:newFacility.city,p_region:newFacility.region});setBusy(false);
     if(error){setNotice({title:'Could not create facility',message:error.message});return;}
     const created=data as Facility;setFacilities(items=>[...items,created].sort((a,b)=>a.name.localeCompare(b.name)));setNotice({title:'Facility created',message:`${created.name} is ready at playopengym.com/g/${created.slug}. Its queue and administrator access are separate from every other facility.`});setScreen('queue');
   }
-  function scheduleRefresh(){if(refreshTimer.current!==null)window.clearTimeout(refreshTimer.current);refreshTimer.current=window.setTimeout(()=>{refreshTimer.current=null;void refresh()},60)}
+  function scheduleRefresh(){
+    // Tabs share one authenticated Supabase facility session. An inactive tab
+    // must not switch that shared session in response to background events.
+    if(document.visibilityState!=='visible')return;
+    if(refreshTimer.current!==null)window.clearTimeout(refreshTimer.current);
+    refreshTimer.current=window.setTimeout(()=>{refreshTimer.current=null;void refresh()},60);
+  }
   async function broadcastQueueRefresh(){
     await realtimeChannel.current?.send({type:'broadcast',event:'queue_refresh',payload:{at:Date.now()}});
   }
   async function loadPastGames(){const {data,error}=await supabase.from('past_games').select('id,game_number,court_number,player_names,team_rosters,ended_at').order('game_number',{ascending:false}).limit(60);if(error){setNotice({title:'Past games unavailable',message:error.message});return;}setGames((data??[]) as Game[])}
   function openPastGames(){setScreen('history');void loadPastGames()}
-  async function refresh(activeUser?:User|null){
+  async function ensureFacilityContext(target=facilityRef.current){
+    if(!target)return true;
+    const {error}=await supabase.rpc('select_facility',{p_slug:target.slug});
+    if(error){setNotice({title:'Could not open this facility',message:error.message});return false;}
+    return true;
+  }
+  async function refresh(activeUser?:User|null,expectedFacility=facilityRef.current,contextReady=false){
+    if(!contextReady&&!await ensureFacilityContext(expectedFacility))return;
     const now=Date.now();
     if(now-lastCleanupAt.current>=60_000){lastCleanupAt.current=now;await supabase.rpc('cleanup_king_rejoin_expirations');}
     const [{data:p},{data:c},{data:courtRows},{data:teamRows},{data:a},{data:r},{data:s},{data:rejoin,error:rejoinError},{data:geo}]=await Promise.all([
@@ -492,9 +506,12 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     lastFullRefresh.current=Date.now();
   }
   async function rpc(name:string,args:Record<string,unknown>={},showSuccess=true){
-    setBusy(true); const {data,error}=await supabase.rpc(name,args); setBusy(false);
+    setBusy(true);
+    const activeFacility=facilityRef.current;
+    if(name!=='select_facility'&&!await ensureFacilityContext(activeFacility)){setBusy(false);return false;}
+    const {data,error}=await supabase.rpc(name,args); setBusy(false);
     if(error){setNotice({title:'Could not complete that',message:error.message});return false;}
-    if(data?.message&&showSuccess)setNotice({title:'Done',message:data.message}); await broadcastQueueRefresh(); await refresh(); return true;
+    if(data?.message&&showSuccess)setNotice({title:'Done',message:data.message}); await broadcastQueueRefresh(); await refresh(undefined,activeFacility,true); return true;
   }
   async function commitCourtCount(input:HTMLInputElement){
     const parsed=Number(input.value);
@@ -905,7 +922,18 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     await broadcastQueueRefresh();await refresh();
   }
   async function answerRejoin(choice:'stay'|'leave'){if(choice==='stay'&&!await requireOnSite(()=>answerRejoin('stay')))return;if(rejoinResponse&&await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse.id,p_choice:choice},false)&&choice==='leave')await logout();setRejoinResponse(null);}
-  async function leaveOwnWaitlist(){if(await rpc('leave_waitlist',{},false))await logout();}
+  async function leaveOwnWaitlist(){
+    // The generic RPC helper refreshes before sign-out, which can race with
+    // auth synchronization and restore a just-left player as a stale Rejoin
+    // session. Leave, broadcast, and sign out as one uninterrupted flow.
+    setBusy(true);
+    if(!await ensureFacilityContext()){setBusy(false);return;}
+    const {error}=await supabase.rpc('leave_waitlist');
+    if(error){setBusy(false);setNotice({title:'Could not complete that',message:error.message});return;}
+    await broadcastQueueRefresh();
+    setBusy(false);
+    await logout();
+  }
   async function rejoinAtBack(){if(!me)return;if(!await requireOnSite(rejoinAtBack))return;if(await rpc('rejoin_waitlist_at_back',{},false))setForceRejoin(false);}
   async function returnToFacility(){
     if(!geofenceReturn)return;setBusy(true);

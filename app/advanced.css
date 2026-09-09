@@ -304,6 +304,24 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .admin-row.own .leave-own-group-button { display:none; }
 .theme-dark .leave-own-group-button { background:#a94350; }
 .theme-dark .leave-own-group-button:hover { background:#bd5260; box-shadow:0 0 16px rgba(189,82,96,.42); }
+@media (max-width:520px) {
+  /* Give the group label its own clear band above the first member's content.
+     The signed-in row outline starts at 3px, so keeping the label below it
+     prevents the outline from striking through "Your Group". */
+  .player-row.own-group-start { padding-top:26px; }
+  .player-row.own-group-start .your-group-label { top:9px; }
+
+  /* On narrow phones, wrap the existing localized "Leave Group" label at its
+     word boundary instead of letting the control crowd the name and badges. */
+  .leave-own-group-button {
+    width:48px;
+    margin-right:5px;
+    padding:6px 5px;
+    white-space:normal;
+    line-height:1.05;
+    text-align:center;
+  }
+}
 .group-projection-warning { display:block; margin:10px 0 15px; padding:12px 14px; border-radius:11px; background:#dff8ec; color:#175c42; font-size:.92rem; line-height:1.4; }
 .theme-dark .group-projection-warning { background:#183d31; color:#91e3c2; }
 

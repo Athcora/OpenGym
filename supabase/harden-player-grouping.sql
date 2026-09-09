@@ -76,7 +76,10 @@ begin
     and (id=requester.id or (requester.group_id is not null and group_id=requester.group_id));
   target_position:=target.queue_position; anchor_tail:=greatest(requester_tail,target_position);
   update public.waitlist_players set queue_position=queue_position*1000 where facility_id=fid and status in('current','waiting');
-  with moving as (select id,row_number() over(order by case when id=target.id then 1 else 0 end,queue_position,id) rn
+  -- Preserve the players' existing relative order. In particular, adjacent
+  -- players must not swap places merely because the later player sent the
+  -- invitation to the earlier player.
+  with moving as (select id,row_number() over(order by queue_position,id) rn
     from public.waitlist_players where facility_id=fid and
       (id in(requester.id,target.id) or (requester.group_id is not null and group_id=requester.group_id)))
   update public.waitlist_players p set queue_position=anchor_tail*1000+moving.rn from moving where p.facility_id=fid and p.id=moving.id;

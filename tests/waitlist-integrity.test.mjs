@@ -72,6 +72,8 @@ assert.match(hardenedGrouping,/court_number=null/);
 assert.match(hardenedGrouping,/destination_group:=coalesce\(requester\.group_id,gen_random_uuid\(\)\)/);
 assert.match(hardenedGrouping,/old_target_group:=target\.group_id/);
 assert.match(hardenedGrouping,/where facility_id=fid and group_id=old_target_group/);
+assert.match(hardenedGrouping,/row_number\(\) over\(order by queue_position,id\) rn/);
+assert.doesNotMatch(hardenedGrouping,/case when id=target\.id then 1 else 0 end/);
 assert.match(app,/The generic RPC helper refreshes before sign-out/);
 assert.match(app,/await supabase\.rpc\('leave_waitlist'\)/);
 assert.match(app,/Tabs share one authenticated Supabase facility session/);

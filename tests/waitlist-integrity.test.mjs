@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
 const app=readFileSync(new URL('../app/WaitlistApp.tsx',import.meta.url),'utf8');
+const hardenedGrouping=readFileSync(new URL('../supabase/harden-player-grouping.sql',import.meta.url),'utf8');
 const advancedCss=readFileSync(new URL('../app/advanced.css',import.meta.url),'utf8');
 const iconCss=readFileSync(new URL('../app/icon-fixes.css',import.meta.url),'utf8');
 const conversion=readFileSync(new URL('../supabase/fix-team-mode-conversion.sql',import.meta.url),'utf8');
@@ -61,6 +62,13 @@ assert.match(app,/confirm:'Log out',action:logout,actionTone:'danger',actionOnLe
 assert.match(advancedCss,/\.facility-heading-label\{display:flex;/);
 assert.match(app,/handledSwapRequestIds=useRef\(new Set<string>\(\)\)/);
 assert.match(app,/find\(request=>!handledSwapRequestIds\.current\.has\(request\.id\).*handledSwapRequestIds\.current\.add\(incoming\.id\)/s);
+assert.match(app,/handledGroupRequestIds=useRef\(new Set<string>\(\)\)/);
+assert.match(app,/find\(request=>!handledGroupRequestIds\.current\.has\(request\.id\).*handledGroupRequestIds\.current\.add\(incoming\.id\)/s);
+assert.ok(app.includes("if(/ wants to group with you\\. \\(Current game: Game \\d+\\)$/.test(notification.message))return;"));
+assert.match(hardenedGrouping,/combined_size>6/);
+assert.match(hardenedGrouping,/facility_id=fid and status in\('current','waiting'\)/);
+assert.match(hardenedGrouping,/A group request is already pending between these players/);
+assert.match(hardenedGrouping,/court_number=null/);
 assert.match(app,/The generic RPC helper refreshes before sign-out/);
 assert.match(app,/await supabase\.rpc\('leave_waitlist'\)/);
 assert.match(app,/Tabs share one authenticated Supabase facility session/);

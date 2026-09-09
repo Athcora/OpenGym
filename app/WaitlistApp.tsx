@@ -126,7 +126,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   const [geofenceReturn,setGeofenceReturn]=useState<GeofenceReturn|null>(null); const [returnClock,setReturnClock]=useState(Date.now());
   const [permissionPlayer,setPermissionPlayer]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0); const [hostStatusReady,setHostStatusReady]=useState(false);
   const [pendingNextGameEvent,setPendingNextGameEvent]=useState<{message:string}|null>(null);
-  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const lastFullRefresh=useRef(0); const lastCleanupAt=useRef(0); const realtimeConnected=useRef(false); const lastEventRevision=useRef<string|null>(null); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const handledSwapRequestIds=useRef(new Set<string>()); const handledTeamSubRequestIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const renderedHostStatus=useRef<boolean|null>(null); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null); const facilityMenuRef=useRef<HTMLElement|null>(null); const refreshTimer=useRef<number|null>(null); const screenRef=useRef(screen); const realtimeChannel=useRef<ReturnType<typeof supabase.channel>|null>(null); const facilityRef=useRef<Facility|null>(null);
+  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const lastFullRefresh=useRef(0); const lastCleanupAt=useRef(0); const realtimeConnected=useRef(false); const lastEventRevision=useRef<string|null>(null); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const handledGroupRequestIds=useRef(new Set<string>()); const handledSwapRequestIds=useRef(new Set<string>()); const handledTeamSubRequestIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const renderedHostStatus=useRef<boolean|null>(null); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null); const facilityMenuRef=useRef<HTMLElement|null>(null); const refreshTimer=useRef<number|null>(null); const screenRef=useRef(screen); const realtimeChannel=useRef<ReturnType<typeof supabase.channel>|null>(null); const facilityRef=useRef<Facility|null>(null);
   const activeStatusRef=useRef<PlayerStatus|null>(null); const waitlistModeRef=useRef<Config['mode']>('regular'); const ownPlayerRef=useRef<Player|null>(null);
   const rejoinLookupAttempts=useRef(0);
   const claimedDeviceForUser=useRef<string|null>(null);
@@ -627,6 +627,10 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   function ask(title:string,message:string,confirm:string,action:()=>Promise<void>,actionTone:'danger'|'success'='danger',cancelTone:'neutral'|'danger'='neutral'){setNotice({title,message,confirm,action,actionTone,cancelTone});}
   function showPlayerNotification(notification:GroupNotification,activeUserId=user?.id){
     if(handledNotificationIds.current.has(notification.id))return;handledNotificationIds.current.add(notification.id);
+    // The actionable Group Up dialog comes from the persisted group_requests
+    // row. Its companion notification exists only to wake/background-sync the
+    // target and must not create a second, non-actionable popup.
+    if(/ wants to group with you\. \(Current game: Game \d+\)$/.test(notification.message))return;
     if(notification.message.startsWith('HOST_APPOINTED|')&&Date.now()-hostTransitionHandledAt.current<10000)return;
     if(notification.message.startsWith('HOST_APPOINTED|')){if(!hostAppointmentActive.current){hostAppointmentActive.current=true;setOnboarding('idle');setTutorialStep(0);setHostTutorial(false);setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:true}:player));setHostAppointmentNotice(notification.message.split('|')[1]||'The admin appointed you as a Session Host.')}return;}
     if(notification.message.startsWith('HOST_REMOVED|')){hostAppointmentActive.current=false;setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:false}:player));setHostAppointmentNotice(null);setHostTutorial(false);setNotice({title:'Host permissions removed',message:notification.message.split('|')[1]||'Your Session Host permissions were removed.'});return;}
@@ -858,8 +862,9 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   }
   function projectedGameAfterGrouping(request:GroupRequest){return projectedGameForGrouping(request.requester_id,request.target_id);}
   useEffect(()=>{
-    const incoming=groupRequests.find(request=>players.find(player=>player.id===request.target_id)?.user_id===user?.id);
+    const incoming=groupRequests.find(request=>!handledGroupRequestIds.current.has(request.id)&&players.find(player=>player.id===request.target_id)?.user_id===user?.id);
     if(!incoming)return;
+    handledGroupRequestIds.current.add(incoming.id);
     setNotice(existing=>{
       if(existing?.requestId===incoming.id)return existing;
       const requester=incoming.requester?.display_name??'A player';

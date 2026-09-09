@@ -142,7 +142,7 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .logo>span img { display:block; width:100%; height:100%; object-fit:cover; }
 .admin-access-heading { display:flex; align-items:center; justify-content:space-between; gap:24px; }
 .admin-access-heading .kicker { margin-left:auto; text-align:right; }
-.facility-heading-label{display:flex;align-items:baseline;gap:.34rem;margin:0 0 7px;font-size:.76rem;line-height:1.25}.facility-heading-label span{color:#8f95a4;opacity:.72;font-weight:700}.facility-heading-label strong{color:inherit;font-weight:750;letter-spacing:-.01em}
+.facility-heading-label{display:flex;align-items:baseline;gap:.34rem;margin:0 0 7px;font-size:.76rem;line-height:1.25}.facility-heading-label span{color:#8f95a4;opacity:.72;font-weight:700}.facility-heading-label strong{color:inherit;font-weight:750;letter-spacing:-.01em}.facility-heading-label button{border:0;background:none;color:#4bd6a0;padding:2px 3px;font-size:.7rem;font-weight:800;cursor:pointer}.facility-heading-label button:hover{text-decoration:underline}.modal-actions.action-on-left{flex-direction:row}
 @media(max-width:620px){.facility-heading-label{max-width:min(72vw,330px);font-size:.7rem;flex-wrap:wrap;row-gap:1px;margin-bottom:6px}.facility-heading-label strong{overflow-wrap:anywhere}}
 .language-picker { position:relative; display:flex; align-items:center; justify-content:center; align-self:flex-end; width:64px; min-width:64px; min-height:38px; border:1px solid #3b3e47; border-radius:11px; background:#25262b; color:#ccd0d8; cursor:pointer; overflow:hidden; }
 .language-picker::after { content:'⌄'; margin-left:3px; color:#9298a4; font-size:.72rem; pointer-events:none; }

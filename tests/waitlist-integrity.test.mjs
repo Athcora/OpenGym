@@ -87,7 +87,11 @@ assert.match(app,/if\(document\.visibilityState!=='visible'\)return/);
 assert.match(app,/async function ensureFacilityContext/);
 assert.match(app,/const cancelHoldOnScroll=/);
 assert.doesNotMatch(app,/const scrollBeforeHold=/);
+assert.equal((app.match(/Math\.min\(88,Math\.max\(64,window\.innerHeight\*\.1\)\)/g)??[]).length,2);
+assert.match(app,/else\{document\.addEventListener\('touchmove',preventNativeTouchScroll,\{passive:false\}\);state\.timer=/);
+assert.match(app,/positionPlayerDragPreview\(preview,state\.lastX,state\.lastY\);updateMobileTarget\(state\.lastX,state\.lastY\);startAutoScroll\(\);\},MOBILE_DRAG_HOLD_MS\)/);
 assert.match(advancedCss,/\.king-player-row:has\(\.admin-player-actions\).*touch-action:pan-y/);
+assert.match(advancedCss,/\.queue-page \.admin-tools\{align-items:stretch;grid-auto-rows:minmax\(48px,auto\)\}/);
 assert.match(iconCss,/\.king-player-row:has\(\.admin-player-actions\).*touch-action:pan-y/);
 assert.doesNotMatch(app,/â|Ã|Â|ï¿½|�/);
 

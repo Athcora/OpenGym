@@ -518,4 +518,12 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
   .queue-page .teams-tools.host-tools.multi-court-tools>.substitute-tool{grid-row:3!important}
   .queue-page .standard-tools.host-tools.multi-court-tools>.group-create-tool,.queue-page .standard-tools.host-tools.multi-court-tools>.substitute-tool{grid-row:3!important}
   .queue-page .standard-tools.host-tools.multi-court-tools>.undo-redo-controls{grid-row:4!important}
+
+  /* Keep every mobile control inside its own grid cell. Long labels and the
+     rejoin badge must not spill across or sit beneath neighbouring buttons. */
+  .queue-page .admin-tools{align-items:stretch;grid-auto-rows:minmax(48px,auto)}
+  .queue-page .admin-tools>button,.queue-page .admin-tools>.undo-redo-controls{min-width:0;max-width:100%;width:100%;position:relative;overflow:hidden;white-space:normal}
+  .queue-page .admin-tools .rejoin-tool{padding-right:24px}
+  .queue-page .admin-tools .rejoin-tool .notification-badge{right:4px;top:4px;border-width:1px}
+  .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.reset-tool{grid-row:calc(var(--admin-detail-row) + 1)}
 }

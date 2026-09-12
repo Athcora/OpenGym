@@ -3,6 +3,7 @@ import {readFile} from 'node:fs/promises';
 
 const app=await readFile(new URL('../app/WaitlistApp.tsx',import.meta.url),'utf8');
 const i18n=await readFile(new URL('../app/i18n.ts',import.meta.url),'utf8');
+const advancedCss=await readFile(new URL('../app/advanced.css',import.meta.url),'utf8');
 
 assert.match(app,/You do not need to sign up again\. You stay in line until you leave or move out of range of the facility\./);
 assert.match(app,/Every time after you play, you MUST rejoin within five minutes to keep your place\./);
@@ -14,6 +15,10 @@ assert.doesNotMatch(app,/Everyone else keeps their order/);
 assert.doesNotMatch(app,/Only they—and admins—can start the next game/);
 assert.match(app,/After you play, you will be taken off the waitlist\. To keep your saved place, press Rejoin within five minutes\./);
 assert.match(app,/className="next tutorial-rejoin-highlight"/);
+assert.doesNotMatch(app,/className="admin-sitout-button">Sit out</);
+assert.doesNotMatch(app,/className="neutral">Sit out</);
+assert.match(advancedCss,/\.tutorial-rejoin-demo \{[^}]*top:auto;[^}]*bottom:max\(18px/);
+assert.match(advancedCss,/\.tutorial-coach\.tutorial-coach-rejoin-demo \{[^}]*top:max\(18px[^}]*bottom:auto/);
 assert.doesNotMatch(app,/youâ€™ll/);
 
 for(const text of [

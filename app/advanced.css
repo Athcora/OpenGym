@@ -121,14 +121,14 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .tutorial-progress button { border:0; background:none; color:#b9afff; font-size:.72rem; font-weight:800; cursor:pointer; }
 .tutorial-coach h2 { margin:12px 0 6px; font-size:1.35rem; }
 .tutorial-coach p { margin:0; color:#c2c6cf; line-height:1.5; }
-.tutorial-rejoin-demo { position:fixed; z-index:66; top:50%; left:50%; width:min(calc(100% - 28px),410px); padding:22px; border:1px solid #444751; border-radius:22px; background:#292a30; color:#f6f7f9; box-shadow:0 30px 90px rgba(0,0,0,.58); transform:translate(-50%,-58%); }
+.tutorial-rejoin-demo { position:fixed; z-index:66; top:auto; bottom:max(18px,env(safe-area-inset-bottom)); left:50%; width:min(calc(100% - 28px),410px); padding:22px; border:1px solid #444751; border-radius:22px; background:#292a30; color:#f6f7f9; box-shadow:0 30px 90px rgba(0,0,0,.58); transform:translateX(-50%); }
 .tutorial-rejoin-demo .logo { margin-bottom:17px; }
 .tutorial-rejoin-demo .kicker { color:#9da3b0; }
 .tutorial-rejoin-demo h2 { margin:8px 0; font-size:1.45rem; }
 .tutorial-rejoin-demo>p { margin:0; color:#c2c6cf; }
 .tutorial-rejoin-demo .tutorial-rejoin-highlight { opacity:1; box-shadow:0 0 0 4px #8a79ff,0 0 0 10px rgba(138,121,255,.2),0 15px 38px rgba(0,0,0,.42); }
 .tutorial-rejoin-demo button:disabled { cursor:default; }
-.tutorial-coach.tutorial-coach-rejoin-demo { top:auto; bottom:max(12px,env(safe-area-inset-bottom)); }
+.tutorial-coach.tutorial-coach-rejoin-demo { top:max(18px,env(safe-area-inset-top)); bottom:auto; }
 .tutorial-actions { display:flex; justify-content:flex-end; gap:9px; margin-top:17px; }
 .tutorial-actions button { min-width:90px; min-height:42px; border:0; border-radius:12px; color:white; font-weight:800; cursor:pointer; }
 .theme-light .onboarding-card,.theme-light .tutorial-coach { border-color:#d8dde5; background:#fff; color:#20242c; }
@@ -136,7 +136,7 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .theme-light .tutorial-rejoin-demo>p { color:#596270; }
 .theme-light .onboarding-card p,.theme-light .tutorial-coach p { color:#596270; }
 .theme-light .tutorial-scrim { background:rgba(44,51,63,.55); }
-@media(max-width:520px){.tutorial-coach{bottom:max(10px,env(safe-area-inset-bottom));padding:17px}.tutorial-focus{scroll-margin-bottom:230px}.tutorial-rejoin-demo{top:max(12px,env(safe-area-inset-top));transform:translateX(-50%);padding:18px}.tutorial-coach.tutorial-coach-rejoin-demo{bottom:max(8px,env(safe-area-inset-bottom));padding:15px}.tutorial-coach-rejoin-demo .tutorial-progress{font-size:.58rem}.tutorial-coach-rejoin-demo h2{margin:8px 0 4px;font-size:1.15rem}.tutorial-coach-rejoin-demo p{font-size:.86rem}.tutorial-coach-rejoin-demo .tutorial-actions{margin-top:10px}}
+@media(max-width:520px){.tutorial-coach{bottom:max(10px,env(safe-area-inset-bottom));padding:17px}.tutorial-focus{scroll-margin-bottom:230px}.tutorial-rejoin-demo{top:auto;bottom:max(12px,env(safe-area-inset-bottom));transform:translateX(-50%);padding:18px}.tutorial-coach.tutorial-coach-rejoin-demo{top:max(8px,env(safe-area-inset-top));bottom:auto;padding:15px}.tutorial-coach-rejoin-demo .tutorial-progress{font-size:.58rem}.tutorial-coach-rejoin-demo h2{margin:8px 0 4px;font-size:1.15rem}.tutorial-coach-rejoin-demo p{font-size:.86rem}.tutorial-coach-rejoin-demo .tutorial-actions{margin-top:10px}}
 .top-actions { flex-direction:column; align-items:stretch; }
 .logo>span { overflow:hidden; padding:0; background:#0756ce; box-shadow:0 7px 20px rgba(0,68,183,.28); }
 .logo>span img { display:block; width:100%; height:100%; object-fit:cover; }

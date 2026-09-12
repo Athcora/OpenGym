@@ -447,8 +447,8 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.members-tool{grid-column:5}
 
 @media (max-width:620px){
-  .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools){grid-template-columns:repeat(2,minmax(0,1fr));--admin-action-row:2;--admin-detail-row:5;--admin-reset-row:7}
-  .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools):has(.next-game-tool){--admin-action-row:3;--admin-detail-row:6;--admin-reset-row:8}
+  .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools){grid-template-columns:repeat(2,minmax(0,1fr));--admin-action-row:2!important;--admin-detail-row:5!important;--admin-reset-row:7!important}
+  .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools):has(.next-game-tool){--admin-action-row:3!important;--admin-detail-row:6!important;--admin-reset-row:8!important}
   .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.add-player-tool{grid-column:1}
   .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.rejoin-tool{grid-column:2}
   .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.history-tool{grid-column:1;grid-row:calc(var(--admin-action-row) + 1)}
@@ -492,16 +492,16 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 
 @media(max-width:620px){
   .queue-page .admin-tools:not(.host-tools){grid-template-columns:repeat(2,minmax(0,1fr))}
-  .queue-page .standard-tools:not(.host-tools).multi-court-tools{--admin-action-row:2;--admin-detail-row:5;--admin-reset-row:7}
-  .queue-page .teams-tools:not(.host-tools){--admin-action-row:3;--admin-detail-row:5;--admin-reset-row:7}
-  .queue-page .teams-tools:not(.host-tools).multi-court-tools{--admin-action-row:2;--admin-detail-row:4;--admin-reset-row:6}
-  .queue-page .teams-tools:not(.host-tools)>.add-player-tool{grid-column:1;grid-row:var(--admin-action-row)}
-  .queue-page .teams-tools:not(.host-tools)>.rejoin-tool{grid-column:2;grid-row:var(--admin-action-row)}
-  .queue-page .teams-tools:not(.host-tools)>.history-tool{grid-column:1;grid-row:calc(var(--admin-action-row) + 1)}
-  .queue-page .teams-tools:not(.host-tools)>.substitute-tool{grid-column:2;grid-row:calc(var(--admin-action-row) + 1)}
-  .queue-page .teams-tools:not(.host-tools)>.facility-tool{grid-column:1/-1;grid-row:var(--admin-detail-row)}
+  .queue-page .standard-tools:not(.host-tools).multi-court-tools{--admin-action-row:2!important;--admin-detail-row:5!important;--admin-reset-row:7!important}
+  .queue-page .teams-tools:not(.host-tools){--admin-action-row:3!important;--admin-detail-row:5!important;--admin-reset-row:7!important}
+  .queue-page .teams-tools:not(.host-tools).multi-court-tools{--admin-action-row:2!important;--admin-detail-row:4!important;--admin-reset-row:6!important}
+  .queue-page .teams-tools:not(.host-tools)>.add-player-tool{grid-column:1!important;grid-row:var(--admin-action-row)!important}
+  .queue-page .teams-tools:not(.host-tools)>.rejoin-tool{grid-column:2!important;grid-row:var(--admin-action-row)!important}
+  .queue-page .teams-tools:not(.host-tools)>.history-tool{grid-column:1!important;grid-row:calc(var(--admin-action-row) + 1)!important}
+  .queue-page .teams-tools:not(.host-tools)>.substitute-tool{grid-column:2!important;grid-row:calc(var(--admin-action-row) + 1)!important}
+  .queue-page .teams-tools:not(.host-tools)>.facility-tool{grid-column:1/-1!important;grid-row:var(--admin-detail-row)!important}
   .queue-page .teams-tools:not(.host-tools)>.undo-redo-controls{grid-column:1!important;grid-row:calc(var(--admin-detail-row) + 1)!important}
-  .queue-page .teams-tools:not(.host-tools)>.members-tool{grid-column:2;grid-row:calc(var(--admin-detail-row) + 1)}
+  .queue-page .teams-tools:not(.host-tools)>.members-tool{grid-column:2!important;grid-row:calc(var(--admin-detail-row) + 1)!important}
 
   .queue-page .teams-tools.host-tools,.queue-page .standard-tools.host-tools{grid-template-columns:repeat(2,minmax(0,1fr))}
   .queue-page .teams-tools.host-tools>.next-game-tool,.queue-page .standard-tools.host-tools>.next-game-tool{grid-column:1/-1;grid-row:2}
@@ -525,5 +525,6 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
   .queue-page .admin-tools>button,.queue-page .admin-tools>.undo-redo-controls{min-width:0;max-width:100%;width:100%;position:relative;overflow:hidden;white-space:normal}
   .queue-page .admin-tools .rejoin-tool{padding-right:24px}
   .queue-page .admin-tools .rejoin-tool .notification-badge{right:4px;top:4px;border-width:1px}
-  .queue-page:not(:has(.king-board)) .admin-tools:not(.host-tools)>.reset-tool{grid-row:calc(var(--admin-detail-row) + 1)}
+  .queue-page .teams-tools:not(.host-tools)>.reset-tool{grid-column:1/-1!important;grid-row:calc(var(--admin-detail-row) + 2)!important}
+  .queue-page .standard-tools:not(.host-tools)>.reset-tool{grid-column:1/-1!important;grid-row:calc(var(--admin-detail-row) + 1)!important}
 }

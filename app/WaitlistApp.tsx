@@ -89,7 +89,7 @@ function preventNativeTouchScroll(event:TouchEvent){
   if(document.body.classList.contains('mobile-admin-dragging'))event.preventDefault();
 }
 function setMobileAdminDragging(active:boolean){document.body.classList.toggle('mobile-admin-dragging',active);document.documentElement.classList.toggle('mobile-admin-dragging',active);}
-function scrollActiveMobileDrag(top:number){document.documentElement.classList.remove('mobile-admin-dragging');window.scrollTo({top,left:0,behavior:'auto'});document.documentElement.classList.add('mobile-admin-dragging');}
+function scrollActiveMobileDrag(top:number){document.documentElement.classList.remove('mobile-admin-dragging');window.scrollTo({top,left:0,behavior:'auto'});}
 
 export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}={}) {
   const [user,setUser]=useState<User|null>(null);
@@ -1315,7 +1315,7 @@ function positionPlayerDragPreview(preview:HTMLElement,x:number,y:number){
  const top=Math.min(window.innerHeight-height-edgePadding,Math.max(edgePadding,y-height/2));
  preview.style.left=`${left}px`;preview.style.top=`${top}px`;preview.style.transform='none';
 }
-function preserveDragScrollAwayFromEdges(y:number,scrollY:number){const edge=Math.min(88,Math.max(64,window.innerHeight*.1));if(y<=edge||y>=window.innerHeight-edge)return;const restore=()=>window.scrollTo({top:scrollY,left:0,behavior:'instant'});restore();requestAnimationFrame(restore);}
+function preserveDragScrollAwayFromEdges(y:number,scrollY:number){const edge=Math.min(88,Math.max(64,window.innerHeight*.1));if(y<=edge||y>=window.innerHeight-edge)return;document.documentElement.classList.add('mobile-admin-dragging');const restore=()=>window.scrollTo({top:scrollY,left:0,behavior:'instant'});restore();requestAnimationFrame(restore);}
 function resolveDropPlacement(x:number,y:number,fallback:DropPlacement|null=null):DropPlacement|null{
  const point=constrainQueueDragPoint(x,y);
  const cards=[...document.querySelectorAll<HTMLElement>('[data-drop-status]')].filter(card=>{const rect=card.getBoundingClientRect();return point.x>=rect.left&&point.x<=rect.right&&point.y>=rect.top&&point.y<=rect.bottom});

@@ -92,6 +92,7 @@ assert.match(app,/else\{document\.addEventListener\('touchmove',preventNativeTou
 assert.match(app,/positionPlayerDragPreview\(preview,state\.lastX,state\.lastY\);updateMobileTarget\(state\.lastX,state\.lastY\);startAutoScroll\(\);\},MOBILE_DRAG_HOLD_MS\)/);
 assert.match(app,/const left=Math\.min\(window\.innerWidth-width-edgePadding/);
 assert.match(app,/const top=Math\.min\(window\.innerHeight-height-edgePadding/);
+assert.match(app,/preview\.classList\.contains\('mobile-admin-drag-preview'\).*preview\.style\.width/);
 assert.doesNotMatch(app,/positionPlayerDragPreview[\s\S]{0,220}constrainQueueDragPoint/);
 assert.match(advancedCss,/\.king-player-row:has\(\.admin-player-actions\).*touch-action:pan-y/);
 assert.match(advancedCss,/\.queue-page \.admin-tools\{align-items:stretch;grid-auto-rows:minmax\(48px,auto\)\}/);

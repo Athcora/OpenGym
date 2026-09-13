@@ -1302,7 +1302,9 @@ function queueScrollBounds(){
 }
 function constrainQueueDragPoint(x:number,y:number){const bounds=queueDragBounds();if(!bounds)return{x,y};return{x:Math.min(bounds.right-2,Math.max(bounds.left+2,x)),y:Math.min(bounds.bottom-2,Math.max(bounds.top+2,y))};}
 function positionPlayerDragPreview(preview:HTMLElement,x:number,y:number){
- const width=preview.offsetWidth||280;const height=preview.offsetHeight||62;const edgePadding=8;
+ const edgePadding=8;const previewWidth=Math.min(280,window.innerWidth-edgePadding*2);
+ if(preview.classList.contains('mobile-admin-drag-preview'))preview.style.width=`${previewWidth}px`;
+ const width=preview.offsetWidth||previewWidth;const height=preview.offsetHeight||62;
  // The floating card is fixed to the viewport, so position it from the raw
  // pointer coordinates. Queue bounds move whenever edge auto-scroll changes
  // the document; clamping the preview to those moving bounds made the card

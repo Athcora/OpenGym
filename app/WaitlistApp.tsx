@@ -1269,9 +1269,9 @@ function hideOtherCourtsForDrag(row:HTMLElement){
  // row under the same finger/cursor instead of letting scroll anchoring jump.
  const delta=row.getBoundingClientRect().top-top;if(Math.abs(delta)>0.5)window.scrollBy({top:delta,left:0,behavior:'instant'});
 }
-let dragPickupViewport:{playerId:string;top:number}|null=null;
-function captureDragPickupViewport(row:HTMLElement){const playerId=row.dataset.playerId;if(playerId)dragPickupViewport={playerId,top:row.getBoundingClientRect().top};}
-function restoreDragPickupViewport(playerId:string){if(!dragPickupViewport||dragPickupViewport.playerId!==playerId)return;const anchor=dragPickupViewport;dragPickupViewport=null;requestAnimationFrame(()=>{const row=document.querySelector<HTMLElement>(`[data-player-id="${playerId}"]`);if(!row)return;const delta=row.getBoundingClientRect().top-anchor.top;if(Math.abs(delta)>0.5)window.scrollBy({top:delta,left:0,behavior:'instant'});});}
+let dragPickupViewport:{playerId:string;scrollY:number}|null=null;
+function captureDragPickupViewport(row:HTMLElement){const playerId=row.dataset.playerId;if(playerId)dragPickupViewport={playerId,scrollY:window.scrollY};}
+function restoreDragPickupViewport(playerId:string){if(!dragPickupViewport||dragPickupViewport.playerId!==playerId)return;const anchor=dragPickupViewport;dragPickupViewport=null;const restore=()=>window.scrollTo({top:anchor.scrollY,left:0,behavior:'instant'});restore();requestAnimationFrame(restore);}
 function clearDragArtifacts(){document.querySelectorAll('.mobile-admin-drag-preview,.admin-drag-preview').forEach(preview=>preview.remove());document.querySelectorAll('.court-section.drag-hidden-court').forEach(section=>section.classList.remove('drag-hidden-court'));document.body.classList.remove('mobile-admin-dragging');}
 function captureDropViewport(status:'current'|'waiting',courtNumber:number|null){
  const cards=[...document.querySelectorAll<HTMLElement>(`[data-drop-status="${status}"]`)];

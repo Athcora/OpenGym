@@ -89,7 +89,7 @@ function preventNativeTouchScroll(event:TouchEvent){
   if(document.body.classList.contains('mobile-admin-dragging'))event.preventDefault();
 }
 function setMobileAdminDragging(active:boolean){document.body.classList.toggle('mobile-admin-dragging',active);document.documentElement.classList.toggle('mobile-admin-dragging',active);}
-function scrollActiveMobileDrag(top:number){document.documentElement.classList.remove('mobile-admin-dragging');window.scrollTo({top,left:0,behavior:'auto'});}
+function scrollActiveMobileDrag(top:number){const root=document.scrollingElement??document.documentElement;document.documentElement.classList.remove('mobile-admin-dragging');void document.documentElement.offsetHeight;root.scrollTop=top;window.scrollTo({top,left:0,behavior:'auto'});}
 
 export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}={}) {
   const [user,setUser]=useState<User|null>(null);

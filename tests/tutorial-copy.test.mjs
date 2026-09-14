@@ -21,6 +21,9 @@ assert.match(advancedCss,/\.tutorial-coach\.tutorial-coach-rejoin-demo \{[^}]*to
 assert.match(advancedCss,/\.tutorial-rejoin-demo \{[^}]*top:max\(18px[^}]*bottom:auto/);
 assert.match(advancedCss,/\.tutorial-rejoin-highlight::after\{content:"\\2193"/);
 assert.match(app,/keeping your spot for the following game/);
+assert.match(app,/tutorial-host-demo queue-page/);
+assert.match(app,/admin-tools host-tools single-court-tools/);
+assert.match(app,/teams\?'teams-tools':'standard-tools'/);
 assert.doesNotMatch(app,/youâ€™ll/);
 
 for(const text of [

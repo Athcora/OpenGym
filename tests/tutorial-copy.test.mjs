@@ -17,9 +17,10 @@ assert.match(app,/After you play, you will be taken off the waitlist\. To keep y
 assert.match(app,/className="next tutorial-rejoin-highlight"/);
 assert.doesNotMatch(app,/className="admin-sitout-button">Sit out</);
 assert.doesNotMatch(app,/className="neutral">Sit out</);
-assert.match(advancedCss,/\.tutorial-coach\.tutorial-coach-rejoin-demo \{[^}]*top:auto[^}]*bottom:max\(18px/);
 assert.match(advancedCss,/\.tutorial-rejoin-demo \{[^}]*top:max\(18px[^}]*bottom:auto/);
-assert.match(advancedCss,/\.tutorial-rejoin-highlight::after\{content:"\\2193"/);
+assert.match(app,/tutorial-rejoin-tour/);
+assert.match(advancedCss,/\.tutorial-rejoin-tour\{[^}]*gap:16px/);
+assert.match(advancedCss,/\.tutorial-coach-rejoin-demo::before\{content:"\\2191"/);
 assert.match(app,/keeping your spot for the following game/);
 assert.match(app,/tutorial-host-demo queue-page/);
 assert.match(app,/admin-tools host-tools single-court-tools/);

@@ -133,7 +133,7 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .tutorial-rejoin-tour .tutorial-coach-rejoin-demo::before{content:"\2191";position:absolute;left:50%;top:-34px;transform:translateX(-50%);color:#9b8cff;font-size:2rem;font-weight:900;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,.7);animation:rejoin-arrow-pulse 1s ease-in-out infinite}
 @keyframes rejoin-arrow-pulse{50%{transform:translate(-50%,-6px)}}
 .tutorial-rejoin-demo button:disabled { cursor:default; }
-.tutorial-coach.tutorial-coach-rejoin-demo { top:auto; bottom:max(18px,env(safe-area-inset-bottom)); }
+.tutorial-rejoin-tour .tutorial-coach.tutorial-coach-rejoin-demo { top:auto; bottom:auto; }
 .tutorial-actions { display:flex; justify-content:flex-end; gap:9px; margin-top:17px; }
 .tutorial-actions button { min-width:90px; min-height:42px; border:0; border-radius:12px; color:white; font-weight:800; cursor:pointer; }
 .theme-light .onboarding-card,.theme-light .tutorial-coach { border-color:#d8dde5; background:#fff; color:#20242c; }

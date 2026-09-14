@@ -21,6 +21,7 @@ assert.match(advancedCss,/\.tutorial-rejoin-demo \{[^}]*top:max\(18px[^}]*bottom
 assert.match(app,/tutorial-rejoin-tour/);
 assert.match(advancedCss,/\.tutorial-rejoin-tour\{[^}]*gap:16px/);
 assert.match(advancedCss,/\.tutorial-coach-rejoin-demo::before\{content:"\\2191"/);
+assert.match(advancedCss,/\.court-team-rule\.tutorial-focus\{[^}]*width:100%[^}]*padding:8px 14px/);
 assert.match(app,/keeping your spot for the following game/);
 assert.match(app,/tutorial-host-demo queue-page/);
 assert.match(app,/admin-tools host-tools single-court-tools/);

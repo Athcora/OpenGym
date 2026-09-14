@@ -131,6 +131,7 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .tutorial-rejoin-tour{position:fixed;inset:0;z-index:66;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:0;padding:18px;pointer-events:none}
 .tutorial-rejoin-tour .tutorial-rejoin-demo,.tutorial-rejoin-tour .tutorial-coach-rejoin-demo{position:relative;inset:auto;left:auto;top:auto;bottom:auto;transform:none;margin:0;pointer-events:auto}
 .tutorial-rejoin-arrow{position:relative;z-index:71;width:min(calc((100% - 28px)/2),205px);height:16px;margin-left:7px;margin-right:calc(min(calc((100% - 28px)/2),205px) - 7px);color:#b0a5ff;font-size:2.5rem;font-weight:950;line-height:16px;text-align:center;text-shadow:0 2px 9px rgba(0,0,0,.85);pointer-events:none;animation:rejoin-arrow-pulse 1s ease-in-out infinite}
+@media(min-width:700px){.tutorial-rejoin-arrow{margin-left:9px;margin-right:calc(min(calc((100% - 28px)/2),205px) - 9px)}}
 @keyframes rejoin-arrow-pulse{50%{transform:translateY(-5px)}}
 .tutorial-rejoin-demo button:disabled { cursor:default; }
 .tutorial-rejoin-tour .tutorial-coach.tutorial-coach-rejoin-demo { top:auto; bottom:auto; }

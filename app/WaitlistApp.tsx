@@ -1210,7 +1210,7 @@ const teamTutorialSteps=[
  {title:'Join another team',message:'Use Join + to move to a team with an open spot. Moving teams removes you from your previous team.',target:'.king-join-button:not(.king-own-team-label)'},
  {title:'Court format',message:'Each court shows whether it uses 2 on, 2 off or King of the Court. In King of the Court, the winner stays until losing or reaching the displayed game limit.',target:'.court-team-rule'},
  {title:'Swap action button',message:'Swap sends another player a request to permanently exchange positions with you.',target:'.my-actions .substitute-action'},
- {title:'Sit Out action button',message:'Sit Out makes you skip one game while keeping priority for the following game.',target:'.my-actions .neutral'},
+ {title:'Sit Out action button',message:'Sit Out makes you skip one game while keeping your spot for the following game.',target:'.my-actions .neutral'},
  {title:'Leave action button',message:'Leave removes only you from your team and the waitlist, so use it when you do not want to play anymore.',target:'.my-actions .danger'},
 ];
 function getTutorialSteps(mode:Config['mode']){if(mode==='teams_rejoin')return[teamTutorialSteps[0],rejoinTutorialStep,...teamTutorialSteps.slice(1)];if(mode==='teams')return teamTutorialSteps;return mode==='rejoin'?[tutorialSteps[0],rejoinTutorialStep,...tutorialSteps.slice(1)]:tutorialSteps}

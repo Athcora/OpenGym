@@ -17,8 +17,10 @@ assert.match(app,/After you play, you will be taken off the waitlist\. To keep y
 assert.match(app,/className="next tutorial-rejoin-highlight"/);
 assert.doesNotMatch(app,/className="admin-sitout-button">Sit out</);
 assert.doesNotMatch(app,/className="neutral">Sit out</);
-assert.match(advancedCss,/\.tutorial-rejoin-demo \{[^}]*top:auto;[^}]*bottom:max\(18px/);
-assert.match(advancedCss,/\.tutorial-coach\.tutorial-coach-rejoin-demo \{[^}]*top:max\(18px[^}]*bottom:auto/);
+assert.match(advancedCss,/\.tutorial-coach\.tutorial-coach-rejoin-demo \{[^}]*top:auto[^}]*bottom:max\(18px/);
+assert.match(advancedCss,/\.tutorial-rejoin-demo \{[^}]*top:max\(18px[^}]*bottom:auto/);
+assert.match(advancedCss,/\.tutorial-rejoin-highlight::after\{content:"\\2193"/);
+assert.match(app,/keeping your spot for the following game/);
 assert.doesNotMatch(app,/youâ€™ll/);
 
 for(const text of [

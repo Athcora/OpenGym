@@ -20,7 +20,7 @@ assert.doesNotMatch(app,/className="neutral">Sit out</);
 assert.match(advancedCss,/\.tutorial-rejoin-demo \{[^}]*top:max\(18px[^}]*bottom:auto/);
 assert.match(app,/tutorial-rejoin-tour/);
 assert.match(app,/className="tutorial-rejoin-arrow"[^>]*>↑<\/span>/);
-assert.match(advancedCss,/\.tutorial-rejoin-arrow\{[^}]*padding-left:25%/);
+assert.match(advancedCss,/\.tutorial-rejoin-arrow\{[^}]*text-align:center/);
 assert.match(advancedCss,/\.court-team-rule\.tutorial-focus\{[^}]*width:100%[^}]*padding:8px 14px/);
 assert.match(app,/keeping your spot for the following game/);
 assert.match(app,/tutorial-host-demo queue-page/);

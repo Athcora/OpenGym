@@ -14,7 +14,7 @@ type Game = { id:string; game_number:number; court_number:number; player_names:s
 type Config = { game_number:number; max_players:number; court_count:number; mode:'regular'|'rejoin'|'teams'|'teams_rejoin'; geofence_enabled:boolean; geofence_radius_m:number; king_max_wins:number|null };
 type Facility = { id:string; slug:string; code:string; name:string; address:string|null; city:string|null; region:string|null; latitude:number|null; longitude:number|null };
 type TeamCourtMode = 'rotation'|'king';
-type Court = { court_number:number; game_number:number; started_at:string; team_mode?:TeamCourtMode; team_max_wins?:number|null };
+type Court = { court_number:number; game_number:number; started_at:string; team_mode?:TeamCourtMode; team_max_wins:number|null };
 type KingTeam = { id:string;name:string;status:'waiting'|'current';queue_position:number;court_number:number|null;court_side:1|2|null;consecutive_wins:number;rejoin_expires_at?:string|null;members:Player[] };
 type TeamFillIn = { id:string;sitter_id:string;filler_id:string;destination_team_id:string;source_team_id:string;court_number:number|null;game_number:number };
 type TeamSubstitute = { id:string;team_id:string;player_id:string;player?:Player };
@@ -101,7 +101,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   const [players,setPlayers]=useState<Player[]>([]);
   const [games,setGames]=useState<Game[]>([]);
   const [config,setConfig]=useState<Config>({game_number:1,max_players:12,court_count:1,mode:'regular',geofence_enabled:false,geofence_radius_m:150,king_max_wins:2});
-  const [courts,setCourts]=useState<Court[]>([{court_number:1,game_number:1,started_at:new Date(0).toISOString()}]);
+  const [courts,setCourts]=useState<Court[]>([{court_number:1,game_number:1,started_at:new Date(0).toISOString(),team_max_wins:null}]);
   const [kingTeams,setKingTeams]=useState<KingTeam[]>([]);
   const [teamFillIns,setTeamFillIns]=useState<TeamFillIn[]>([]);
   const [teamSubstitutes,setTeamSubstitutes]=useState<TeamSubstitute[]>([]);
@@ -346,6 +346,8 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   async function boot(){
     let {data:{session}}=await supabase.auth.getSession();
     if(!session){const result=await supabase.auth.signInAnonymously(); if(result.error){setNotice({title:'Connection needed',message:result.error.message});return;} session=result.data.session;}
+    if(!session){setNotice({title:'Connection needed',message:'Could not create a secure guest session. Please try again.'});return;}
+    const activeSession=session;
     setUser(session?.user??null);
     const pathMatch=window.location.pathname.match(/^\/g\/([^/]+)\/?$/i);
     // Client-side facility changes update the URL without remounting this route,
@@ -360,18 +362,18 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     if(facilityError){setScreen('facility');setNotice({title:'Could not open this facility',message:facilityError.message});return;}
     facilityRef.current=selected;setFacility(selected);localStorage.setItem(FACILITY_KEY,selected.slug);setScreen('welcome');
     if(!pathMatch)window.history.replaceState(null,'',`/g/${selected.slug}`);
-    await refresh(session?.user??null,selected,true);
-    if(session?.user){
-      const {data:unread}=await supabase.from('group_notifications').select('id,user_id,message,read_at').eq('user_id',session.user.id).is('read_at',null).order('created_at',{ascending:true}).limit(1).maybeSingle();
-      if(unread){const notification=unread as GroupNotification;showPlayerNotification(notification,session.user.id);await supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id);}
+    await refresh(activeSession.user,selected,true);
+    if(activeSession.user){
+      const {data:unread}=await supabase.from('group_notifications').select('id,user_id,message,read_at').eq('user_id',activeSession.user.id).is('read_at',null).order('created_at',{ascending:true}).limit(1).maybeSingle();
+      if(unread){const notification=unread as GroupNotification;showPlayerNotification(notification,activeSession.user.id);await supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id);}
     }
     if(realtimeChannel.current){await supabase.removeChannel(realtimeChannel.current);realtimeChannel.current=null;}
     const channel=supabase.channel(`live-waitlist:${selected.id}`)
       .on('postgres_changes',{event:'*',schema:'public',table:'waitlist_players'},payload=>{
-        const changed=payload.new as Player;const isOwnChange=changed.user_id===session.user.id||changed.id===ownPlayerIdRef.current;
-        if(isOwnChange){setOwnPlayer(changed);setForceRejoin(!['current','waiting','sitout'].includes(changed.status));ownPlayerIdRef.current=changed.id;syncOwnHostStatus(Boolean(changed.is_host),session.user.id);if(changed.status==='rejoin'){rejoinLookupAttempts.current=0;setRejoinChecked(false);window.setTimeout(()=>void refresh(),150);}}
+        const changed=payload.new as Player;const isOwnChange=changed.user_id===activeSession.user.id||changed.id===ownPlayerIdRef.current;
+        if(isOwnChange){setOwnPlayer(changed);setForceRejoin(!['current','waiting','sitout'].includes(changed.status));ownPlayerIdRef.current=changed.id;syncOwnHostStatus(Boolean(changed.is_host),activeSession.user.id);if(changed.status==='rejoin'){rejoinLookupAttempts.current=0;setRejoinChecked(false);window.setTimeout(()=>void refresh(),150);}}
         setPlayers(items=>{
-          const affectsOwn=changed.user_id===session.user.id||items.some(player=>player.id===changed.id&&player.user_id===session.user.id);
+          const affectsOwn=changed.user_id===activeSession.user.id||items.some(player=>player.id===changed.id&&player.user_id===activeSession.user.id);
           if(affectsOwn&&changed.status==='left')return items.filter(player=>player.id!==changed.id);
           return items.map(player=>player.id===changed.id?changed:player);
         });
@@ -993,7 +995,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   }
   function confirmCreateKingTeam(side:number){
     if(!me)return;
-    setNotice({title:`Join Team ${side}?`,message:'Joining a new team will remove you from your current team. Do you want to continue?',confirm:'Continue',actionTone:'success',action:()=>rpc('join_new_king_team',{p_player_id:me.id},false),cancelLabel:'Cancel',cancelTone:'danger'});
+    setNotice({title:`Join Team ${side}?`,message:'Joining a new team will remove you from your current team. Do you want to continue?',confirm:'Continue',actionTone:'success',action:async()=>{await rpc('join_new_king_team',{p_player_id:me.id},false)},cancelLabel:'Cancel',cancelTone:'danger'});
   }
   async function setTeamCourtRules(courtNumber:number,mode:TeamCourtMode,maxWins:number|null){
     const previous=courts.find(court=>court.court_number===courtNumber);
@@ -1283,7 +1285,7 @@ function clearDragArtifacts(){document.querySelectorAll('.mobile-admin-drag-prev
 function captureDropViewport(status:'current'|'waiting',courtNumber:number|null){
  const cards=[...document.querySelectorAll<HTMLElement>(`[data-drop-status="${status}"]`)];
  const card=status==='current'?cards.find(candidate=>Number(candidate.closest<HTMLElement>('.court-section')?.querySelector('h2')?.textContent?.match(/COURT\s+(\d+)/i)?.[1]??1)===(courtNumber??1)):cards.at(-1);
- const anchor=card?.querySelector<HTMLElement>('header')??card;if(!anchor)return()=>{};
+ if(!card)return()=>{};const anchor=card.querySelector<HTMLElement>('header')??card;
  const top=anchor.getBoundingClientRect().top;
  return()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{const next=card.isConnected?(card.querySelector<HTMLElement>('header')??card):null;if(!next)return;const delta=next.getBoundingClientRect().top-top;if(Math.abs(delta)>1)window.scrollBy({top:delta,left:0,behavior:'instant'})}));
 }

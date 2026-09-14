@@ -188,7 +188,7 @@ Object.assign(zh,{
   'Create a group':'创建小组','Select between two and six players to become a team. Tap each player card, then choose Done.':'选择两至六名球员组成球队。点击每张球员卡片，然后选择“完成”。'
 });
 
-function translateDynamic(value:string,language:AppLanguage){
+function translateDynamic(value:string,language:AppLanguage):string{
   if(language==='en')return value;
   const game=value.match(/^Game (\d+)$/);if(game)return language==='es'?`Juego ${game[1]}`:`第 ${game[1]} 场`;
   const gameList=value.match(/^Game ([\d ·]+)$/);if(gameList)return language==='es'?`Juegos ${gameList[1]}`:`比赛 ${gameList[1]}`;
@@ -227,9 +227,9 @@ function translateDynamic(value:string,language:AppLanguage){
   if(value.startsWith('This is a ')&&value.endsWith(' waitlist')){const mode=value.slice(10,-9);return language==='es'?`Esta es una lista ${mode==='REJOIN'?'de REINGRESO':'REGULAR'}`:`这是${mode==='REJOIN'?'重新加入':'普通'}等候名单`;}
   return value;
 }
-export function translateUiText(value:string,language:AppLanguage){
+export function translateUiText(value:string,language:AppLanguage):string{
   const clean=value.trim();if(!clean||language==='en')return value;
-  const translated=(language==='es'?es:zh)[clean]??translateDynamic(clean,language);
+  const translated:string=(language==='es'?es:zh)[clean]??translateDynamic(clean,language);
   if(translated===clean)return value;
   const leading=value.match(/^\s*/)?.[0]??'';const trailing=value.match(/\s*$/)?.[0]??'';
   return `${leading}${translated}${trailing}`;

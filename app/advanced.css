@@ -414,6 +414,11 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .facility-finder{max-width:560px}
 .facility-finder h1{margin-bottom:.5rem}
 .facility-results{display:grid;gap:.65rem;margin-top:1rem;max-height:42vh;overflow:auto}
+.facility-finder:has(input:placeholder-shown) .facility-results:has(>.empty){place-items:center;min-height:96px;overflow:hidden}
+.facility-finder:has(input:placeholder-shown) .facility-results:has(>.empty)>.empty{display:none}
+.facility-finder:has(input:placeholder-shown) .facility-results:has(>.empty)::before{content:"";width:26px;height:26px;border:3px solid rgb(68 204 119 / 22%);border-top-color:#44cc77;border-radius:50%;animation:facility-loading-spin .75s linear infinite}
+.facility-finder:has(input:placeholder-shown) .facility-results:has(>.empty)::after{content:"Loading facilities\2026";color:var(--muted);font-size:.82rem;font-weight:700;letter-spacing:.02em}
+@keyframes facility-loading-spin{to{transform:rotate(360deg)}}
 .facility-results>button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:inherit;text-align:left}
 .facility-results>button:hover,.facility-results>button:focus-visible{border-color:#44cc77;box-shadow:0 0 0 2px rgb(68 204 119 / 18%)}
 .facility-results>button span{display:grid;gap:.2rem}.facility-results>button small{color:var(--muted)}

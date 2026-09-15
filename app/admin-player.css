@@ -75,6 +75,24 @@
   justify-content: space-between;
 }
 
+.accept-all-rejoins {
+  border: 0;
+  border-radius: 13px;
+  color: #fff;
+  cursor: pointer;
+  display: block;
+  font-weight: 800;
+  margin: -10px 0 18px;
+  min-height: 48px;
+  padding: 11px 16px;
+  width: 100%;
+}
+
+.accept-all-rejoins:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
 .offline-rejoin-row > div:last-child {
   display: flex;
   gap: 8px;

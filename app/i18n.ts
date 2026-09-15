@@ -11,6 +11,7 @@ const zh:TranslationMap={
 };
 
 Object.assign(es,{
+  'Accept all rejoin requests':'Aceptar todas las solicitudes de reingreso','Accept all rejoin requests?':'¿Aceptar todas las solicitudes de reingreso?','This will accept all rejoin requests. Do you want to continue?':'Esto aceptará todas las solicitudes de reingreso. ¿Quieres continuar?',
   'This removes you from the current game or queue.':'Esto te elimina del juego actual o de la fila.',
   'Your position is saved. Choose before the timer reaches zero or you’ll automatically leave the waitlist.':'Tu posición está guardada. Elige antes de que el contador llegue a cero o saldrás automáticamente de la lista.',
   'left to rejoin':'restante para reingresar',
@@ -44,6 +45,7 @@ Object.assign(es,{
 });
 
 Object.assign(zh,{
+  'Accept all rejoin requests':'接受所有重新加入请求','Accept all rejoin requests?':'接受所有重新加入请求？','This will accept all rejoin requests. Do you want to continue?':'这将接受所有重新加入请求。你要继续吗？',
   'This removes you from the current game or queue.':'这会将你移出当前比赛或队列。',
   'Your position is saved. Choose before the timer reaches zero or you’ll automatically leave the waitlist.':'你的位置已保留。请在倒计时归零前选择，否则你将自动离开等候名单。',
   'left to rejoin':'重新加入剩余时间',

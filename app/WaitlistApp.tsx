@@ -27,7 +27,7 @@ type Member = { user_id:string;email:string|null;phone:string|null;created_at:st
 type AdminRejoin = { id:string;display_name:string;queue_position:number;expires_at:string };
 type AdminEvent = { id:number;actor_name:string;event_type:string;message:string;created_at:string };
 type GeofenceReturn = { id:string;removed_at:string;saved_position_until:string;expires_at:string };
-type RejoinResponse = { id:string;expires_at:string };
+type RejoinResponse = { id:string;expires_at:string;choice?:string|null;answered_at?:string|null };
 type Notice = { title:string; message:string; confirm?:string; action?:()=>Promise<void>; onClose?:()=>void; actionTone?:'danger'|'success'; actionOnLeft?:boolean; cancelTone?:'neutral'|'danger'|'success'; cancelLabel?:string; cancelAction?:()=>Promise<void>; auxiliaryLabel?:string; auxiliaryAction?:()=>void|Promise<void>; blocking?:boolean; requestId?:string; showBack?:boolean } | null;
 type OnboardingStage = 'idle'|'disclaimer'|'tutorial';
 const TUTORIAL_VERSION = 2;
@@ -327,7 +327,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   },[me?.id,me?.status,admin,config.mode,config.geofence_enabled]);
   useEffect(()=>{const hasTeamCountdown=kingTeams.some(team=>team.rejoin_expires_at||team.members.some(member=>member.status==='rejoin'&&member.rejoin_expires_at));if(!geofenceReturn&&!rejoinResponse&&!hasTeamCountdown)return;setReturnClock(Date.now());const timer=window.setInterval(()=>setReturnClock(Date.now()),1000);return()=>window.clearInterval(timer)},[geofenceReturn?.id,rejoinResponse?.id,kingTeams]);
   useEffect(()=>{
-    if(me?.status!=='rejoin'||rejoinResponse||!rejoinChecked){if(me?.status!=='rejoin')expiredRejoinHandled.current=false;return;}
+    if(me?.status!=='rejoin'||rejoinResponse||!rejoinChecked){if(me&&['current','waiting','sitout'].includes(me.status))expiredRejoinHandled.current=false;return;}
     if(rejoinLookupAttempts.current<5){
       rejoinLookupAttempts.current+=1;
       setRejoinChecked(false);
@@ -336,26 +336,14 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     }
     if(expiredRejoinHandled.current)return;
     expiredRejoinHandled.current=true;
-    void (async()=>{
-      const {error}=await supabase.rpc('leave_waitlist');
-      if(error){expiredRejoinHandled.current=false;setNotice({title:'Could not update the waitlist',message:error.message});return;}
-      await broadcastQueueRefresh();
-      await logout();
-      setNotice(REJOIN_TIMEOUT_NOTICE);
-    })();
+    void expireRejoinSession();
   },[me?.status,rejoinResponse,rejoinChecked]);
   useEffect(()=>{
-    if((config.mode!=='rejoin'&&config.mode!=='teams_rejoin')||me?.status!=='rejoin'||!rejoinResponse)return;
+    if((config.mode!=='rejoin'&&config.mode!=='teams_rejoin')||!rejoinResponse||admin)return;
     if(new Date(rejoinResponse.expires_at).getTime()>returnClock||expiredRejoinHandled.current)return;
     expiredRejoinHandled.current=true;
-    void (async()=>{
-      const {error}=await supabase.rpc('leave_waitlist');
-      if(error){expiredRejoinHandled.current=false;setNotice({title:'Could not update the waitlist',message:error.message});return;}
-      await broadcastQueueRefresh();
-      await logout();
-      setNotice(REJOIN_TIMEOUT_NOTICE);
-    })();
-  },[config.mode,me?.status,rejoinResponse?.id,rejoinResponse?.expires_at,returnClock]);
+    void expireRejoinSession();
+  },[config.mode,admin,rejoinResponse?.id,rejoinResponse?.expires_at,returnClock]);
   async function boot(){
     let {data:{session}}=await supabase.auth.getSession();
     if(!session){const result=await supabase.auth.signInAnonymously(); if(result.error){setNotice({title:'Connection needed',message:result.error.message});return;} session=result.data.session;}
@@ -376,6 +364,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     facilityRef.current=selected;setFacility(selected);localStorage.setItem(FACILITY_KEY,selected.slug);setScreen('welcome');
     if(!pathMatch)window.history.replaceState(null,'',`/g/${selected.slug}`);
     await refresh(activeSession.user,selected,true);
+    if((await supabase.auth.getSession()).data.session?.user.id!==activeSession.user.id)return;
     if(activeSession.user){
       const {data:unread}=await supabase.from('group_notifications').select('id,user_id,message,read_at').eq('user_id',activeSession.user.id).is('read_at',null).order('created_at',{ascending:true}).limit(1).maybeSingle();
       if(unread){const notification=unread as GroupNotification;showPlayerNotification(notification,activeSession.user.id);await supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id);}
@@ -506,7 +495,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
       supabase.from('admin_sessions').select('user_id').maybeSingle(),
       supabase.from('group_requests').select('id,requester_id,target_id,status').eq('status','pending'),
       supabase.from('substitute_requests').select('id,requester_id,target_id,status').eq('status','pending'),
-      supabase.from('rejoin_responses').select('id,expires_at').is('choice',null).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false}).limit(1).maybeSingle(),
+      supabase.from('rejoin_responses').select('id,expires_at,choice,answered_at').eq('user_id',(activeUser??user)?.id??'00000000-0000-0000-0000-000000000000').order('created_at',{ascending:false}).limit(1).maybeSingle(),
       supabase.from('geofence_return_prompts').select('id,removed_at,saved_position_until,expires_at').is('resolved_at',null).gt('expires_at',new Date().toISOString()).order('removed_at',{ascending:false}).limit(1).maybeSingle()
     ]);
     const playerRows=(p??[]) as Player[];setPlayers(playerRows);
@@ -528,10 +517,15 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     if(a||activeHost){const {data:offline}=await supabase.rpc('admin_list_offline_rejoins');setAdminRejoins((offline??[]) as AdminRejoin[]);}else setAdminRejoins([]);
     setGroupRequests(((r??[]) as GroupRequest[]).map(request=>({...request,requester:playerRows.find(player=>player.id===request.requester_id)})));
     setSubstituteRequests(((s??[]) as SubstituteRequest[]).map(request=>({...request,requester:playerRows.find(player=>player.id===request.requester_id)})));
-    setRejoinResponse((rejoin as RejoinResponse|null)??null);setRejoinChecked(!rejoinError);if(rejoin?.id)rejoinLookupAttempts.current=0;
+    const latestRejoin=rejoin as RejoinResponse|null;
+    const timedOut=Boolean(latestRejoin&&new Date(latestRejoin.expires_at).getTime()<=Date.now()&&(latestRejoin.choice===null||(latestRejoin.choice==='leave'&&latestRejoin.answered_at&&new Date(latestRejoin.answered_at).getTime()>=new Date(latestRejoin.expires_at).getTime())));
+    setRejoinResponse(latestRejoin?.choice===null?latestRejoin:null);setRejoinChecked(!rejoinError);if(rejoin?.id)rejoinLookupAttempts.current=0;
     setGeofenceReturn((geo as GeofenceReturn|null)??null);
     const uid=(activeUser??user)?.id; let own=playerRows.find(item=>item.user_id===uid)??null;
     if(uid&&!own){const {data:storedOwn}=await supabase.from('waitlist_players').select('*').eq('user_id',uid).maybeSingle();own=(storedOwn as Player|null)??null;}
+    if(!a&&timedOut&&own&&['rejoin','left'].includes(own.status)&&!expiredRejoinHandled.current){
+      expiredRejoinHandled.current=true;await expireRejoinSession();return;
+    }
     if(own){
       if(uid&&claimedDeviceForUser.current!==uid){
         const {error}=await supabase.rpc('claim_waitlist_device',{p_device_id:getDeviceId()});
@@ -696,6 +690,20 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     ownPlayerIdRef.current=null;ownHostStatus.current=false;hostTrackedUserId.current=null;renderedHostStatus.current=null;setHostStatusReady(false);
     claimedDeviceForUser.current=null;
     await boot();
+  }
+  async function expireRejoinSession(){
+    // Re-read the authoritative status before removing anyone: another device
+    // or an operator may already have rejoined this player.
+    const {data:{session}}=await supabase.auth.getSession();
+    if(!session)return;
+    const {data:latest,error:lookupError}=await supabase.from('waitlist_players').select('status').eq('user_id',session.user.id).maybeSingle();
+    if(lookupError){expiredRejoinHandled.current=false;return;}
+    if(latest&&['current','waiting','sitout'].includes(latest.status)){expiredRejoinHandled.current=false;setRejoinResponse(null);return;}
+    const {error}=await supabase.rpc('leave_waitlist');
+    if(error){expiredRejoinHandled.current=false;setNotice({title:'Could not update the waitlist',message:error.message});return;}
+    await broadcastQueueRefresh();
+    await logout();
+    setNotice(REJOIN_TIMEOUT_NOTICE);
   }
   function confirmFacilityChange(){setNotice({title:'Change facility?',message:'If you want to change your facility, you need to log out first. You can then select a different facility when joining again.',confirm:'Log out',action:logout,actionTone:'danger',actionOnLeft:true,cancelLabel:'Never mind'});}
   async function startGuestFlow(){
@@ -973,7 +981,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     if(error){setNotice({title:'Could not move that player',message:error.message});await refresh();return;}
     await broadcastQueueRefresh();await refresh();
   }
-  async function answerRejoin(choice:'stay'|'leave'){if(choice==='stay'&&!await requireOnSite(()=>answerRejoin('stay')))return;if(rejoinResponse&&await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse.id,p_choice:choice},false)&&choice==='leave')await logout();setRejoinResponse(null);}
+  async function answerRejoin(choice:'stay'|'leave'){if(choice==='stay'&&!await requireOnSite(()=>answerRejoin('stay')))return;if(rejoinResponse&&await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse.id,p_choice:choice},false)){setRejoinResponse(null);if(choice==='leave')await logout();}}
   async function leaveOwnWaitlist(){
     // The generic RPC helper refreshes before sign-out, which can race with
     // auth synchronization and restore a just-left player as a stale Rejoin

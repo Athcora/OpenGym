@@ -418,9 +418,18 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
       })
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'past_games'},()=>{if(screenRef.current==='history')void loadPastGames()})
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'waitlist_events'},payload=>{
-        const event=payload.new as {actor_user_id?:string;event_type?:string;message?:string};
+        const event=payload.new as {actor_user_id?:string;actor_name?:string;event_type?:string;message?:string};
         if(event.event_type==='host_appointed'||event.event_type==='host_removed')return;
         const quietEvents=new Set(['join','leave','add_player','admin_leave','admin_rejoin','admin_sitout','admin_move','admin_group','admin_group_remove','admin_substitute','admin_undo','admin_redo','geofence_leave','geofence_return','team_rotation','king_game']);
+        if((event.event_type==='team_rotation'||event.event_type==='king_game')&&event.actor_name&&event.actor_user_id!==session?.user.id){
+          const courtNumber=Number(event.message?.match(/Court (\d+)/)?.[1]??1);
+          const player=ownPlayerRef.current;
+          const shouldNotify=adminAccess.current||ownHostStatus.current||Boolean(player&&(
+            player.status!=='current'||(player.court_number??1)===courtNumber
+          ));
+          if(shouldNotify)setNotice({title:'Next game advanced',message:`${event.actor_name} has advanced the next game. If you think this is a mistake, let an admin or host know.`});
+          return;
+        }
         if(event.event_type==='next_game'&&event.message){
           const ownPlayerStarted=event.actor_user_id===session?.user.id&&!adminAccess.current&&activeStatusRef.current!==null;
           if(ownPlayerStarted&&waitlistModeRef.current==='rejoin'){
@@ -913,7 +922,8 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   useEffect(()=>{
     if(!pendingNextGameEvent)return;
     if(me?.status==='rejoin'&&rejoinResponse){
-      setNotice(null);
+      setNotice({title:'Next game advanced',message:pendingNextGameEvent.message});
+      setPendingNextGameEvent(null);
       return;
     }
     if(me?.status!=='current'&&me?.status!=='rejoin'){
@@ -1016,7 +1026,6 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     await realtimeChannel.current?.send({type:'broadcast',event:'court_rules_changed',payload:{courtNumber,mode,maxWins}});
   }
   async function rotateTeamCourt(courtNumber:number){
-    const actorName=me?.display_name??(admin?'Admin':'Host');
     const occupiedWaitingTeams=kingTeams.filter(team=>team.status==='waiting'&&team.members.length>0).length;
     setBusy(true);if(operator){const {error:snapshotError}=await supabase.rpc('save_operator_undo',{p_label:'start next team game'});if(snapshotError){setBusy(false);setNotice({title:'Could not prepare undo',message:snapshotError.message});return;}}const {data,error}=await supabase.rpc('end_team_rotation',{p_court_number:courtNumber});setBusy(false);
     if(error){setNotice({title:'Could not advance this court',message:error.message});return;}
@@ -1026,10 +1035,9 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     const {data:nextTeams}=await supabase.from('king_teams').select('name').eq('status','current').eq('court_number',courtNumber).order('court_side');
     await refresh();
     const advancedLabels=(nextTeams??[]).map(team=>team.name).join(' and ');
-    if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:occupiedWaitingTeams===0?'The game advanced. No teams were waiting, so the same two teams will replay.':`${advancedLabels||'The next teams'} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success',cancelAction:()=>notifyTeamGameAdvanced(courtNumber,actorName)});
+    if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:occupiedWaitingTeams===0?'The game advanced. No teams were waiting, so the same two teams will replay.':`${advancedLabels||'The next teams'} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success'});
   }
   async function recordKingWinner(courtNumber:number,winnerId:string){
-    const actorName=me?.display_name??(admin?'Admin':'Host');
     const winnerTeamName=kingTeams.find(team=>team.id===winnerId)?.name??'The winning team';
     setBusy(true);if(operator){const {error:snapshotError}=await supabase.rpc('save_operator_undo',{p_label:'start next king game'});if(snapshotError){setBusy(false);setNotice({title:'Could not prepare undo',message:snapshotError.message});return;}}const {data,error}=await supabase.rpc('end_team_king_game',{p_court_number:courtNumber,p_winning_team_id:winnerId});setBusy(false);
     if(error){setNotice({title:'Could not advance King of the Court',message:error.message});return;}
@@ -1037,10 +1045,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     const prompts=(data?.rejoin_prompts??[]) as {id:string;user_id:string|null}[];
     for(const prompt of prompts){if(prompt.user_id)await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.id}}});}
     await refresh();
-    if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:data?.winner_stays===false?`${winnerTeamName} has hit the max number of consecutive games and will sit out. If this was a mistake, reverse the advancement.`:`${winnerTeamName} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success',cancelAction:()=>notifyTeamGameAdvanced(courtNumber,actorName)});
-  }
-  async function notifyTeamGameAdvanced(courtNumber:number,actorName:string){
-    await realtimeChannel.current?.send({type:'broadcast',event:'team_game_advanced',payload:{courtNumber,actorUserId:user?.id??null,actorName}});
+    if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:data?.winner_stays===false?`${winnerTeamName} has hit the max number of consecutive games and will sit out. If this was a mistake, reverse the advancement.`:`${winnerTeamName} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success'});
   }
   async function reverseKingGame(){
     setBusy(true);const {data,error}=await supabase.rpc('reverse_king_game');setBusy(false);

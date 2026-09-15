@@ -11,6 +11,7 @@ const zh:TranslationMap={
 };
 
 Object.assign(es,{
+  'Next game advanced':'Siguiente juego avanzado',
   'Accept all rejoin requests':'Aceptar todas las solicitudes de reingreso','Accept all rejoin requests?':'¿Aceptar todas las solicitudes de reingreso?','This will accept all rejoin requests. Do you want to continue?':'Esto aceptará todas las solicitudes de reingreso. ¿Quieres continuar?',
   'This removes you from the current game or queue.':'Esto te elimina del juego actual o de la fila.',
   'Your position is saved. Choose before the timer reaches zero or you’ll automatically leave the waitlist.':'Tu posición está guardada. Elige antes de que el contador llegue a cero o saldrás automáticamente de la lista.',
@@ -45,6 +46,7 @@ Object.assign(es,{
 });
 
 Object.assign(zh,{
+  'Next game advanced':'下一场已推进',
   'Accept all rejoin requests':'接受所有重新加入请求','Accept all rejoin requests?':'接受所有重新加入请求？','This will accept all rejoin requests. Do you want to continue?':'这将接受所有重新加入请求。你要继续吗？',
   'This removes you from the current game or queue.':'这会将你移出当前比赛或队列。',
   'Your position is saved. Choose before the timer reaches zero or you’ll automatically leave the waitlist.':'你的位置已保留。请在倒计时归零前选择，否则你将自动离开等候名单。',
@@ -223,6 +225,7 @@ function translateDynamic(value:string,language:AppLanguage):string{
   const endCourt=value.match(/^End the game on Court (\d+)\?$/);if(endCourt)return language==='es'?`¿Terminar el juego en la Cancha ${endCourt[1]}?`:`结束球场 ${endCourt[1]} 的比赛？`;
   const permissions=value.match(/^Permissions for (.+)$/);if(permissions)return language==='es'?`Permisos para ${permissions[1]}`:`${permissions[1]} 的权限`;
   const started=value.match(/^(.+) started Game (\d+)\.$/);if(started)return language==='es'?`${started[1]} inició el Juego ${started[2]}.`:`${started[1]} 开始了第 ${started[2]} 场比赛。`;
+  const advancedBy=value.match(/^(.+) has advanced the next game\. If you think this is a mistake, let an admin or host know\.$/);if(advancedBy)return language==='es'?`${advancedBy[1]} avanzó al siguiente juego. Si crees que fue un error, avisa a un administrador o anfitrión.`:`${advancedBy[1]} 已推进到下一场。如果你认为这是错误，请告知管理员或主持人。`;
   const startedRejoin=value.match(/^(.+) started Game (\d+)\. Do you want to rejoin\? Your position is saved\.$/);if(startedRejoin)return language==='es'?`${startedRejoin[1]} inició el Juego ${startedRejoin[2]}. ¿Quieres reingresar? Tu posición está guardada.`:`${startedRejoin[1]} 开始了第 ${startedRejoin[2]} 场比赛。你要重新加入吗？你的位置已保留。`;
   const remaining=value.match(/^You have (\d+:\d{2}) remaining\.$/);if(remaining)return language==='es'?`Te quedan ${remaining[1]}.`:`你还有 ${remaining[1]}。`;
   const projectedPrefix=value.match(/^Projected: Game (\d+)$/);if(projectedPrefix)return language==='es'?`Proyección: Juego ${projectedPrefix[1]}`:`预计：第 ${projectedPrefix[1]} 场`;

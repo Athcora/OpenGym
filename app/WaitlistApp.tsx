@@ -38,6 +38,7 @@ const MOBILE_DRAG_HOLD_MS=450;
 const MOBILE_SCROLL_CANCEL_DISTANCE=8;
 const DEVICE_ID_KEY='opengym-device-id';
 const FACILITY_KEY='opengym-facility-slug';
+const REJOIN_TIMEOUT_NOTICE={title:'Rejoin time expired',message:'You did not rejoin in time, so you were removed from the waitlist. If you want to rejoin, sign up again.',cancelLabel:'OK'} as const;
 const FACILITY_COORDINATE_FALLBACKS:Record<string,{latitude:number;longitude:number}>={
   OAIR:{latitude:32.92788,longitude:-117.21702},
 };
@@ -340,9 +341,21 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
       if(error){expiredRejoinHandled.current=false;setNotice({title:'Could not update the waitlist',message:error.message});return;}
       await broadcastQueueRefresh();
       await logout();
-      setNotice({title:'Rejoin time expired',message:'You did not rejoin within the allotted time, so you were removed from the waitlist. Join again normally if you want to return.'});
+      setNotice(REJOIN_TIMEOUT_NOTICE);
     })();
   },[me?.status,rejoinResponse,rejoinChecked]);
+  useEffect(()=>{
+    if((config.mode!=='rejoin'&&config.mode!=='teams_rejoin')||me?.status!=='rejoin'||!rejoinResponse)return;
+    if(new Date(rejoinResponse.expires_at).getTime()>returnClock||expiredRejoinHandled.current)return;
+    expiredRejoinHandled.current=true;
+    void (async()=>{
+      const {error}=await supabase.rpc('leave_waitlist');
+      if(error){expiredRejoinHandled.current=false;setNotice({title:'Could not update the waitlist',message:error.message});return;}
+      await broadcastQueueRefresh();
+      await logout();
+      setNotice(REJOIN_TIMEOUT_NOTICE);
+    })();
+  },[config.mode,me?.status,rejoinResponse?.id,rejoinResponse?.expires_at,returnClock]);
   async function boot(){
     let {data:{session}}=await supabase.auth.getSession();
     if(!session){const result=await supabase.auth.signInAnonymously(); if(result.error){setNotice({title:'Connection needed',message:result.error.message});return;} session=result.data.session;}

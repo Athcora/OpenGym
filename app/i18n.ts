@@ -192,6 +192,13 @@ Object.assign(zh,{
   'Create a group':'创建小组','Select between two and six players to become a team. Tap each player card, then choose Done.':'选择两至六名球员组成球队。点击每张球员卡片，然后选择“完成”。'
 });
 
+Object.assign(es,{
+  'You did not rejoin in time, so you were removed from the waitlist. If you want to rejoin, sign up again.':'No reingresaste a tiempo, así que saliste de la lista de espera. Si quieres volver, regístrate de nuevo.'
+});
+Object.assign(zh,{
+  'You did not rejoin in time, so you were removed from the waitlist. If you want to rejoin, sign up again.':'你未及时重新加入，因此已被移出等候名单。如果想重新加入，请重新报名。'
+});
+
 function translateDynamic(value:string,language:AppLanguage):string{
   if(language==='en')return value;
   const game=value.match(/^Game (\d+)$/);if(game)return language==='es'?`Juego ${game[1]}`:`第 ${game[1]} 场`;

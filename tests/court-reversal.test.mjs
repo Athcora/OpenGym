@@ -8,12 +8,16 @@ test('Past games exposes reversal only to operators on each court latest card',(
   assert.match(app,/rpc\('reverse_past_game',\{p_game_id:game.id\}\)/);
   assert.match(app,/disabled=\{busy\|\|!game.reversible\}/);
 });
-test('server enforces facility, operator, latest-game, and changed-lineup guards',()=>{
+test('server enforces facility, operator, latest-game, and safe live-state merging',()=>{
   assert.match(sql,/facility_id=public.current_facility_id\(\)/);
   assert.match(sql,/if not public.is_waitlist_operator\(\)/);
   assert.match(sql,/court_number=game.court_number and game_number>game.game_number/);
   assert.match(sql,/current_court.game_number is distinct from/);
-  assert.match(sql,/Undo their later move, swap, or rejoin/);
+  assert.match(sql,/accepted_rejoin:=/);
+  assert.match(sql,/Players and teams created after the advancement are deliberately absent/);
+  assert.match(sql,/declined, timed out, or left the facility stay gone/);
+  assert.match(sql,/Later moves, swaps, substitutions, or team changes must be undone/);
+  assert.doesNotMatch(sql,/A new player joined this court or team/);
   assert.doesNotMatch(sql,/perform public.restore_waitlist_state/);
 });
 test('all advancement entry points record inside the transaction and private snapshots are protected',()=>{

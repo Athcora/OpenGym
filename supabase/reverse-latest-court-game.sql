@@ -83,7 +83,7 @@ declare
   kind text; tbl text; item record; current_row jsonb; changes jsonb:='[]'::jsonb;
   change jsonb; previous jsonb; subsequent jsonb; merged jsonb; assignments text;
   row_id uuid; touched_players uuid[]:='{}'; touched_teams uuid[]:='{}'; touched uuid[];
-  anchor bigint; ordinal bigint; old_position bigint; actor text;
+  anchor bigint; ordinal bigint; old_position bigint; actor text; accepted_rejoin boolean;
 begin
   if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
   perform pg_advisory_xact_lock(7429101);
@@ -119,20 +119,51 @@ begin
       row_id:=coalesce(item.previous->>'id',item.subsequent->>'id')::uuid;
       execute format('select to_jsonb(t) from public.%I t where id=$1 for update',tbl) into current_row using row_id;
       if public.court_reversal_fields(kind,current_row) is distinct from public.court_reversal_fields(kind,item.subsequent) then
-        raise exception 'A player or team involved in this game has changed. Undo their later move, swap, or rejoin before reversing this game.';
+        -- A reversal must merge with the live check-in state. Players who
+        -- declined, timed out, or left the facility stay gone. A team that
+        -- expired after every member left also stays disbanded.
+        if kind='players' and (current_row is null or current_row->>'status'='left') then
+          continue;
+        elsif kind='teams' and current_row is null and item.subsequent->>'rejoin_expires_at' is not null then
+          continue;
+        end if;
+
+        -- Rejoining is the one post-advance player transition that is safe to
+        -- merge. Restore that visible player to the pre-game lineup instead of
+        -- asking the operator to undo the rejoin first. An answered prompt is
+        -- required for signed-in players so a later manual move is not mistaken
+        -- for a rejoin. Offline players are accepted by an operator and have no
+        -- user-bound prompt.
+        accepted_rejoin:=false;
+        if kind='players' and item.subsequent->>'status'='rejoin'
+          and current_row->>'status' in('waiting','current')
+          and current_row->'rejoin_expires_at' is not distinct from 'null'::jsonb
+          and current_row->'team_id' is not distinct from item.subsequent->'team_id'
+          and current_row->'group_id' is not distinct from item.subsequent->'group_id' then
+          accepted_rejoin:=current_row->'user_id' is not distinct from 'null'::jsonb or exists(
+            select 1 from public.rejoin_responses r
+            join jsonb_array_elements(saved.after_state->'rejoins') a on a->>'id'=r.id::text
+            where r.user_id=(current_row->>'user_id')::uuid and r.choice='stay' and r.answered_at is not null
+          );
+        end if;
+        if accepted_rejoin then null;
+        elsif kind='teams' and item.subsequent->'rejoin_expires_at' is distinct from 'null'::jsonb
+          and current_row->'rejoin_expires_at' is not distinct from 'null'::jsonb
+          and (public.court_reversal_fields(kind,current_row)-'rejoin_expires_at')
+            =(public.court_reversal_fields(kind,item.subsequent)-'rejoin_expires_at') then
+          -- The first member rejoined and cleared the team's removal timer.
+          null;
+        else
+          raise exception 'A player or team involved in this game changed after the advancement. Later moves, swaps, substitutions, or team changes must be undone before reversing.';
+        end if;
       end if;
       if kind='players' then touched_players:=array_append(touched_players,row_id); end if;
       if kind='teams' then touched_teams:=array_append(touched_teams,row_id); end if;
       changes:=changes||jsonb_build_array(jsonb_build_object('kind',kind,'table',tbl,'id',row_id,'before',item.previous,'after',item.subsequent));
     end loop;
   end loop;
-  -- A new player joining an involved team/current court must not be displaced.
-  if exists(select 1 from public.waitlist_players p where p.status<>'left' and not(p.id=any(touched_players))
-    and (p.court_number=game.court_number or p.team_id=any(touched_teams))
-    and not exists(select 1 from jsonb_array_elements(saved.after_state->'players') s where s->>'id'=p.id::text
-      and public.court_reversal_fields('players',s)=public.court_reversal_fields('players',to_jsonb(p)))) then
-    raise exception 'A new player joined this court or team. Move them back before reversing this game.';
-  end if;
+  -- Players and teams created after the advancement are deliberately absent
+  -- from `changes`: they keep their live state and relative queue position.
 
   -- Restore existing rows in-place so authentication, names and permissions survive.
   for change in select value from jsonb_array_elements(changes) loop

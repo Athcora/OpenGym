@@ -1,0 +1,23 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const app=readFileSync(new URL('../app/WaitlistApp.tsx',import.meta.url),'utf8');
+const sql=readFileSync(new URL('../supabase/reverse-latest-court-game.sql',import.meta.url),'utf8');
+test('Past games exposes reversal only to operators on each court latest card',()=>{
+  assert.match(app,/operator&&games.find\(item=>item.court_number===game.court_number\)\?\.id===game.id/);
+  assert.match(app,/rpc\('reverse_past_game',\{p_game_id:game.id\}\)/);
+  assert.match(app,/disabled=\{busy\|\|!game.reversible\}/);
+});
+test('server enforces facility, operator, latest-game, and changed-lineup guards',()=>{
+  assert.match(sql,/facility_id=public.current_facility_id\(\)/);
+  assert.match(sql,/if not public.is_waitlist_operator\(\)/);
+  assert.match(sql,/court_number=game.court_number and game_number>game.game_number/);
+  assert.match(sql,/current_court.game_number is distinct from/);
+  assert.match(sql,/Undo their later move, swap, or rejoin/);
+  assert.doesNotMatch(sql,/perform public.restore_waitlist_state/);
+});
+test('all advancement entry points record inside the transaction and private snapshots are protected',()=>{
+  assert.match(sql,/'end_court_game','end_team_rotation','end_team_king_game'/);
+  assert.match(sql,/revoke all on function public.capture_court_reversal_state\(\) from public,anon,authenticated/);
+  assert.match(sql,/references public.past_games\(id\) on delete cascade/);
+});

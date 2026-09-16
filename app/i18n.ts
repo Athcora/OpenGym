@@ -199,7 +199,11 @@ Object.assign(zh,{
   'You did not rejoin in time, so you were removed from the waitlist. If you want to rejoin, sign up again.':'你未及时重新加入，因此已被移出等候名单。如果想重新加入，请重新报名。'
 });
 
+Object.assign(es,{'Reverse this game?':'¿Revertir este juego?','Game reversed':'Juego revertido','This older game has no reversal record.':'Este juego anterior no tiene registro para revertirlo.'});
+Object.assign(zh,{'Reverse this game?':'撤回这场比赛？','Game reversed':'比赛已撤回','This older game has no reversal record.':'这场较早的比赛没有可恢复的记录。'});
 function translateDynamic(value:string,language:AppLanguage):string{
+  const reverseCourt=value.match(/^This restores the previous lineup on Court (\d+)\. Other courts will not be reversed\.$/);if(reverseCourt)return language==='es'?`Esto restaura la alineación anterior de la Cancha ${reverseCourt[1]}. Las otras canchas no se revertirán.`:`这会恢复球场 ${reverseCourt[1]} 之前的阵容。其他球场不会被撤回。`;
+  const restoredCourt=value.match(/^The previous lineup and game on Court (\d+) were restored\.$/);if(restoredCourt)return language==='es'?`Se restauraron la alineación y el juego anteriores de la Cancha ${restoredCourt[1]}.`:`球场 ${restoredCourt[1]} 之前的阵容和比赛已恢复。`;
   if(language==='en')return value;
   const game=value.match(/^Game (\d+)$/);if(game)return language==='es'?`Juego ${game[1]}`:`第 ${game[1]} 场`;
   const gameList=value.match(/^Game ([\d ·]+)$/);if(gameList)return language==='es'?`Juegos ${gameList[1]}`:`比赛 ${gameList[1]}`;

@@ -10,7 +10,7 @@ import './admin-player.css';
 type PlayerStatus = 'current' | 'waiting' | 'sitout' | 'rejoin' | 'left';
 type Player = { id:string; user_id:string|null; first_name:string; last_name:string; display_name:string; status:PlayerStatus; queue_position:number|null; restricted:boolean; group_id:string|null; team_id:string|null; is_host:boolean; court_number:number|null; sitout_priority?:boolean; sitout_from_game?:number|null; rejoin_expires_at?:string|null };
 type PastTeam = { team:string; players:string[] };
-type Game = { id:string; game_number:number; court_number:number; player_names:string[]; team_rosters?:PastTeam[]|null; ended_at:string };
+type Game = { id:string; game_number:number; court_number:number; player_names:string[]; team_rosters?:PastTeam[]|null; ended_at:string; reversible?:boolean };
 type Config = { game_number:number; max_players:number; court_count:number; mode:'regular'|'rejoin'|'teams'|'teams_rejoin'; geofence_enabled:boolean; geofence_radius_m:number; king_max_wins:number|null };
 type Facility = { id:string; slug:string; code:string; name:string; address:string|null; city:string|null; region:string|null; latitude:number|null; longitude:number|null };
 type TeamCourtMode = 'rotation'|'king';
@@ -418,7 +418,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
         const notification=payload.new as GroupNotification;
         if(notification.user_id===session?.user.id){showPlayerNotification(notification,session.user.id);void supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id);}
       })
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'past_games'},()=>{if(screenRef.current==='history')void loadPastGames()})
+      .on('postgres_changes',{event:'*',schema:'public',table:'past_games'},()=>{if(screenRef.current==='history')void loadPastGames()})
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'waitlist_events'},payload=>{
         const event=payload.new as {actor_user_id?:string;actor_name?:string;event_type?:string;message?:string};
         if(event.event_type==='host_appointed'||event.event_type==='host_removed')return;
@@ -475,7 +475,18 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   async function broadcastQueueRefresh(){
     await realtimeChannel.current?.send({type:'broadcast',event:'queue_refresh',payload:{at:Date.now()}});
   }
-  async function loadPastGames(){const {data,error}=await supabase.from('past_games').select('id,game_number,court_number,player_names,team_rosters,ended_at').order('game_number',{ascending:false}).limit(60);if(error){setNotice({title:'Past games unavailable',message:error.message});return;}setGames((data??[]) as Game[])}
+  async function loadPastGames(){const {data,error}=await supabase.from('past_games').select('id,game_number,court_number,player_names,team_rosters,ended_at,reversible').order('game_number',{ascending:false}).limit(60);if(error){setNotice({title:'Past games unavailable',message:error.message});return;}setGames((data??[]) as Game[])}
+  function confirmReversePastGame(game:Game){
+    ask('Reverse this game?',`This restores the previous lineup on Court ${game.court_number}. Other courts will not be reversed.`,'Reverse',async()=>{
+      setBusy(true);
+      try{
+        const {data,error}=await supabase.rpc('reverse_past_game',{p_game_id:game.id});
+        if(error){setNotice({title:'Could not reverse the game',message:error.message});return;}
+        await broadcastQueueRefresh();await refresh();await loadPastGames();
+        setNotice({title:'Game reversed',message:data?.message??'The previous lineup was restored.',cancelLabel:'OK'});
+      }finally{setBusy(false);}
+    },'danger');
+  }
   function openPastGames(){setScreen('history');void loadPastGames()}
   async function ensureFacilityContext(target=facilityRef.current){
     if(!target)return true;
@@ -1147,7 +1158,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     </main>
     {onboarding==='disclaimer'&&<WaitlistDisclaimer mode={config.mode} language={language} acknowledge={()=>{setTutorialStep(0);setOnboarding('tutorial')}}/>}
     {onboarding==='tutorial'&&<><TutorialDemo mode={config.mode}/><TutorialCoach mode={config.mode} step={tutorialStep} next={()=>tutorialStep<getTutorialSteps(config.mode).length-1?setTutorialStep(step=>step+1):void completeTutorial()} back={()=>setTutorialStep(step=>Math.max(0,step-1))} skip={()=>void completeTutorial()}/></>}
-    {screen==='history'&&<div className="drawer"><div className="drawer-card history-drawer-card"><button className="back" onClick={()=>setScreen('queue')}>← Back to waitlist</button><h2>Past games</h2>{games.length===0?<p>No completed games yet.</p>:<div className="past-games-grid">{games.map(game=><article className="past-game" key={game.id}><strong>Game {game.game_number}{config.court_count>1?` · Court ${game.court_number}`:''}</strong>{game.team_rosters?.length?<div className="past-game-teams">{game.team_rosters.map((team,teamIndex)=><section className="past-game-team" key={`${game.id}-${team.team}-${teamIndex}`}><header>{team.team}</header><ol>{team.players.map((name,index)=><li key={`${game.id}-${team.team}-${index}`}>{name}</li>)}</ol></section>)}</div>:<ol>{game.player_names.map((name,index)=><li key={`${game.id}-${index}`}>{name}</li>)}</ol>}</article>)}</div>}</div></div>}
+    {screen==='history'&&<div className="drawer"><div className="drawer-card history-drawer-card"><button className="back" onClick={()=>setScreen('queue')}>← Back to waitlist</button><h2>Past games</h2>{games.length===0?<p>No completed games yet.</p>:<div className="past-games-grid">{games.map(game=><article className="past-game" key={game.id}>{operator&&games.find(item=>item.court_number===game.court_number)?.id===game.id&&<div className="past-game-reverse"><button className="danger" disabled={busy||!game.reversible} onClick={()=>confirmReversePastGame(game)}>Reverse</button>{!game.reversible&&<small>This older game has no reversal record.</small>}</div>}<strong>Game {game.game_number}{config.court_count>1?` · Court ${game.court_number}`:''}</strong>{game.team_rosters?.length?<div className="past-game-teams">{game.team_rosters.map((team,teamIndex)=><section className="past-game-team" key={`${game.id}-${team.team}-${teamIndex}`}><header>{team.team}</header><ol>{team.players.map((name,index)=><li key={`${game.id}-${team.team}-${index}`}>{name}</li>)}</ol></section>)}</div>:<ol>{game.player_names.map((name,index)=><li key={`${game.id}-${index}`}>{name}</li>)}</ol>}</article>)}</div>}</div></div>}
     {screen==='player-history'&&<div className="drawer"><div className="drawer-card"><button className="back" onClick={()=>setScreen('queue')}>← Back to waitlist</button><h2>{host?'Action History':'Your history'}</h2>{playerEvents.length===0?<p>{host?'You have no host actions yet.':'You have no join or leave activity yet.'}</p>:playerEvents.map(event=><article className="past-game history-row" key={event.id}><strong>{event.message}</strong><p>{new Date(event.created_at).toLocaleString()}</p></article>)}</div></div>}
     {screen==='restricted'&&<div className="drawer"><div className="drawer-card"><button className="back" onClick={()=>setScreen('members')}>← Back to members</button><h2>Restricted members</h2>{players.filter(p=>p.restricted).length===0?<p>No restricted members.</p>:players.filter(p=>p.restricted).map(player=><article className="past-game member-row" key={player.id}><strong>{player.display_name}</strong><button onClick={()=>void rpc('admin_restrict_player',{p_player_id:player.id,p_restricted:false})}>Unrestrict</button></article>)}</div></div>}
     {screen==='add-player'&&<div className="drawer"><div className="drawer-card add-player-card"><button className="back" onClick={()=>setScreen('queue')}>{'\u2190'} Back to waitlist</button><h2>Add a player</h2><p>Add a walk-in player directly to the live queue. They do not need an account.</p><form onSubmit={adminAddPlayer}><label>First name<input autoFocus maxLength={NAME_CHARACTER_LIMIT} value={adminFirst} onChange={e=>setAdminFirst(e.target.value)} placeholder="First name"/><NameLimitCounter value={adminFirst}/></label><label>Last initial or name <em>optional</em><input maxLength={NAME_CHARACTER_LIMIT} value={adminLast} onChange={e=>setAdminLast(e.target.value)} placeholder="Last initial or name"/><NameLimitCounter value={adminLast}/></label><button className="hero-button" disabled={busy}>{busy?'Adding\u2026':'Add to waitlist'}</button></form></div></div>}

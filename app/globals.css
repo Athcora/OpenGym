@@ -37,3 +37,7 @@ html.mobile-admin-dragging {
   display: none;
   pointer-events: none;
 }
+/* Keep per-court recovery in the upper-left, above the saved lineup. */
+.past-game-reverse{display:flex;align-items:center;flex-wrap:wrap;gap:.6rem;margin-bottom:.8rem}
+.past-game-reverse button{min-height:38px;padding:.45rem .85rem;width:auto}
+.past-game-reverse small{opacity:.65;font-size:.85rem}

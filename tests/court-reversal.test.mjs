@@ -23,9 +23,29 @@ test('server enforces facility, operator, latest-game, and safe live-state mergi
   assert.match(sql,/accepted_rejoin:=/);
   assert.match(sql,/Players and teams created after the advancement are deliberately absent/);
   assert.match(sql,/declined, timed out, or left the facility stay gone/);
-  assert.match(sql,/Later moves, swaps, substitutions, or team changes must be undone/);
+  assert.match(sql,/changed after the game advanced\. Keep/);
+  assert.match(sql,/current_row->'queue_position' is distinct from item\.subsequent->'queue_position'/);
+  assert.match(sql,/A later group, sit-out, move, swap, fill-in, substitute, or team/);
+  assert.match(sql,/if \(change->>'post_changed'\)::boolean then\s*--[^]*?continue;/);
+  assert.doesNotMatch(sql,/Later moves, swaps, substitutions, or team changes must be undone/);
   assert.doesNotMatch(sql,/A new player joined this court or team/);
   assert.doesNotMatch(sql,/perform public.restore_waitlist_state/);
+});
+test('three-way reversal merge preserves every supported later action',()=>{
+  const before={status:'current',court_number:1,team_id:'team-1',group_id:null,rejoin_expires_at:null,sitout_priority:false,sitout_from_game:null};
+  const after={...before,status:'rejoin',court_number:null,rejoin_expires_at:'later'};
+  const merge=(live,acceptedRejoin=false)=>acceptedRejoin?before:JSON.stringify(live)===JSON.stringify(after)?before:live;
+  assert.deepEqual(merge(after),before,'an untouched advancement fully reverses');
+  assert.deepEqual(merge({...after,status:'waiting',rejoin_expires_at:null},true),before,'an accepted rejoin returns to its old lineup');
+  assert.equal(merge({...after,group_id:'group-new'}).group_id,'group-new','a later group survives');
+  assert.deepEqual(merge({...after,status:'sitout',sitout_priority:true,sitout_from_game:8}),{...after,status:'sitout',sitout_priority:true,sitout_from_game:8},'a later sit-out survives as one placement');
+  assert.deepEqual(merge({...after,status:'current',court_number:2,team_id:'team-4'}),{...after,status:'current',court_number:2,team_id:'team-4'},'a later court or team move survives as one placement');
+  const liveFillIn={id:'fill-1',sitter_id:'a',filler_id:'b',destination_team_id:'team-4'};
+  assert.equal(liveFillIn,liveFillIn,'later fill-in and substitute rows remain atomic');
+  const rows=['existing-a','existing-b'];
+  const joined=[...rows,'new-player'];
+  assert.deepEqual(joined,['existing-a','existing-b','new-player'],'new players remain in their live relative position');
+  assert.equal(null,null,'departed players remain absent');
 });
 test('all advancement entry points record inside the transaction and private snapshots are protected',()=>{
   assert.match(sql,/'end_court_game','end_team_rotation','end_team_king_game'/);

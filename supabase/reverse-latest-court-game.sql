@@ -84,6 +84,7 @@ declare
   change jsonb; previous jsonb; subsequent jsonb; merged jsonb; assignments text;
   row_id uuid; touched_players uuid[]:='{}'; touched_teams uuid[]:='{}'; touched uuid[];
   anchor bigint; ordinal bigint; old_position bigint; actor text; accepted_rejoin boolean;
+  post_changed boolean;
 begin
   if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
   perform pg_advisory_xact_lock(7429101);
@@ -118,7 +119,11 @@ begin
     loop
       row_id:=coalesce(item.previous->>'id',item.subsequent->>'id')::uuid;
       execute format('select to_jsonb(t) from public.%I t where id=$1 for update',tbl) into current_row using row_id;
-      if public.court_reversal_fields(kind,current_row) is distinct from public.court_reversal_fields(kind,item.subsequent) then
+      post_changed:=false;
+      if public.court_reversal_fields(kind,current_row) is distinct from public.court_reversal_fields(kind,item.subsequent)
+        or (kind in('players','teams') and current_row is not null and item.subsequent is not null
+          and current_row->'queue_position' is distinct from item.subsequent->'queue_position'
+          and (current_row->>'updated_at')::timestamptz>saved.created_at) then
         -- A reversal must merge with the live check-in state. Players who
         -- declined, timed out, or left the facility stay gone. A team that
         -- expired after every member left also stays disbanded.
@@ -128,12 +133,11 @@ begin
           continue;
         end if;
 
-        -- Rejoining is the one post-advance player transition that is safe to
-        -- merge. Restore that visible player to the pre-game lineup instead of
-        -- asking the operator to undo the rejoin first. An answered prompt is
-        -- required for signed-in players so a later manual move is not mistaken
-        -- for a rejoin. Offline players are accepted by an operator and have no
-        -- user-bound prompt.
+        -- A completed rejoin should be fully restored to the pre-game lineup.
+        -- Other later actions retain their complete live placement below. An answered
+        -- prompt is required for signed-in players so a later manual move is
+        -- not mistaken for a rejoin. Offline players are accepted by an
+        -- operator and have no user-bound prompt.
         accepted_rejoin:=false;
         if kind='players' and item.subsequent->>'status'='rejoin'
           and current_row->>'status' in('waiting','current')
@@ -154,12 +158,15 @@ begin
           -- The first member rejoined and cleared the team's removal timer.
           null;
         else
-          raise exception 'A player or team involved in this game changed after the advancement. Later moves, swaps, substitutions, or team changes must be undone before reversing.';
+          -- This row was intentionally changed after the game advanced. Keep
+          -- its complete live state and live queue position while untouched
+          -- rows around it return to their pre-advance state.
+          post_changed:=true;
         end if;
       end if;
-      if kind='players' then touched_players:=array_append(touched_players,row_id); end if;
-      if kind='teams' then touched_teams:=array_append(touched_teams,row_id); end if;
-      changes:=changes||jsonb_build_array(jsonb_build_object('kind',kind,'table',tbl,'id',row_id,'before',item.previous,'after',item.subsequent));
+      if kind='players' and not post_changed then touched_players:=array_append(touched_players,row_id); end if;
+      if kind='teams' and not post_changed then touched_teams:=array_append(touched_teams,row_id); end if;
+      changes:=changes||jsonb_build_array(jsonb_build_object('kind',kind,'table',tbl,'id',row_id,'before',item.previous,'after',item.subsequent,'live',current_row,'post_changed',post_changed));
     end loop;
   end loop;
   -- Players and teams created after the advancement are deliberately absent
@@ -170,14 +177,27 @@ begin
     kind:=change->>'kind'; tbl:=change->>'table'; row_id:=(change->>'id')::uuid;
     previous:=nullif(change->'before','null'::jsonb); subsequent:=nullif(change->'after','null'::jsonb);
     if previous is null then
-      execute format('delete from public.%I where id=$1',tbl) using row_id;
+      if not (change->>'post_changed')::boolean then
+        execute format('delete from public.%I where id=$1',tbl) using row_id;
+      end if;
     elsif subsequent is null then
-      execute format('insert into public.%I select * from jsonb_populate_record(null::public.%I,$1)',tbl,tbl) using previous;
+      if change->'live' is null or change->'live'='null'::jsonb then
+        execute format('insert into public.%I select * from jsonb_populate_record(null::public.%I,$1)',tbl,tbl) using previous;
+      end if;
     else
-      merged:=public.court_reversal_fields(kind,previous);
+      if (change->>'post_changed')::boolean then
+        -- A later group, sit-out, move, swap, fill-in, substitute, or team
+        -- change is one atomic live placement. Retain the complete live row so
+        -- a reversal cannot split a group or produce half of a relationship.
+        continue;
+      else
+        merged:=public.court_reversal_fields(kind,previous);
+      end if;
       if kind in('players','teams') then merged:=merged||jsonb_build_object('updated_at',now()); end if;
-      select string_agg(format('%I=r.%I',key,key),',') into assignments from jsonb_object_keys(merged) key;
-      execute format('update public.%I t set %s from jsonb_populate_record(null::public.%I,$1) r where t.id=$2',tbl,assignments,tbl) using merged,row_id;
+      if merged<>'{}'::jsonb then
+        select string_agg(format('%I=r.%I',key,key),',') into assignments from jsonb_object_keys(merged) key;
+        execute format('update public.%I t set %s from jsonb_populate_record(null::public.%I,$1) r where t.id=$2',tbl,assignments,tbl) using merged,row_id;
+      end if;
     end if;
   end loop;
 

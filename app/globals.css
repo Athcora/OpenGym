@@ -39,5 +39,5 @@ html.mobile-admin-dragging {
 }
 /* Keep per-court recovery in the upper-left, above the saved lineup. */
 .past-game-reverse{display:flex;align-items:center;flex-wrap:wrap;gap:.6rem;margin-bottom:.8rem}
-.past-game-reverse button{min-height:48px;padding:.65rem 1rem;width:auto;border:0;border-radius:13px;font:inherit;font-weight:800;color:#fff;cursor:pointer}
+.past-game-reverse button{min-height:36px;padding:.4875rem .75rem;width:auto;border:0;border-radius:10px;font:inherit;font-weight:800;color:#fff;cursor:pointer}
 .past-game-reverse small{opacity:.65;font-size:.85rem}

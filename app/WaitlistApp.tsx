@@ -418,7 +418,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
         const notification=payload.new as GroupNotification;
         if(notification.user_id===session?.user.id){showPlayerNotification(notification,session.user.id);void supabase.from('group_notifications').update({read_at:new Date().toISOString()}).eq('id',notification.id);}
       })
-      .on('postgres_changes',{event:'*',schema:'public',table:'past_games'},()=>{if(screenRef.current==='history')void loadPastGames()})
+      .on('postgres_changes',{event:'*',schema:'public',table:'past_games'},()=>{if(screenRef.current==='history'&&document.visibilityState==='visible')void loadPastGames()})
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'waitlist_events'},payload=>{
         const event=payload.new as {actor_user_id?:string;actor_name?:string;event_type?:string;message?:string};
         if(event.event_type==='host_appointed'||event.event_type==='host_removed')return;
@@ -475,11 +475,12 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   async function broadcastQueueRefresh(){
     await realtimeChannel.current?.send({type:'broadcast',event:'queue_refresh',payload:{at:Date.now()}});
   }
-  async function loadPastGames(){const {data,error}=await supabase.from('past_games').select('id,game_number,court_number,player_names,team_rosters,ended_at,reversible').order('game_number',{ascending:false}).limit(60);if(error){setNotice({title:'Past games unavailable',message:error.message});return;}setGames((data??[]) as Game[])}
+  async function loadPastGames(){if(!await ensureFacilityContext())return;const {data,error}=await supabase.from('past_games').select('id,game_number,court_number,player_names,team_rosters,ended_at,reversible').order('game_number',{ascending:false}).limit(60);if(error){setNotice({title:'Past games unavailable',message:error.message});return;}setGames((data??[]) as Game[])}
   function confirmReversePastGame(game:Game){
     ask('Reverse this game?',`This restores the previous lineup on Court ${game.court_number}. Other courts will not be reversed.`,'Reverse',async()=>{
       setBusy(true);
       try{
+        if(!await ensureFacilityContext())return;
         const {data,error}=await supabase.rpc('reverse_past_game',{p_game_id:game.id});
         if(error){setNotice({title:'Could not reverse the game',message:error.message});return;}
         await broadcastQueueRefresh();await refresh();await loadPastGames();

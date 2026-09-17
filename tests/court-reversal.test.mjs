@@ -7,6 +7,9 @@ test('Past games exposes reversal only to operators on each court latest card',(
   assert.match(app,/operator&&games.find\(item=>item.court_number===game.court_number\)\?\.id===game.id/);
   assert.match(app,/rpc\('reverse_past_game',\{p_game_id:game.id\}\)/);
   assert.match(app,/disabled=\{busy\|\|!game.reversible\}/);
+  assert.match(app,/async function loadPastGames\(\)\{if\(!await ensureFacilityContext\(\)\)return;/);
+  assert.match(app,/if\(!await ensureFacilityContext\(\)\)return;\s*const \{data,error\}=await supabase\.rpc\('reverse_past_game'/);
+  assert.match(app,/screenRef\.current==='history'&&document\.visibilityState==='visible'/);
 });
 test('server enforces facility, operator, latest-game, and safe live-state merging',()=>{
   assert.match(sql,/facility_id=public.current_facility_id\(\)/);

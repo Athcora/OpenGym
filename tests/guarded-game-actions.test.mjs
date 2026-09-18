@@ -40,8 +40,8 @@ test('immediate team reversal uses the observed Past Game through the guarded RP
   assert.match(app,/eq\('court_number',courtNumber\)\.eq\('game_number',gameNumber\)\.maybeSingle\(\)/);
   assert.match(app,/supabase\.rpc\('reverse_past_game_guarded',\{p_game_id:game\.id,p_facility_id:activeFacility\.id\}\)/);
   assert.match(app,/action:\(\)=>reverseKingGame\(courtNumber,expectedGame\)/);
-  assert.match(retired,/revoke execute on function public\.reverse_king_game\(\) from authenticated/);
-  assert.match(retired,/revoke execute on function public\.reverse_next_game\(\) from authenticated/);
+  assert.match(retired,/revoke execute on function public\.reverse_king_game\(\) from public, anon, authenticated/);
+  assert.match(retired,/revoke execute on function public\.reverse_next_game\(\) from public, anon, authenticated/);
 });
 
 test('an operator keeps the immediate team-reversal modal even when their account has a rejoin prompt',()=>{

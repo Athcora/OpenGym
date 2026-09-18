@@ -5,7 +5,7 @@ import type { User } from '@supabase/supabase-js';
 import { enablePush, pushSupported } from './push';
 import { supabase } from './supabase';
 import { translateUiText, type AppLanguage } from './i18n';
-import { shouldShowRemoteTeamAdvanceNotice } from './teamAdvanceNotice.mjs';
+import { shouldShowRemoteTeamAdvanceNotice, shouldShowTeamCompletionNotice } from './teamAdvanceNotice.mjs';
 import './admin-player.css';
 
 type PlayerStatus = 'current' | 'waiting' | 'sitout' | 'rejoin' | 'left';
@@ -1073,7 +1073,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     await refresh();
     const advancedLabels=(nextTeams??[]).map(team=>team.name).join(' and ');
     const currentUserNeedsRejoin=prompts.some(prompt=>prompt.user_id===user?.id);
-    if(operator||!currentUserNeedsRejoin)setNotice({title:'Advancement complete',message:occupiedWaitingTeams===0?'The game advanced. No teams were waiting, so the same two teams will replay.':`${advancedLabels||'The next teams'} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:()=>reverseKingGame(courtNumber,expectedGame),cancelLabel:'Continue',cancelTone:'success'});
+    if(shouldShowTeamCompletionNotice({isOperator:operator,currentUserNeedsRejoin}))setNotice({title:'Advancement complete',message:occupiedWaitingTeams===0?'The game advanced. No teams were waiting, so the same two teams will replay.':`${advancedLabels||'The next teams'} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:()=>reverseKingGame(courtNumber,expectedGame),cancelLabel:'Continue',cancelTone:'success'});
   }
   async function recordKingWinner(courtNumber:number,winnerId:string,confirmedGame?:number){
     const winnerTeamName=kingTeams.find(team=>team.id===winnerId)?.name??'The winning team';
@@ -1084,7 +1084,8 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     const prompts=(data?.rejoin_prompts??[]) as {id:string;user_id:string|null}[];
     for(const prompt of prompts){if(prompt.user_id)await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.id}}});}
     await refresh();
-    if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:data?.winner_stays===false?`${winnerTeamName} has hit the max number of consecutive games and will sit out. If this was a mistake, reverse the advancement.`:`${winnerTeamName} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:()=>reverseKingGame(courtNumber,expectedGame),cancelLabel:'Continue',cancelTone:'success'});
+    const currentUserNeedsRejoin=prompts.some(prompt=>prompt.user_id===user?.id);
+    if(shouldShowTeamCompletionNotice({isOperator:operator,currentUserNeedsRejoin}))setNotice({title:'Advancement complete',message:data?.winner_stays===false?`${winnerTeamName} has hit the max number of consecutive games and will sit out. If this was a mistake, reverse the advancement.`:`${winnerTeamName} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:()=>reverseKingGame(courtNumber,expectedGame),cancelLabel:'Continue',cancelTone:'success'});
   }
   async function reverseKingGame(courtNumber:number,gameNumber:number){
     const activeFacility=facilityRef.current;

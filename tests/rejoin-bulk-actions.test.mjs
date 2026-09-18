@@ -17,5 +17,5 @@ test('operators can confirm one facility-scoped bulk rejoin action',()=>{
 
 test('the standard player Next game confirmation uses the green success action',()=>{
   assert.match(app,/ask\('Start the next game\?',`This will notify all players that \$\{me\.display_name\} advanced the queue\. This cannot be quietly undone\.`,`?'Next game'|,'Next game'/);
-  assert.match(app,/advanceGame,'success'/);
+  assert.match(app,/\(\)=>advanceGame\(courtNumber,gameNumber\),'success'/);
 });

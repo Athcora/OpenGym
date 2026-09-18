@@ -63,6 +63,7 @@
 - Restarted that verification safely: signed into the reset fixture in a fresh browser client, advanced Game 1 to Game 2, and queried it from a brand-new read-only Supabase SQL tab. Authoritative state was Game 2, 12 current, 0 waiting, and 1 past game.
 - **Authoritative guarded Next-versus-Reverse interleaving passed:** two independently authenticated QA administrators held the Game 1 Reverse and displayed Game 2 Next Game confirmations open, then confirmed them concurrently. Next Game won exactly once; both browser clients synchronized to Game 3, all QA1–QA12 remained current, and Reverse was rejected with `Only the most recent game on this court can be reversed.` A fresh, read-only SQL query immediately confirmed **Game 3 / 12 current / 0 waiting / 2 past games**. This used only the disposable `qa-interleaving-20260917` fixture.
 - Refresh/reconnect observation: the in-app QA browser initially showed the persisted Game 3 admin state, but its reload then discarded the anonymous Supabase browser session and returned to the facility chooser. This is a limitation of this isolated in-app-browser harness, not evidence of a product state loss; the authoritative database read remains intact. The only available automation browser is that isolated in-app profile, so a same-auth-storage facility-switch interleaving cannot be honestly run here. It remains a manual production-browser validation item.
+- Run 3 inventory found a P0 gap in the immediate Teams/KOC completion-modal Reverse path: the client called the deployed legacy `reverse_king_game()` RPC, whose production definition lacked both facility and observed-game guards. Replaced it with a lookup for the displayed Court/Game Past Game record followed by `reverse_past_game_guarded`; the completion modal now captures the observed court/game. Added `supabase/retire-unguarded-team-reverse.sql`, deployed it in production (revokes both unused legacy direct reverse RPCs), and added a regression test. Full suite passes 36/36. Browser verification of the newly published client is the next step.
 
 ## Files changed this run
 
@@ -75,13 +76,17 @@
 - `app/WaitlistApp.tsx`
 - `tests/court-reversal.test.mjs`
 - `supabase/preserve-empty-rotation-teams.sql`
+- `supabase/retire-unguarded-team-reverse.sql`
 - `tests/teams-empty-rotation.test.mjs`
+- `tests/guarded-game-actions.test.mjs`
 
 ## Tests and browser verification
 
 - `node --test tests/reverse-facility-scope.test.mjs`: 3/3 passed.
 - `node --test tests/teams-empty-rotation.test.mjs`: 2/2 passed.
 - `node --test tests/*.test.mjs`: 35/35 passed after the Teams Mode preservation repair.
+- `node --test tests/*.test.mjs`: 35/35 passed again after the authoritative guarded Next-versus-Reverse browser/database verification (no source changes were required by that verification).
+- `node --test tests/*.test.mjs`: 36/36 passed after retiring the unguarded immediate Teams/KOC reverse RPC path.
 - `pnpm exec eslint . --ignore-pattern dist --ignore-pattern .next`: passed.
 - Production SQL editor: migration completed successfully with no rows returned; subsequent function-definition audit confirmed the scoped replacement is deployed.
 - Public browser: reloaded the live entry flow and checked browser warnings/errors; the page rendered normally and the captured console had no warnings or errors.
@@ -89,4 +94,4 @@
 
 ## NEXT SESSION — START HERE
 
-Do not redo the completed guarded Next-versus-Reverse interleaving. It passed authoritatively on disposable fixture `qa-interleaving-20260917`: Game 3 / 12 current / 0 waiting / 2 past games after concurrent Next Game and stale Reverse, with no player loss. A same-auth-storage facility-switch race has **not** been browser-tested because the only available IAB profile discards the anonymous session on reload and exposes no shared-profile browser; keep that as a manual production-browser validation item rather than claiming it passed. Start Run 3’s action/permission inventory from `docs/qa/PLAYOPENGYM_QA_SPEC.md`: first enumerate each player, host, and admin action by waitlist mode and identify P0 behavioral gaps. Use disposable fixtures only; preserve PHR and Ocean Air. For every confirmed defect, add a behavioral regression test, deploy it, browser-test it, run `node --test tests/*.test.mjs`, and update this file before stopping.
+Do not redo the completed guarded Next-versus-Reverse interleaving. It passed authoritatively on disposable fixture `qa-interleaving-20260917`: Game 3 / 12 current / 0 waiting / 2 past games after concurrent Next Game and stale Reverse, with no player loss. The current task is to browser-test the just-published immediate Teams/KOC completion-modal Reverse fix on a disposable Teams fixture: advance a court, click the completion modal’s Reverse, confirm it returns that exact displayed game/lineup, then trigger one further advance before clicking the old completion modal and verify it rejects as stale rather than reversing the later game. The database revoke for `reverse_king_game()` and `reverse_next_game()` is already deployed; do not undo it. A same-auth-storage facility-switch race has **not** been browser-tested because the only available IAB profile discards the anonymous session on reload and exposes no shared-profile browser; retain it as a manual production-browser validation item. Preserve PHR and Ocean Air. After browser verification, continue Run 3’s player/host/admin action inventory. For every confirmed defect, add a behavioral regression test, deploy it, browser-test it, run `node --test tests/*.test.mjs`, and update this file before stopping.

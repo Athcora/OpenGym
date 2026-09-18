@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 
 const sql=readFileSync(new URL('../supabase/guarded-game-actions.sql',import.meta.url),'utf8');
 const app=readFileSync(new URL('../app/WaitlistApp.tsx',import.meta.url),'utf8');
+const retired=readFileSync(new URL('../supabase/retire-unguarded-team-reverse.sql',import.meta.url),'utf8');
 
 test('server-side guards lock the shared facility session and reject stale court games',()=>{
   assert.match(sql,/from public\.user_facility_sessions[\s\S]*?for share/);
@@ -31,4 +32,14 @@ test('direct vulnerable advancement and reversal RPCs are unavailable to authent
   for(const signature of ['end_court_game(integer)','end_team_rotation(integer)','end_team_king_game(integer,uuid)','reverse_past_game(uuid)']){
     assert.match(sql,new RegExp(`revoke execute on function public\\.${signature.replace(/[()]/g,'\\$&')} from authenticated`));
   }
+});
+
+test('immediate team reversal uses the observed Past Game through the guarded RPC',()=>{
+  assert.doesNotMatch(app,/supabase\.rpc\('reverse_king_game'/);
+  assert.match(app,/async function reverseKingGame\(courtNumber:number,gameNumber:number\)/);
+  assert.match(app,/eq\('court_number',courtNumber\)\.eq\('game_number',gameNumber\)\.maybeSingle\(\)/);
+  assert.match(app,/supabase\.rpc\('reverse_past_game_guarded',\{p_game_id:game\.id,p_facility_id:activeFacility\.id\}\)/);
+  assert.match(app,/action:\(\)=>reverseKingGame\(courtNumber,expectedGame\)/);
+  assert.match(retired,/revoke execute on function public\.reverse_king_game\(\) from authenticated/);
+  assert.match(retired,/revoke execute on function public\.reverse_next_game\(\) from authenticated/);
 });

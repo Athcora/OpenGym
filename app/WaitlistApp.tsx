@@ -1073,7 +1073,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     const {data:nextTeams}=await supabase.from('king_teams').select('name').eq('status','current').eq('court_number',courtNumber).order('court_side');
     await refresh();
     const advancedLabels=(nextTeams??[]).map(team=>team.name).join(' and ');
-    if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:occupiedWaitingTeams===0?'The game advanced. No teams were waiting, so the same two teams will replay.':`${advancedLabels||'The next teams'} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success'});
+    if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:occupiedWaitingTeams===0?'The game advanced. No teams were waiting, so the same two teams will replay.':`${advancedLabels||'The next teams'} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:()=>reverseKingGame(courtNumber,expectedGame),cancelLabel:'Continue',cancelTone:'success'});
   }
   async function recordKingWinner(courtNumber:number,winnerId:string,confirmedGame?:number){
     const winnerTeamName=kingTeams.find(team=>team.id===winnerId)?.name??'The winning team';
@@ -1084,10 +1084,16 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     const prompts=(data?.rejoin_prompts??[]) as {id:string;user_id:string|null}[];
     for(const prompt of prompts){if(prompt.user_id)await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.id}}});}
     await refresh();
-    if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:data?.winner_stays===false?`${winnerTeamName} has hit the max number of consecutive games and will sit out. If this was a mistake, reverse the advancement.`:`${winnerTeamName} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:reverseKingGame,cancelLabel:'Continue',cancelTone:'success'});
+    if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:data?.winner_stays===false?`${winnerTeamName} has hit the max number of consecutive games and will sit out. If this was a mistake, reverse the advancement.`:`${winnerTeamName} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:()=>reverseKingGame(courtNumber,expectedGame),cancelLabel:'Continue',cancelTone:'success'});
   }
-  async function reverseKingGame(){
-    setBusy(true);const {data,error}=await supabase.rpc('reverse_king_game');setBusy(false);
+  async function reverseKingGame(courtNumber:number,gameNumber:number){
+    const activeFacility=facilityRef.current;
+    setBusy(true);
+    if(!activeFacility||!await ensureFacilityContext(activeFacility)){setBusy(false);return;}
+    const {data:game,error:lookupError}=await supabase.from('past_games').select('id').eq('facility_id',activeFacility.id).eq('court_number',courtNumber).eq('game_number',gameNumber).maybeSingle();
+    if(lookupError||!game){setBusy(false);setNotice({title:'Could not reverse the advancement',message:lookupError?.message??'This game has already changed. Refresh and try again.'});return;}
+    const {data,error}=await supabase.rpc('reverse_past_game_guarded',{p_game_id:game.id,p_facility_id:activeFacility.id});
+    setBusy(false);
     if(error){setNotice({title:'Could not reverse the advancement',message:error.message});return;}
     await broadcastQueueRefresh();await refresh();setNotice({title:'Advancement reversed',message:data?.message??'The previous teams and game were restored.'});
   }

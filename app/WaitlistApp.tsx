@@ -5,6 +5,7 @@ import type { User } from '@supabase/supabase-js';
 import { enablePush, pushSupported } from './push';
 import { supabase } from './supabase';
 import { translateUiText, type AppLanguage } from './i18n';
+import { shouldShowRemoteTeamAdvanceNotice } from './teamAdvanceNotice.mjs';
 import './admin-player.css';
 
 type PlayerStatus = 'current' | 'waiting' | 'sitout' | 'rejoin' | 'left';
@@ -404,9 +405,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
       .on('broadcast',{event:'team_game_advanced'},({payload})=>{
         const update=payload as {courtNumber:number;actorUserId:string|null;actorName:string};
         const player=ownPlayerRef.current;
-        const shouldNotify=adminAccess.current||ownHostStatus.current||Boolean(player&&(
-          player.status!=='current'||player.court_number===update.courtNumber
-        ));
+        const shouldNotify=shouldShowRemoteTeamAdvanceNotice({actorUserId:update.actorUserId,sessionUserId:activeSession.user.id,isAdmin:adminAccess.current,isHost:ownHostStatus.current,player,courtNumber:update.courtNumber});
         if(shouldNotify)setNotice({title:'Next game advanced',message:`${update.actorName} has advanced the next game. If you think this is a mistake, let an admin or host know.`});
       })
       .on('postgres_changes',{event:'*',schema:'public',table:'king_teams'},scheduleRefresh)

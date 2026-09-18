@@ -38,6 +38,15 @@
 - `supabase/fix-reverse-game-facility-scope.sql`
 - `tests/reverse-facility-scope.test.mjs`
 
+## Tests and browser verification
+
+- `node --test tests/reverse-facility-scope.test.mjs`: 3/3 passed.
+- `node --test tests/*.test.mjs`: 29/29 passed.
+- `pnpm exec eslint . --ignore-pattern dist --ignore-pattern .next`: passed.
+- Production SQL editor: migration completed successfully with no rows returned; subsequent function-definition audit confirmed the scoped replacement is deployed.
+- Public browser: reloaded the live entry flow and checked browser warnings/errors; the page rendered normally and the captured console had no warnings or errors.
+- The Windows shell does not expose `npm`; `pnpm run build` also exposes a Windows-incompatible POSIX environment assignment in `package.json` (`WRANGLER_LOG_PATH=...`). A direct Vinext invocation started its build analysis but the wrapped process returned after the first transform line without a conclusive completion code. This environmental build-wrapper issue is recorded rather than reported as a product build pass.
+
 ## Exact next action
 
-Run the facility-scope regression test and full local suite, commit/push the deployed migration, then build an isolated two-facility fixture to test actual Next Game and three-way Reverse behavior without touching PHR/Ocean queues.
+Create a disposable two-facility fixture (not PHR/Ocean), test real regular/rejoin/team rotation/King Next Game and three-way Reverse sequences against the deployed RPCs, then update this log with the exact state assertions and any additional fixes.

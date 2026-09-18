@@ -1073,7 +1073,8 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     const {data:nextTeams}=await supabase.from('king_teams').select('name').eq('status','current').eq('court_number',courtNumber).order('court_side');
     await refresh();
     const advancedLabels=(nextTeams??[]).map(team=>team.name).join(' and ');
-    if(!prompts.some(prompt=>prompt.user_id===user?.id))setNotice({title:'Advancement complete',message:occupiedWaitingTeams===0?'The game advanced. No teams were waiting, so the same two teams will replay.':`${advancedLabels||'The next teams'} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:()=>reverseKingGame(courtNumber,expectedGame),cancelLabel:'Continue',cancelTone:'success'});
+    const currentUserNeedsRejoin=prompts.some(prompt=>prompt.user_id===user?.id);
+    if(operator||!currentUserNeedsRejoin)setNotice({title:'Advancement complete',message:occupiedWaitingTeams===0?'The game advanced. No teams were waiting, so the same two teams will replay.':`${advancedLabels||'The next teams'} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:()=>reverseKingGame(courtNumber,expectedGame),cancelLabel:'Continue',cancelTone:'success'});
   }
   async function recordKingWinner(courtNumber:number,winnerId:string,confirmedGame?:number){
     const winnerTeamName=kingTeams.find(team=>team.id===winnerId)?.name??'The winning team';

@@ -43,3 +43,8 @@ test('immediate team reversal uses the observed Past Game through the guarded RP
   assert.match(retired,/revoke execute on function public\.reverse_king_game\(\) from authenticated/);
   assert.match(retired,/revoke execute on function public\.reverse_next_game\(\) from authenticated/);
 });
+
+test('an operator keeps the immediate team-reversal modal even when their account has a rejoin prompt',()=>{
+  assert.match(app,/const currentUserNeedsRejoin=prompts\.some\(prompt=>prompt\.user_id===user\?\.id\);/);
+  assert.match(app,/if\(operator\|\|!currentUserNeedsRejoin\)setNotice\(\{title:'Advancement complete'/);
+});

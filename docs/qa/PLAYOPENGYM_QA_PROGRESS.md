@@ -67,6 +67,7 @@
 - Published the guarded client as Sites version 461 from commit `e704d481d24100689a118b7330174d469924c200` and verified that the built client bundle contains `reverse_past_game_guarded` rather than the legacy immediate-reverse call.
 - Live browser continuation on disposable fixture `qa-interleaving-20260917`: after signing in afresh, a Teams Mode Court 1 advance moved Game 4 to Game 5 and retained QA1–QA12. Contrary to the intended immediate-reversal flow, no `Advancement complete` / `Reverse` modal was displayed after this normal Teams advance. This is an unresolved P0 UI-flow defect; do not claim the new immediate reverse path is browser-verified yet.
 - Follow-up `a37471b` changes the completion-modal condition so an operator always retains the immediate Reverse action even if their account has a rejoin prompt. Targeted regression coverage passes 6/6 and full suite passes 37/37. It is published as Sites version 462; live browser retest remains next.
+- **v462 live retest failed:** a freshly authenticated QA administrator on the disposable fixture advanced Teams Court 1 from Game 5 to Game 6. QA1–QA12 remained current, but no `Advancement complete` dialog or immediate Reverse action rendered. The source proves `operator` is `admin || host`, so the new condition should have applied. Treat this as unresolved; the next investigation must establish whether the custom-domain client is serving the v462 asset or whether the post-advance state update is clearing the notice.
 
 ## Files changed this run
 

@@ -71,6 +71,11 @@
 - Root cause proved: `rotateTeamCourt` broadcasts `team_game_advanced`; the initiating admin's own asynchronous broadcast handler could subsequently replace `Advancement complete` with `Next game advanced`. Added `app/teamAdvanceNotice.mjs`; the handler now ignores self-originated team-advance broadcasts while preserving remote operator/affected-player notifications. `tests/team-advance-notice.test.mjs` is an executable regression test for that behavior.
 - Published commit `2e6b420a13d7d6eb9fdab5d012d3d36a3cf28ca0` as Sites version 463. Targeted test passed 2/2; full suite passed 39/39; direct Vinext build completed successfully.
 - Live browser verification on disposable `qa-interleaving-20260917` passed for Teams rotation: a fresh QA admin advanced Game 6 to Game 7, saw `Advancement complete` with immediate Reverse, then clicked Reverse and restored Game 6 with QA1–QA12 still intact. A stale-action check also passed: kept that Game 7 Reverse open, advanced once more from a second QA admin tab, then invoked the old Reverse; it rejected with `Only the most recent game on this court can be reversed.`
+- **Run 3 King/Teams Rejoin immediate-Reverse checkpoint completed.** The first Sites v464 archive was built from stale client output, despite its source commit containing the King completion-modal condition; inspecting the live module proved it still used the old `!currentUserNeedsRejoin` guard. Rebuilt from the current source and published the actual client change as Sites v465 from `0d91887`. Live King browser verification on disposable `qa-interleaving-20260917` then passed: King advancement showed `Advancement complete` and immediate Reverse; Reverse restored the immediately preceding game and roster. A second independent QA administrator validly advanced the next King game while the original completion action remained open; using the old Reverse then rejected with `Only the most recent game on this court can be reversed.`
+- Verified the corrected King completion/Reverse UI on both default desktop and a 390x844 mobile viewport. The mobile dialog retained both Reverse and Continue without clipping.
+- Live Teams Mode (Rejoin) verification passed on the same disposable facility in King format. Advancing a team at its consecutive-game limit produced six visible rejoin countdown placeholders, a six-pending Rejoin requests badge, and the operator completion dialog at both desktop and mobile widths. Immediate Reverse restored the prior Game 14 roster (QA1–QA12 current, no pending rejoin requests) each time.
+- Authoritative database state after the final reversal was checked from a new, read-only Supabase query: Court 1 Game 14, 12 current players, 0 rejoin players, and 13 past games. This matched the browser state.
+- **Legacy reverse ACL defect fixed and verified.** The production `reverse_king_game()` and `reverse_next_game()` functions originally retained EXECUTE for PUBLIC, anon, and authenticated. Updated `supabase/retire-unguarded-team-reverse.sql` to revoke all three roles, added regression assertions, applied the migration in Supabase, and re-queried authorization. Both functions now report `false` for PUBLIC, anon, and authenticated execute. The guarded `reverse_past_game_guarded` client flow remained live-tested after the ACL change.
 
 ## Files changed this run
 
@@ -80,6 +85,8 @@
 - `tests/reverse-facility-scope.test.mjs`
 - `supabase/guarded-game-actions.sql`
 - `tests/guarded-game-actions.test.mjs`
+- `app/teamAdvanceNotice.mjs`
+- `tests/team-advance-notice.test.mjs`
 - `app/WaitlistApp.tsx`
 - `tests/court-reversal.test.mjs`
 - `supabase/preserve-empty-rotation-teams.sql`
@@ -98,7 +105,10 @@
 - Production SQL editor: migration completed successfully with no rows returned; subsequent function-definition audit confirmed the scoped replacement is deployed.
 - Public browser: reloaded the live entry flow and checked browser warnings/errors; the page rendered normally and the captured console had no warnings or errors.
 - The Windows shell does not expose `npm`; `pnpm run build` also exposes a Windows-incompatible POSIX environment assignment in `package.json` (`WRANGLER_LOG_PATH=...`). A direct Vinext invocation started its build analysis but the wrapped process returned after the first transform line without a conclusive completion code. This environmental build-wrapper issue is recorded rather than reported as a product build pass.
+- `node --test tests/team-advance-notice.test.mjs`: 3/3 passed after the actual King completion path was rebuilt.
+- `node --test tests/*.test.mjs`: 40/40 passed after the live-build correction and again after the legacy reverse ACL hardening.
+- A Windows `cmd` Vinext build completed client compilation and produced the v465 client asset used in the successful live verification.
 
 ## NEXT SESSION — START HERE
 
-Do not redo the completed Teams-rotation immediate-Reverse investigation. It is fixed in `2e6b420`, published as Sites v463, and live verified in `e20978b`: Game 6→7 showed `Advancement complete`/Reverse; immediate Reverse restored Game 6 with QA1–QA12; an old Reverse rejected after a later advance. Continue Run 3 by verifying immediate completion-modal Reverse for King of the Court and Teams Rejoin on disposable QA facilities, including rejoin prompts. Then inspect deployed ACLs for legacy `reverse_king_game()` and `reverse_next_game()` to verify no `PUBLIC` execute privilege remains. Preserve PHR and Ocean Air. Update this checkpoint with each outcome before moving to the broader player/host/admin action inventory.
+The Teams immediate-Reverse, King immediate-Reverse/stale-action, Teams Mode (Rejoin) prompts/reversal, responsive modal, authoritative-state, and legacy-RPC ACL checkpoint is complete. Do not repeat it unless a later change touches its code or SQL. Begin the next Run 3 task: a disposable-facility player/host/admin action inventory. Start with one facility in Regular waitlist and one in Rejoin waitlist; exercise player Join, Leave, Group Up/accept/decline, Sit Out/Unsit, Swap request/accept/decline, and Next Game; then promote/demote a host and verify host-only actions and permission cap. For every mutation, record browser state, query the facility-scoped authoritative state, and refresh/reconnect. Use mobile and desktop for UI actions and preserve PHR/Ocean Air.

@@ -6,10 +6,10 @@ const sql=readFileSync(new URL('../supabase/reverse-latest-court-game.sql',impor
 const css=readFileSync(new URL('../app/globals.css',import.meta.url),'utf8');
 test('Past games exposes reversal only to operators on each court latest card',()=>{
   assert.match(app,/operator&&games.find\(item=>item.court_number===game.court_number\)\?\.id===game.id/);
-  assert.match(app,/rpc\('reverse_past_game',\{p_game_id:game.id\}\)/);
+  assert.match(app,/rpc\('reverse_past_game_guarded',\{p_game_id:game.id,p_facility_id:facilityRef\.current\?\.id\}\)/);
   assert.match(app,/disabled=\{busy\|\|!game.reversible\}/);
   assert.match(app,/async function loadPastGames\(\)\{if\(!await ensureFacilityContext\(\)\)return;/);
-  assert.match(app,/if\(!await ensureFacilityContext\(\)\)return;\s*const \{data,error\}=await supabase\.rpc\('reverse_past_game'/);
+  assert.match(app,/if\(!await ensureFacilityContext\(\)\)return;\s*const \{data,error\}=await supabase\.rpc\('reverse_past_game_guarded'/);
   assert.match(app,/screenRef\.current==='history'&&document\.visibilityState==='visible'/);
 });
 test('Past games uses the compact rounded reverse action',()=>{

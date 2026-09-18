@@ -3,9 +3,9 @@
 ## Run metadata
 
 - Branch / starting HEAD: `main` / `ef829c9e305bedfba9667d1c09b11e510ef759e9`
-- Phase: reversal facility-isolation repair, then isolated behavioral QA
-- Scope: Next Game, Reverse Past Game, court/team/group/rejoin integrity only
-- Exact current task: inspect the deployed RPC bodies and build an isolated multi-facility behavioral test plan before making changes.
+- Phase: Run 2 concurrency hardening; live multi-client tests remain
+- Scope: Next Game, Reverse Past Game, court/team/group/rejoin integrity, concurrency and facility context
+- Exact current task: deploy and browser-verify expected-facility/game guards, then exercise them from isolated clients.
 
 ## Completed
 
@@ -30,6 +30,16 @@
 - Historical SQL files are not canonical runtime evidence.
 - Many tests are source-contract assertions or simplified models and cannot replace live RPC testing.
 - Legacy reversal records created before this migration may contain globally captured snapshots. The new reversal function filters every snapshot item by the active facility before merging, so those records cannot introduce another facility's row.
+- Confirmed Run-2 defect: `user_facility_sessions` is shared across a user's browser tabs. Existing client `ensureFacilityContext()` calls could race with another tab's `select_facility()`, and global advisory locks serialized requests but did not make a repeated Next Game request idempotent.
+
+## Run 2 concurrency work completed
+
+- Added `supabase/guarded-game-actions.sql` and deployed it to production.
+- New public guarded RPCs require the client-visible facility UUID and current court game number for all Next Game paths. They lock the shared facility-session row, verify the expected facility, lock the intended court, and reject a stale game before invoking the canonical state transition.
+- Reversal now has an expected-facility guarded entrypoint for the same multi-tab protection.
+- The direct, unguarded Next/Reverse RPC grants were revoked from `authenticated`; the guarded entrypoints are the only browser-callable variants.
+- Updated all standard, team rotation, King, and Past Game UI call paths to use these guarded RPCs.
+- Added `tests/guarded-game-actions.test.mjs`; full static regression suite currently passes 32/32.
 
 ## Files changed this run
 
@@ -37,6 +47,10 @@
 - `docs/qa/PLAYOPENGYM_QA_PROGRESS.md`
 - `supabase/fix-reverse-game-facility-scope.sql`
 - `tests/reverse-facility-scope.test.mjs`
+- `supabase/guarded-game-actions.sql`
+- `tests/guarded-game-actions.test.mjs`
+- `app/WaitlistApp.tsx`
+- `tests/court-reversal.test.mjs`
 
 ## Tests and browser verification
 
@@ -49,4 +63,4 @@
 
 ## Exact next action
 
-Create a disposable two-facility fixture (not PHR/Ocean), test real regular/rejoin/team rotation/King Next Game and three-way Reverse sequences against the deployed RPCs, then update this log with the exact state assertions and any additional fixes.
+Publish the guarded browser client, then create a disposable active two-facility fixture (not PHR/Ocean) and run simultaneous/double-submit Next and Reverse tests with state assertions. Test multi-tab facility switching explicitly before proceeding to roster-mutation races.

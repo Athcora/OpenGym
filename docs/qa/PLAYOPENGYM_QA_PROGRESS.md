@@ -3,7 +3,7 @@
 ## Run metadata
 
 - Branch / starting HEAD: `main` / `ef829c9e305bedfba9667d1c09b11e510ef759e9`
-- Phase: Run 2 concurrency hardening; live multi-client tests remain
+- Phase: Run 2 concurrency hardening; standard Next Game race is live-verified, with team/reverse/facility-switch races remaining
 - Scope: Next Game, Reverse Past Game, court/team/group/rejoin integrity, concurrency and facility context
 - Exact current task: deploy and browser-verify expected-facility/game guards, then exercise them from isolated clients.
 
@@ -44,6 +44,11 @@
 - Browser reproduction on fixture A with two independent administrator sessions: both opened the Game 1 confirmation, then confirmed simultaneously. The queue advanced from Game 1 to Game 3. Root cause: the modal passed `advanceGame` by reference, so the second confirmation read a realtime-refreshed Game 2 rather than the Game 1 it displayed.
 - Fixed the modal-time race by capturing the displayed court game in the confirmation action. Team rotation and King confirmation paths now carry their displayed game explicitly as well.
 - `node --test tests/*.test.mjs` after the modal fix: 33/33 passed.
+- First browser retest of that implementation still reproduced the issue (two Game 1 confirmations advanced the QA fixture to Game 3). The `ask()` helper's function-identity capture was not a reliable boundary for the rendered action.
+- Replaced the helper-level special case with explicit value capture at every regular Next Game confirmation entrypoint: the player action, single-court admin/host action, and per-court action now store both the displayed court number and game number before opening the modal.
+- Added a regression assertion that all of those entrypoints pass the captured values to `advanceGame`, and updated the pre-existing green-confirmation assertion for the wrapped action.
+- Published the fix to the live app and GitHub in commit `bf438f90bf9bdf2df6aead2d95b1fcb65b6bf12e`.
+- Live browser verification used disposable fixture `qa-concurrency-20260917-b`, never PHR or Ocean Air. Two isolated administrator sessions opened the same Game 3 confirmation and confirmed concurrently. The fixture advanced exactly once to Game 4; both sessions synchronized to Game 4, and the losing request visibly showed `This game has already changed. Refresh and try again.` A refresh also showed the persisted Game 4 state before the unauthenticated entry screen loaded.
 
 ## Files changed this run
 
@@ -59,16 +64,12 @@
 ## Tests and browser verification
 
 - `node --test tests/reverse-facility-scope.test.mjs`: 3/3 passed.
-- `node --test tests/*.test.mjs`: 29/29 passed.
+- `node --test tests/*.test.mjs`: 33/33 passed after the explicit-value capture correction.
 - `pnpm exec eslint . --ignore-pattern dist --ignore-pattern .next`: passed.
 - Production SQL editor: migration completed successfully with no rows returned; subsequent function-definition audit confirmed the scoped replacement is deployed.
 - Public browser: reloaded the live entry flow and checked browser warnings/errors; the page rendered normally and the captured console had no warnings or errors.
 - The Windows shell does not expose `npm`; `pnpm run build` also exposes a Windows-incompatible POSIX environment assignment in `package.json` (`WRANGLER_LOG_PATH=...`). A direct Vinext invocation started its build analysis but the wrapped process returned after the first transform line without a conclusive completion code. This environmental build-wrapper issue is recorded rather than reported as a product build pass.
 
-## Exact next action
-
-Publish the modal-version-capture client change, then repeat the exact two-admin Game 1 simultaneous confirmation test on a fresh fixture or reset fixture B. Assert one advance only (Game 1 -> Game 2), one past-game row, and clean stale rejection in the second tab. Then test guarded multi-tab facility switching and Next-vs-Reverse.
-
 ## NEXT SESSION — START HERE
 
-Publish and browser-test the uncommitted modal-version-capture fix in `app/WaitlistApp.tsx`. The verified reproduction is documented above: on fixture A, two old Game 1 dialogs became Game 3 because the second dialog reread current state. After publishing, use fixture B for a clean two-admin simultaneous confirmation test. Do not restart facility-isolation work or touch PHR/Ocean queues. Verify the second dialog receives a stale-game error and that the authoritative fixture has exactly one new past-game row.
+Continue Run 2 from the next unresolved concurrency family; do not repeat the verified standard single-court race. The standard race is fixed and live-verified at deployed version 460: on disposable fixture `qa-concurrency-20260917-b`, two admin Game 3 confirmations yielded exactly Game 4 and one visible stale-game rejection. First inspect the currently deployed guarded RPC definitions, then use only disposable QA facilities to browser-test: (1) a two-court per-court Next Game stale-confirmation race, (2) Teams rotation and King of the Court stale confirmation races, and (3) a guarded Next-vs-Reverse/facility-switch interleaving. Preserve PHR and Ocean Air. For any confirmed defect, add a behavioral regression test, deploy it, browser-test it, and update this file before stopping.

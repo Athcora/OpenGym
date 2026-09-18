@@ -40,6 +40,10 @@
 - The direct, unguarded Next/Reverse RPC grants were revoked from `authenticated`; the guarded entrypoints are the only browser-callable variants.
 - Updated all standard, team rotation, King, and Past Game UI call paths to use these guarded RPCs.
 - Added `tests/guarded-game-actions.test.mjs`; full static regression suite currently passes 32/32.
+- Created two disposable active fixtures: `qa-concurrency-20260917-a` and `qa-concurrency-20260917-b`. They are separate from PHR and Ocean Air.
+- Browser reproduction on fixture A with two independent administrator sessions: both opened the Game 1 confirmation, then confirmed simultaneously. The queue advanced from Game 1 to Game 3. Root cause: the modal passed `advanceGame` by reference, so the second confirmation read a realtime-refreshed Game 2 rather than the Game 1 it displayed.
+- Fixed the modal-time race by capturing the displayed court game in the confirmation action. Team rotation and King confirmation paths now carry their displayed game explicitly as well.
+- `node --test tests/*.test.mjs` after the modal fix: 33/33 passed.
 
 ## Files changed this run
 
@@ -63,4 +67,8 @@
 
 ## Exact next action
 
-Publish the guarded browser client, then create a disposable active two-facility fixture (not PHR/Ocean) and run simultaneous/double-submit Next and Reverse tests with state assertions. Test multi-tab facility switching explicitly before proceeding to roster-mutation races.
+Publish the modal-version-capture client change, then repeat the exact two-admin Game 1 simultaneous confirmation test on a fresh fixture or reset fixture B. Assert one advance only (Game 1 -> Game 2), one past-game row, and clean stale rejection in the second tab. Then test guarded multi-tab facility switching and Next-vs-Reverse.
+
+## NEXT SESSION — START HERE
+
+Publish and browser-test the uncommitted modal-version-capture fix in `app/WaitlistApp.tsx`. The verified reproduction is documented above: on fixture A, two old Game 1 dialogs became Game 3 because the second dialog reread current state. After publishing, use fixture B for a clean two-admin simultaneous confirmation test. Do not restart facility-isolation work or touch PHR/Ocean queues. Verify the second dialog receives a stale-game error and that the authoritative fixture has exactly one new past-game row.

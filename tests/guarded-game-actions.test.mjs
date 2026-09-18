@@ -19,6 +19,12 @@ test('all Next Game paths and past-game reversal carry the facility and observed
   assert.match(app,/rpc\('reverse_past_game_guarded',\{p_game_id:game\.id,p_facility_id:facilityRef\.current\?\.id\}\)/);
 });
 
+test('standard confirmation captures the displayed game before realtime can refresh it',()=>{
+  assert.match(app,/const confirmedAction=action===advanceGame/);
+  assert.match(app,/\(\)=>advanceGame\(me\?\.court_number\?\?courts\[0\]\?\.court_number\?\?1,courts\.find/);
+  assert.match(app,/const expectedGame=confirmedGame\?\?courts\.find/);
+});
+
 test('direct vulnerable advancement and reversal RPCs are unavailable to authenticated clients',()=>{
   for(const signature of ['end_court_game(integer)','end_team_rotation(integer)','end_team_king_game(integer,uuid)','reverse_past_game(uuid)']){
     assert.match(sql,new RegExp(`revoke execute on function public\\.${signature.replace(/[()]/g,'\\$&')} from authenticated`));

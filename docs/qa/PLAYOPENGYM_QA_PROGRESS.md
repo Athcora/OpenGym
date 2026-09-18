@@ -66,6 +66,7 @@
 - Run 3 inventory found a P0 gap in the immediate Teams/KOC completion-modal Reverse path: the client called the deployed legacy `reverse_king_game()` RPC, whose production definition lacked both facility and observed-game guards. Replaced it with a lookup for the displayed Court/Game Past Game record followed by `reverse_past_game_guarded`; the completion modal now captures the observed court/game. Added `supabase/retire-unguarded-team-reverse.sql`, deployed its authenticated-role revokes in production, and added a regression test. Full suite passes 36/36.
 - Published the guarded client as Sites version 461 from commit `e704d481d24100689a118b7330174d469924c200` and verified that the built client bundle contains `reverse_past_game_guarded` rather than the legacy immediate-reverse call.
 - Live browser continuation on disposable fixture `qa-interleaving-20260917`: after signing in afresh, a Teams Mode Court 1 advance moved Game 4 to Game 5 and retained QA1–QA12. Contrary to the intended immediate-reversal flow, no `Advancement complete` / `Reverse` modal was displayed after this normal Teams advance. This is an unresolved P0 UI-flow defect; do not claim the new immediate reverse path is browser-verified yet.
+- Follow-up `a37471b` changes the completion-modal condition so an operator always retains the immediate Reverse action even if their account has a rejoin prompt. Targeted regression coverage passes 6/6 and full suite passes 37/37. It is published as Sites version 462; live browser retest remains next.
 
 ## Files changed this run
 

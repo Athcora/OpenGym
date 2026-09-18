@@ -4,5 +4,7 @@ export function shouldShowRemoteTeamAdvanceNotice({actorUserId,sessionUserId,isA
 }
 
 export function shouldShowTeamCompletionNotice({isOperator,currentUserNeedsRejoin}){
-  return isOperator||!currentUserNeedsRejoin;
+  // Operators keep the completion modal even when their own account is also
+  // included in the rejoin prompts, so they can immediately correct a mistake.
+  return Boolean(isOperator)||!currentUserNeedsRejoin;
 }

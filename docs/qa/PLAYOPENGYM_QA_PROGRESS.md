@@ -50,6 +50,11 @@
 - Published the fix to the live app and GitHub in commit `bf438f90bf9bdf2df6aead2d95b1fcb65b6bf12e`.
 - Live browser verification used disposable fixture `qa-concurrency-20260917-b`, never PHR or Ocean Air. Two isolated administrator sessions opened the same Game 3 confirmation and confirmed concurrently. The fixture advanced exactly once to Game 4; both sessions synchronized to Game 4, and the losing request visibly showed `This game has already changed. Refresh and try again.` A refresh also showed the persisted Game 4 state before the unauthenticated entry screen loaded.
 - Live two-court verification used that same disposable fixture after enabling Court 2. Two isolated administrator sessions opened the Court 2 Game 5 confirmation and confirmed concurrently. Court 2 advanced exactly once to Game 6; the losing session showed the stale-game rejection, and Court 1 remained on Game 4. This confirms the expected-game precondition is per-court rather than incorrectly shared across courts.
+- Confirmed and repaired a P0 Teams Mode rotation defect on the same disposable fixture. With two full active teams and no eligible waiting team, the original `end_team_rotation` path could temporarily render both active rosters empty even though the completion message said the teams would replay. The normal-mode implementation moved both teams to waiting and relied on a subsequent fill to recover them.
+- Added and deployed `supabase/preserve-empty-rotation-teams.sql`. For normal Teams Mode with zero eligible waiting teams it now keeps both current teams on the current court and explicitly keeps all eligible members `current`; Teams Mode (Rejoin) retains its prior deficit/rejoin behavior.
+- Added `tests/teams-empty-rotation.test.mjs`, which asserts the no-replacement preservation path and guards the separate rejoin-mode behavior.
+- Live browser retest after deployment, using QA Concurrency B only: a single Court 1 advance moved Game 7 to Game 8 and retained all 12 players in Teams 1 and 2; Court 2 stayed unchanged.
+- Live stale-confirmation retest after deployment: two isolated QA administrators confirmed the Court 1 Game 8 Teams Mode rotation simultaneously. The fixture advanced exactly once to Game 9; the losing session showed `This game has already changed. Refresh and try again.`; all 12 players remained in Teams 1 and 2; Court 2 remained unchanged.
 
 ## Files changed this run
 
@@ -61,11 +66,14 @@
 - `tests/guarded-game-actions.test.mjs`
 - `app/WaitlistApp.tsx`
 - `tests/court-reversal.test.mjs`
+- `supabase/preserve-empty-rotation-teams.sql`
+- `tests/teams-empty-rotation.test.mjs`
 
 ## Tests and browser verification
 
 - `node --test tests/reverse-facility-scope.test.mjs`: 3/3 passed.
-- `node --test tests/*.test.mjs`: 33/33 passed after the explicit-value capture correction.
+- `node --test tests/teams-empty-rotation.test.mjs`: 2/2 passed.
+- `node --test tests/*.test.mjs`: 35/35 passed after the Teams Mode preservation repair.
 - `pnpm exec eslint . --ignore-pattern dist --ignore-pattern .next`: passed.
 - Production SQL editor: migration completed successfully with no rows returned; subsequent function-definition audit confirmed the scoped replacement is deployed.
 - Public browser: reloaded the live entry flow and checked browser warnings/errors; the page rendered normally and the captured console had no warnings or errors.
@@ -73,4 +81,4 @@
 
 ## NEXT SESSION — START HERE
 
-Continue Run 2 from the next unresolved concurrency family; do not repeat either verified regular-mode stale-confirmation race. At deployed version 460 on disposable fixture `qa-concurrency-20260917-b`, the single-court Game 3 race advanced once to Game 4, and the two-court Court 2 Game 5 race advanced once to Game 6 while Court 1 stayed on Game 4; both losing requests visibly received the stale-game rejection. Next, use only a disposable QA facility to browser-test Teams rotation and King of the Court stale confirmations, then a guarded Next-vs-Reverse/facility-switch interleaving. Preserve PHR and Ocean Air. For any confirmed defect, add a behavioral regression test, deploy it, browser-test it, and update this file before stopping.
+Continue Run 2 with the next unresolved concurrency family; do not repeat the verified regular or Teams Mode stale-confirmation races. On disposable fixture `qa-concurrency-20260917-b` at version 460, regular single-court, regular two-court, and Teams Mode Court 1 stale confirmations are verified to advance once only; the Teams Mode no-waiting case also preserves both active teams and all 12 players. Next, use only a disposable QA facility to browser-test King of the Court stale confirmations, then Teams Mode (Rejoin), and then guarded Next-vs-Reverse/facility-switch interleavings. Preserve PHR and Ocean Air. For every confirmed defect, add a behavioral regression test, deploy it, browser-test it, run `node --test tests/*.test.mjs`, and update this file before stopping.

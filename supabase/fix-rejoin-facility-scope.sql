@@ -90,3 +90,82 @@ end; $$;
 
 grant execute on function public.answer_rejoin_prompt(uuid,text) to authenticated;
 grant execute on function public.cleanup_king_rejoin_expirations() to authenticated;
+
+-- Rejoin timeouts ultimately call leave_waitlist.  Keep that mutation and the
+-- operator-managed (no-phone) rejoin path inside the operator's facility too.
+-- These functions predate facilities and otherwise select the first row for a
+-- user/request across every gym.
+create or replace function public.leave_waitlist()
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare player public.waitlist_players; fid uuid:=public.current_facility_id();
+begin
+  perform pg_advisory_xact_lock(7429101);
+  select * into player from public.waitlist_players
+    where facility_id=fid and user_id=auth.uid() for update;
+  if player.id is null or player.status='left' then
+    return jsonb_build_object('message','You are not currently in this facility waitlist.');
+  end if;
+  update public.waitlist_players
+    set status='left',queue_position=null,rejoin_expires_at=null,updated_at=now()
+    where id=player.id and facility_id=fid;
+  if player.status='current' then
+    update public.waitlist_players set status='current',updated_at=now()
+      where facility_id=fid and id=(
+        select id from public.waitlist_players
+          where facility_id=fid and status='waiting'
+          order by queue_position limit 1
+      );
+  end if;
+  return jsonb_build_object('message','You left the waitlist.');
+end; $$;
+
+create or replace function public.admin_list_offline_rejoins()
+returns table(id uuid,display_name text,queue_position bigint,expires_at timestamptz)
+language plpgsql security definer set search_path=public as $$
+declare fid uuid:=public.current_facility_id();
+begin
+  if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
+  update public.waitlist_players set status='left',queue_position=null,rejoin_expires_at=null,updated_at=now()
+    where facility_id=fid and user_id is null and status='rejoin' and rejoin_expires_at<=now();
+  return query select p.id,p.display_name,p.queue_position,p.rejoin_expires_at
+    from public.waitlist_players p
+    where p.facility_id=fid and p.user_id is null and p.status='rejoin'
+    order by p.queue_position;
+end; $$;
+
+create or replace function public.admin_answer_offline_rejoin(p_player_id uuid,p_stay boolean)
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare
+  player public.waitlist_players; active_count integer; max_players integer;
+  new_status text; fid uuid:=public.current_facility_id();
+begin
+  if not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
+  select * into player from public.waitlist_players
+    where id=p_player_id and facility_id=fid and user_id is null and status='rejoin' for update;
+  if player.id is null then raise exception 'This rejoin request is no longer available.'; end if;
+  if player.rejoin_expires_at<=now() then
+    update public.waitlist_players set status='left',queue_position=null,rejoin_expires_at=null,updated_at=now()
+      where id=player.id and facility_id=fid;
+    raise exception 'The 15-minute rejoin window has expired.';
+  end if;
+  perform public.save_admin_undo(case when p_stay then 'rejoin player' else 'remove rejoin player' end);
+  select count(*) into active_count from public.waitlist_players
+    where facility_id=fid and status in('current','waiting','sitout');
+  select c.max_players into max_players from public.waitlist_config c
+    where c.facility_id=fid and c.id;
+  if max_players is null then raise exception 'Facility configuration not found.'; end if;
+  new_status:=case when active_count<max_players then 'current' else 'waiting' end;
+  update public.waitlist_players
+    set status=case when p_stay then new_status else 'left' end,
+      queue_position=case when p_stay then player.queue_position else null end,
+      rejoin_expires_at=null,updated_at=now()
+    where id=player.id and facility_id=fid;
+  if p_stay then
+    perform public.log_waitlist_operator_action('admin_rejoin','returned '||player.display_name||case when new_status='current' then ' directly to the current game.' else ' to their saved queue position.' end);
+  end if;
+  return jsonb_build_object('message',case when p_stay and new_status='current' then player.display_name||' rejoined the current game.' when p_stay then player.display_name||' rejoined at their saved position.' else player.display_name||' was removed.' end);
+end; $$;
+
+grant execute on function public.leave_waitlist() to authenticated;
+grant execute on function public.admin_list_offline_rejoins() to authenticated;
+grant execute on function public.admin_answer_offline_rejoin(uuid,boolean) to authenticated;

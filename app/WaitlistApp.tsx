@@ -506,7 +506,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
       supabase.from('admin_sessions').select('user_id').maybeSingle(),
       supabase.from('group_requests').select('id,requester_id,target_id,status').eq('status','pending'),
       supabase.from('substitute_requests').select('id,requester_id,target_id,status').eq('status','pending'),
-      supabase.from('rejoin_responses').select('id,expires_at,choice,answered_at').eq('user_id',(activeUser??user)?.id??'00000000-0000-0000-0000-000000000000').order('created_at',{ascending:false}).limit(1).maybeSingle(),
+      supabase.from('rejoin_responses').select('id,expires_at,choice,answered_at').eq('facility_id',expectedFacility?.id??'00000000-0000-0000-0000-000000000000').eq('user_id',(activeUser??user)?.id??'00000000-0000-0000-0000-000000000000').order('created_at',{ascending:false}).limit(1).maybeSingle(),
       supabase.from('geofence_return_prompts').select('id,removed_at,saved_position_until,expires_at').is('resolved_at',null).gt('expires_at',new Date().toISOString()).order('removed_at',{ascending:false}).limit(1).maybeSingle()
     ]);
     const playerRows=(p??[]) as Player[];setPlayers(playerRows);
@@ -533,7 +533,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     setRejoinResponse(latestRejoin?.choice===null?latestRejoin:null);setRejoinChecked(!rejoinError);if(rejoin?.id)rejoinLookupAttempts.current=0;
     setGeofenceReturn((geo as GeofenceReturn|null)??null);
     const uid=(activeUser??user)?.id; let own=playerRows.find(item=>item.user_id===uid)??null;
-    if(uid&&!own){const {data:storedOwn}=await supabase.from('waitlist_players').select('*').eq('user_id',uid).maybeSingle();own=(storedOwn as Player|null)??null;}
+    if(uid&&!own){const {data:storedOwn}=await supabase.from('waitlist_players').select('*').eq('facility_id',expectedFacility?.id??'00000000-0000-0000-0000-000000000000').eq('user_id',uid).maybeSingle();own=(storedOwn as Player|null)??null;}
     if(!a&&timedOut&&own&&['rejoin','left'].includes(own.status)&&!expiredRejoinHandled.current){
       expiredRejoinHandled.current=true;await expireRejoinSession();return;
     }

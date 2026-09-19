@@ -710,7 +710,9 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     // or an operator may already have rejoined this player.
     const {data:{session}}=await supabase.auth.getSession();
     if(!session)return;
-    const {data:latest,error:lookupError}=await supabase.from('waitlist_players').select('status').eq('user_id',session.user.id).maybeSingle();
+    const targetFacility=facilityRef.current;
+    if(!targetFacility||!await ensureFacilityContext(targetFacility)){expiredRejoinHandled.current=false;return;}
+    const {data:latest,error:lookupError}=await supabase.from('waitlist_players').select('status').eq('facility_id',targetFacility.id).eq('user_id',session.user.id).maybeSingle();
     if(lookupError){expiredRejoinHandled.current=false;return;}
     if(latest&&['current','waiting','sitout'].includes(latest.status)){expiredRejoinHandled.current=false;setRejoinResponse(null);return;}
     const {error}=await supabase.rpc('leave_waitlist');

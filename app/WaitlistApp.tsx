@@ -678,7 +678,8 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     if(notification.message.startsWith('HOST_REMOVED|')){hostAppointmentActive.current=false;setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:false}:player));setHostAppointmentNotice(null);setHostTutorial(false);setNotice({title:'Host permissions removed',message:notification.message.split('|')[1]||'Your Session Host permissions were removed.'});return;}
     if(notification.message.startsWith('OPERATOR_ACTION|')){setNotice({title:'An admin or host updated your player',message:notification.message.split('|')[1]||'An admin or host performed an action on your player.',cancelLabel:'Okay'});return;}
     if(/sit[\s-]?out/i.test(notification.message))return;
-    setNotice({title:notification.message.includes('wants to group with you')?'Group request':'Group update',message:notification.message});
+    const isSwapUpdate=/\b(?:substitute|swap)\b/i.test(notification.message);
+    setNotice({title:notification.message.includes('wants to group with you')?'Group request':isSwapUpdate?'Swap update':'Group update',message:notification.message});
   }
   async function clearUnreadHostNotifications(activeUserId:string,prefix:string){
     const {data}=await supabase.from('group_notifications').select('id,message').eq('user_id',activeUserId).is('read_at',null).order('created_at',{ascending:false}).limit(10);

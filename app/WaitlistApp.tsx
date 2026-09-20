@@ -674,7 +674,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     // target and must not create a second, non-actionable popup.
     if(/ wants to group with you\. \(Current game: Game \d+\)$/.test(notification.message))return;
     if(notification.message.startsWith('HOST_APPOINTED|')&&Date.now()-hostTransitionHandledAt.current<10000)return;
-    if(notification.message.startsWith('HOST_APPOINTED|')){if(!hostAppointmentActive.current){hostAppointmentActive.current=true;setOnboarding('idle');setTutorialStep(0);setHostTutorial(false);setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:true}:player));setHostAppointmentNotice(notification.message.split('|')[1]||'The admin appointed you as a Session Host.')}return;}
+    if(notification.message.startsWith('HOST_APPOINTED|')){if(!hostAppointmentActive.current){hostAppointmentActive.current=true;setOnboarding('idle');setTutorialStep(0);setHostTutorialStep(0);setHostTutorial(true);setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:true}:player));setHostAppointmentNotice(null);}return;}
     if(notification.message.startsWith('HOST_REMOVED|')){hostAppointmentActive.current=false;setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:false}:player));setHostAppointmentNotice(null);setHostTutorial(false);setNotice({title:'Host permissions removed',message:notification.message.split('|')[1]||'Your Session Host permissions were removed.'});return;}
     if(notification.message.startsWith('OPERATOR_ACTION|')){setNotice({title:'An admin or host updated your player',message:notification.message.split('|')[1]||'An admin or host performed an action on your player.',cancelLabel:'Okay'});return;}
     if(/sit[\s-]?out/i.test(notification.message))return;
@@ -689,7 +689,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   function syncOwnHostStatus(isHost:boolean,activeUserId:string){
     if(hostTrackedUserId.current!==activeUserId){hostTrackedUserId.current=activeUserId;ownHostStatus.current=isHost;return;}
     const wasHost=ownHostStatus.current;if(wasHost===isHost)return;ownHostStatus.current=isHost;
-    if(isHost){hostTransitionHandledAt.current=Date.now();hostAppointmentActive.current=true;setOnboarding('idle');setTutorialStep(0);setHostTutorial(false);setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:true}:player));setHostAppointmentNotice('The admin appointed you as a Session Host.');window.setTimeout(()=>void clearUnreadHostNotifications(activeUserId,'HOST_APPOINTED|'),250);return;}
+    if(isHost){hostTransitionHandledAt.current=Date.now();hostAppointmentActive.current=true;setOnboarding('idle');setTutorialStep(0);setHostTutorialStep(0);setHostTutorial(true);setPlayers(items=>items.map(player=>player.user_id===activeUserId?{...player,is_host:true}:player));setHostAppointmentNotice(null);window.setTimeout(()=>void clearUnreadHostNotifications(activeUserId,'HOST_APPOINTED|'),250);return;}
     hostAppointmentActive.current=false;setHostAppointmentNotice(null);setHostTutorial(false);setNotice({title:'Host permissions removed',message:'The admin removed your Session Host permissions.'});window.setTimeout(()=>void clearUnreadHostNotifications(activeUserId,'HOST_REMOVED|'),250);
   }
   function acknowledgeHostAppointment(){
@@ -763,6 +763,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     if(player.is_host){ask(`Remove ${player.display_name} as host?`,`${player.display_name} will immediately lose the Session Host controls.`,'Yes',async()=>{await rpc('admin_set_session_host',{p_player_id:player.id,p_is_host:false})},'danger');return;}
     ask(`Appoint ${player.display_name} as host?`,'This gives them temporary permission to advance games, add and move players, manage groups, substitutions, rejoin requests, and session history.','Yes',async()=>{await rpc('admin_set_session_host',{p_player_id:player.id,p_is_host:true})},'success');
   }
+  function openPermissions(player:Player){if(host&&!admin){confirmHostChange(player);return;}setPermissionPlayer(player)}
   function chooseRestriction(player:Player){setPermissionPlayer(null);confirmRestriction(player)}
   function confirmAdminSitOut(player:Player){
     if(player.status==='sitout'){void adminUnsit(player);return;}

@@ -421,6 +421,14 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'waitlist_events'},payload=>{
         const event=payload.new as {actor_user_id?:string;actor_name?:string;event_type?:string;message?:string};
         if(event.event_type==='host_appointed'||event.event_type==='host_removed')return;
+        // Team-substitute invitations need the recipient's pending-request row
+        // before their effect can render the Accept/Decline modal. Do not let
+        // the generic event notice consume this event while a websocket refresh
+        // is delayed or missing; immediately refresh the request state instead.
+        if(event.event_type==='team_substitute_invite'){
+          scheduleRefresh();
+          return;
+        }
         const quietEvents=new Set(['join','leave','add_player','admin_leave','admin_rejoin','admin_sitout','admin_move','admin_group','admin_group_remove','admin_substitute','admin_undo','admin_redo','geofence_leave','geofence_return','team_rotation','king_game']);
         if((event.event_type==='team_rotation'||event.event_type==='king_game')&&event.actor_name&&event.actor_user_id!==session?.user.id){
           const courtNumber=Number(event.message?.match(/Court (\d+)/)?.[1]??1);

@@ -108,6 +108,11 @@ begin
   update public.waitlist_players
     set status='left',queue_position=null,rejoin_expires_at=null,updated_at=now()
     where id=player.id and facility_id=fid;
+  -- Rejoin timeouts finalize through this function. Keep the selected
+  -- facility's pending prompt consistent with the player removal.
+  update public.rejoin_responses
+    set choice='leave',answered_at=now()
+    where facility_id=fid and user_id=auth.uid() and choice is null;
   if player.status='current' then
     update public.waitlist_players set status='current',updated_at=now()
       where facility_id=fid and id=(

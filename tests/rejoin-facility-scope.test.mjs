@@ -25,6 +25,7 @@ test('expiration cleanup and client prompt lookup cannot mutate or surface anoth
 
 test('timeout, leave, and operator offline-Rejoin helpers are facility-scoped too',()=>{
   assert.match(sql,/function public\.leave_waitlist\(\)[\s\S]*where facility_id=fid and user_id=auth\.uid\(\) for update/);
+  assert.match(sql,/function public\.leave_waitlist\(\)[\s\S]*update public\.rejoin_responses[\s\S]*where facility_id=fid and user_id=auth\.uid\(\) and choice is null/);
   assert.match(sql,/function public\.leave_waitlist\(\)[\s\S]*where facility_id=fid and status='waiting'/);
   assert.match(sql,/function public\.admin_list_offline_rejoins\(\)[\s\S]*where facility_id=fid and user_id is null and status='rejoin'/);
   assert.match(sql,/function public\.admin_answer_offline_rejoin\(p_player_id uuid,p_stay boolean\)[\s\S]*id=p_player_id and facility_id=fid and user_id is null and status='rejoin'/);

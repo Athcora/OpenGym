@@ -175,6 +175,11 @@ For every second-device procedure, use a disposable facility, capture desktop/mo
 - Published the change as Sites version **469**. Live desktop and 390x844 mobile verification used only disposable `qa-multidevice-20260918`: a host tapped **Permissions** for a non-host teammate and the expected `Permissions for Ipad` dialog with **Appoint as Host** and **Cancel** opened on both viewports.
 - Restored the fixture after testing. Authoritative state is `Ipad / is_host=true / current` and `Host B. / is_host=true / current`.
 
+## Host promotion tutorial follow-up (2026-09-19)
+
+- Commit `6a5c17833ccedf551b44be09cd0e40af718d4e04` changes both realtime host-promotion paths to launch the host tutorial immediately at step 1 instead of waiting behind the old appointment notice. Targeted and rendered checks passed 4/4, and Sites version 471 was published from a clean production build.
+- A physical iPad retry remains required: appoint Host B from the disposable QA facility and verify the host tutorial immediately replaces the queue. Then verify the yellow Permissions action opens the appointment confirmation without a page jump.
+
 ## NEXT SESSION — START HERE
 
 Do not repeat the completed Regular/Teams Rejoin accept, explicit Leave, timeout, facility-scope migration, Group/Swap, Next Game/Reverse, or Permissions-touch work. Continue Run 3 with the **host appointment/demotion flow** on disposable `qa-multidevice-20260918`, preserving `Ipad` as Device B: use Device A/admin to appoint two authenticated players; have Host A appoint Host B; verify Host A cannot appoint a third; then demote or remove a host and verify `is_host` clears plus a stale host session is server-rejected after refresh/reconnect. Query events/player rows after each mutation. Only ask the user for the minimal Device B action that must originate from their iPad. After hosts, continue substitute/fill-in, genuine duplicate-device, and real-device geofence validation; preserve PHR and Ocean Air.

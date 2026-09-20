@@ -898,7 +898,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     const team=kingTeams.find(item=>item.id===inviteSubTeamId);const player=players.find(item=>item.id===inviteSubTargetId);if(!team||!player){setNotice({title:'Select a player',message:'Choose a player before pressing Confirm.'});return;}
     setNotice({title:`Invite ${player.display_name} as a sub?`,message:`This will invite ${player.display_name} to become a substitute for ${team.name}.`,confirm:'Send invite',actionTone:'success',cancelLabel:'Cancel',cancelTone:'danger',showBack:true,action:async()=>{if(await rpc('request_team_substitute',{p_team_id:team.id,p_target_id:player.id},false)){setInviteSubTeamId(null);setNotice({title:'Substitute invitation sent',message:`${player.display_name} must accept before joining ${team.name} as a substitute.`});}}});
   }
-  async function answerTeamSubstitute(id:string,accept:boolean){await rpc('answer_team_substitute',{p_request_id:id,p_accept:accept});}
+  async function answerTeamSubstitute(id:string,accept:boolean,teamName:string){const succeeded=await rpc('answer_team_substitute',{p_request_id:id,p_accept:accept},!accept);if(succeeded&&accept)setNotice({title:'Done',message:`You are now a substitute for ${teamName}.`});}
   function removeTeamSubstitute(substitute:TeamSubstitute){const name=substitute.player?.display_name??'this substitute';ask(`Remove ${name} as a substitute?`,'They will remain in the waitlist and may join another available team.','Remove',async()=>{await rpc('admin_remove_team_substitute',{p_substitute_id:substitute.id},false)},'danger')}
   function previewAdminGroup(){
     const selected=players.filter(player=>adminGroupIds.includes(player.id)).sort(byPosition);
@@ -956,7 +956,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     const incoming=teamSubstituteRequests.find(request=>!handledTeamSubRequestIds.current.has(request.id)&&players.find(player=>player.id===request.target_id)?.user_id===user?.id);if(!incoming)return;
     handledTeamSubRequestIds.current.add(incoming.id);
     const team=kingTeams.find(item=>item.id===incoming.team_id);const teamName=team?.name??'A team';
-    setNotice(existing=>{if(existing?.requestId===`team-sub:${incoming.id}`)return existing;return{requestId:`team-sub:${incoming.id}`,blocking:true,title:'Substitute invitation',message:`${teamName} has invited you to play as their substitute. If you accept, you will leave your current team and become a substitute for ${teamName}.`,confirm:'Accept',actionTone:'success',action:async()=>{await answerTeamSubstitute(incoming.id,true)},cancelLabel:'Decline',cancelTone:'danger',cancelAction:async()=>{await answerTeamSubstitute(incoming.id,false)}};});
+    setNotice(existing=>{if(existing?.requestId===`team-sub:${incoming.id}`)return existing;return{requestId:`team-sub:${incoming.id}`,blocking:true,title:'Substitute invitation',message:`${teamName} has invited you to play as their substitute. If you accept, you will leave your current team and become a substitute for ${teamName}.`,confirm:'Accept',actionTone:'success',action:async()=>{await answerTeamSubstitute(incoming.id,true,teamName)},cancelLabel:'Decline',cancelTone:'danger',cancelAction:async()=>{await answerTeamSubstitute(incoming.id,false,teamName)}};});
   },[teamSubstituteRequests,players,kingTeams,user?.id]);
   useEffect(()=>{
     if(!pendingNextGameEvent)return;

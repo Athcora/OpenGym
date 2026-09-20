@@ -181,7 +181,7 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .admin-tools .reset-tool,.theme-light .admin-tools .reset-tool,.theme-dark .admin-tools .reset-tool { background:#b9424f; color:#fff; border-color:#d05a66; font-weight:850; }
 .admin-tools .reset-tool:hover { background:#ce4b59; box-shadow:0 0 16px #c7485555; }
 .theme-light .admin-tools .undo-redo-controls { background:#f4f6f8; border-color:#dbe0e6; }
-.admin-player-actions { display:flex; align-items:center; gap:5px; margin-left:8px; }
+.admin-player-actions { display:flex; align-items:center; gap:5px; margin-left:8px; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
 .admin-leave-group-button { flex:0 0 auto; margin-left:8px; border:0; border-radius:9px; padding:7px 9px; background:#9a4a55; color:#fff; cursor:pointer; font-size:.66rem; font-weight:800; transition:transform .16s,box-shadow .16s,filter .16s; }
 .admin-leave-group-button:hover { transform:translateY(-1px); filter:brightness(1.08); box-shadow:0 0 16px rgba(181,82,95,.4); }
 .admin-player-actions button { border:0; border-radius:9px; padding:7px 9px; color:#fff; cursor:pointer; font-size:.66rem; font-weight:800; transition:transform .16s,box-shadow .16s,filter .16s; }

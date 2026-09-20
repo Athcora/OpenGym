@@ -10,6 +10,7 @@ test('host permission controls are rendered in standard and teams modes',()=>{
   assert.match(app,/isTeamsMode\(config\.mode\).*permissions=\{setPermissionPlayer\}/s);
   assert.match(app,/admin\|\|\(operator&&!own&&!player\.is_host&&Boolean\(player\.user_id\)\)/);
   assert.match(app,/host&&item\.user_id!==me\?\.user_id&&!item\.is_host&&Boolean\(item\.user_id\)/);
+  assert.match(app,/className="admin-player-actions" onPointerDown=\{event=>event\.stopPropagation\(\)\}/);
 });
 
 test('host cap is facility scoped and does not restrict admins',()=>{

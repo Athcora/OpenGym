@@ -231,6 +231,7 @@ function translateDynamic(value:string,language:AppLanguage):string{
   const invitePlayer=value.match(/^Invite (.+) as a sub\?$/);if(invitePlayer)return language==='es'?`¿Invitar a ${invitePlayer[1]} como suplente?`:`邀请 ${invitePlayer[1]} 成为替补？`;
   const inviteMessage=value.match(/^This will invite (.+) to become a substitute for Team (\d+)\.$/);if(inviteMessage)return language==='es'?`Esto invitará a ${inviteMessage[1]} a ser suplente del Equipo ${inviteMessage[2]}.`:`这会邀请 ${inviteMessage[1]} 成为球队 ${inviteMessage[2]} 的替补。`;
   const inviteSent=value.match(/^(.+) must accept before joining Team (\d+) as a substitute\.$/);if(inviteSent)return language==='es'?`${inviteSent[1]} debe aceptar antes de unirse al Equipo ${inviteSent[2]} como suplente.`:`${inviteSent[1]} 必须接受邀请，才能成为球队 ${inviteSent[2]} 的替补。`;
+  const substituteAccepted=value.match(/^You are now a substitute for Team (\d+)\.$/);if(substituteAccepted)return language==='es'?`Ahora eres suplente del Equipo ${substituteAccepted[1]}.`:`你现在是球队 ${substituteAccepted[1]} 的替补。`;
   const joinTeam=value.match(/^Join Team (\d+)\?$/);if(joinTeam)return language==='es'?`¿Unirse al Equipo ${joinTeam[1]}?`:`加入球队 ${joinTeam[1]}？`;
   const winnerCourt=value.match(/^Which team won on Court (\d+)\?$/);if(winnerCourt)return language==='es'?`¿Qué equipo ganó en la Cancha ${winnerCourt[1]}?`:`球场 ${winnerCourt[1]} 哪支球队获胜？`;
   const endCourt=value.match(/^End the game on Court (\d+)\?$/);if(endCourt)return language==='es'?`¿Terminar el juego en la Cancha ${endCourt[1]}?`:`结束球场 ${endCourt[1]} 的比赛？`;

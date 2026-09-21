@@ -37,7 +37,7 @@ assert.match(advancedCss,/\.host-appointment-backdrop\s*\{\s*z-index:100;/);
 assert.match(app,/setOnboarding\('idle'\);setScreen\('queue'\);\s*setHostTutorialStep\(0\);setHostTutorial\(true\)/);
 assert.match(app,/onboarding!==\'idle\'\|\|hostTutorial\|\|hostAppointmentNotice/);
 assert.match(app,/admin\|\|host\|\|onboarding!==\'idle\'/);
-assert.match(app,/setOnboarding\('idle'\);setTutorialStep\(0\);setHostTutorial\(false\)/);
+assert.match(app,/hostAppointmentActive\.current=false;setHostAppointmentNotice\(null\);setHostTutorial\(false\);setNotice\(\{title:'Host permissions removed'/);
 assert.match(app,/function TutorialCoach.*const safeStep=Math\.max\(0,Math\.min\(step,steps\.length-1\)\)/s);
 assert.match(app,/function KingTeamCard\(\{team,me,canJoin,busy,joinTeam,start,side,showStreak,operator,admin,host,/);
 assert.match(app,/<KingTeamCard[^>]+admin=\{admin\} host=\{host\}/);

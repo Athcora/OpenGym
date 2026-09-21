@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import test from 'node:test';
+
+const app=fs.readFileSync(new URL('../app/WaitlistApp.tsx',import.meta.url),'utf8');
+
+test('team-substitute invitations refresh pending request state before showing any generic event notice',()=>{
+  assert.match(app,/if\(event\.event_type==='team_substitute_invite'\)\{\s*scheduleRefresh\(\);\s*return;/);
+  assert.match(app,/const incoming=teamSubstituteRequests\.find\(request=>!handledTeamSubRequestIds\.current\.has\(request\.id\)[\s\S]*title:'Substitute invitation'[\s\S]*confirm:'Accept'[\s\S]*cancelLabel:'Decline'/);
+});
+
+test('a mobile recipient reloads pending invitations after returning from the background',()=>{
+  assert.match(app,/if\(lastEventRevision\.current===null\)\{lastEventRevision\.current=revision;await refresh\(user\);return;\}/);
+  const resumeBlock=app.match(/const refreshAfterReturn=\(\)=>\{[\s\S]*?void refresh\(user\);/);
+  assert.ok(resumeBlock,'returning to a visible page should refresh its pending-request state');
+  assert.doesNotMatch(resumeBlock[0],/realtimeConnected\.current&&now-lastFullRefresh\.current<5\*60_000/);
+});
+
+test('accepting a team-substitute invitation confirms the team number instead of roster names',()=>{
+  assert.match(app,/function numberedTeamLabel\(team:KingTeam\|undefined,teams:KingTeam\[\],courtCount:number\)[\s\S]*return `Team \$\{2\*\(team\.court_number-1\)\+team\.court_side\}`/);
+  assert.match(app,/async function answerTeamSubstitute\(id:string,accept:boolean\)\{[\s\S]*rpc\('answer_team_substitute',\{p_request_id:id,p_accept:accept\},false\)[\s\S]*You are now a substitute for \$\{numberedTeamLabel\(team,kingTeams,courts\.length\)\}\./);
+});

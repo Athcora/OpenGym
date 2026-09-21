@@ -249,7 +249,11 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
         const {data,error}=await supabase.from('waitlist_events').select('id').order('created_at',{ascending:false}).limit(1).maybeSingle();
         if(error)return;
         const revision=`${facility.id}:${data?.id??'empty'}`;
-        if(lastEventRevision.current===null){lastEventRevision.current=revision;return;}
+        // A mobile browser can resume after the websocket event was missed.
+        // Its first visible revision is still new to this client, so reload it
+        // rather than treating it as a baseline and leaving actionable requests
+        // (such as a substitute invitation) invisible until a later event.
+        if(lastEventRevision.current===null){lastEventRevision.current=revision;await refresh(user);return;}
         if(lastEventRevision.current!==revision){lastEventRevision.current=revision;await refresh(user);}
       }finally{refreshing=false;}
     };
@@ -294,7 +298,6 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
       if(document.visibilityState!=='visible')return;
       const now=Date.now();
       if(now-lastResumeRefresh.current<1_000)return;
-      if(realtimeConnected.current&&now-lastFullRefresh.current<5*60_000)return;
       lastResumeRefresh.current=now;
       void refresh(user);
     };

@@ -35,6 +35,16 @@ const TUTORIAL_VERSION = 2;
 const tutorialVersionKey=(mode:Config['mode'])=>isTeamsMode(mode)?`opengym_tutorial_version_${mode}`:'opengym_tutorial_version';
 const needsTutorial=(activeUser:User|null,mode:Config['mode'])=>Boolean(activeUser&&activeUser.user_metadata?.[tutorialVersionKey(mode)]!==TUTORIAL_VERSION);
 const isTeamsMode = (mode:Config['mode']) => mode==='teams'||mode==='teams_rejoin';
+function numberedTeamLabel(team:KingTeam|undefined,teams:KingTeam[],courtCount:number){
+  if(!team)return 'your team';
+  if(team.status==='current'&&team.court_number&&team.court_side)return `Team ${2*(team.court_number-1)+team.court_side}`;
+  const current=teams.filter(item=>item.status==='current').sort((a,b)=>(a.court_number??Infinity)-(b.court_number??Infinity)||(a.court_side??Infinity)-(b.court_side??Infinity));
+  const currentIndex=current.findIndex(item=>item.id===team.id);
+  if(currentIndex>=0)return `Team ${currentIndex+1}`;
+  const waiting=teams.filter(item=>item.status==='waiting').sort((a,b)=>a.queue_position-b.queue_position);
+  const waitingIndex=waiting.findIndex(item=>item.id===team.id);
+  return `Team ${Math.max(1,courtCount*2+(waitingIndex>=0?waitingIndex+1:1))}`;
+}
 const MOBILE_DRAG_HOLD_MS=450;
 const MOBILE_SCROLL_CANCEL_DISTANCE=8;
 const DEVICE_ID_KEY='opengym-device-id';
@@ -903,14 +913,15 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   }
   function confirmTeamSubTarget(){
     const team=kingTeams.find(item=>item.id===inviteSubTeamId);const player=players.find(item=>item.id===inviteSubTargetId);if(!team||!player){setNotice({title:'Select a player',message:'Choose a player before pressing Confirm.'});return;}
-    setNotice({title:`Invite ${player.display_name} as a sub?`,message:`This will invite ${player.display_name} to become a substitute for ${team.name}.`,confirm:'Send invite',actionTone:'success',cancelLabel:'Cancel',cancelTone:'danger',showBack:true,action:async()=>{if(await rpc('request_team_substitute',{p_team_id:team.id,p_target_id:player.id},false)){setInviteSubTeamId(null);setNotice({title:'Substitute invitation sent',message:`${player.display_name} must accept before joining ${team.name} as a substitute.`});}}});
+    const teamLabel=numberedTeamLabel(team,kingTeams,courts.length);
+    setNotice({title:`Invite ${player.display_name} as a sub?`,message:`This will invite ${player.display_name} to become a substitute for ${teamLabel}.`,confirm:'Send invite',actionTone:'success',cancelLabel:'Cancel',cancelTone:'danger',showBack:true,action:async()=>{if(await rpc('request_team_substitute',{p_team_id:team.id,p_target_id:player.id},false)){setInviteSubTeamId(null);setNotice({title:'Substitute invitation sent',message:`${player.display_name} must accept before joining ${teamLabel} as a substitute.`});}}});
   }
   async function answerTeamSubstitute(id:string,accept:boolean){
     const request=teamSubstituteRequests.find(item=>item.id===id);
     const accepted=await rpc('answer_team_substitute',{p_request_id:id,p_accept:accept},false);
     if(accepted&&accept){
       const team=kingTeams.find(item=>item.id===request?.team_id);
-      setNotice({title:'Done',message:`You are now a substitute for ${team?.name??'your team'}.`});
+      setNotice({title:'Done',message:`You are now a substitute for ${numberedTeamLabel(team,kingTeams,courts.length)}.`});
     }
   }
   function removeTeamSubstitute(substitute:TeamSubstitute){const name=substitute.player?.display_name??'this substitute';ask(`Remove ${name} as a substitute?`,'They will remain in the waitlist and may join another available team.','Remove',async()=>{await rpc('admin_remove_team_substitute',{p_substitute_id:substitute.id},false)},'danger')}
@@ -969,9 +980,9 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   useEffect(()=>{
     const incoming=teamSubstituteRequests.find(request=>!handledTeamSubRequestIds.current.has(request.id)&&players.find(player=>player.id===request.target_id)?.user_id===user?.id);if(!incoming)return;
     handledTeamSubRequestIds.current.add(incoming.id);
-    const team=kingTeams.find(item=>item.id===incoming.team_id);const teamName=team?.name??'A team';
+    const team=kingTeams.find(item=>item.id===incoming.team_id);const teamName=numberedTeamLabel(team,kingTeams,courts.length);
     setNotice(existing=>{if(existing?.requestId===`team-sub:${incoming.id}`)return existing;return{requestId:`team-sub:${incoming.id}`,blocking:true,title:'Substitute invitation',message:`${teamName} has invited you to play as their substitute. If you accept, you will leave your current team and become a substitute for ${teamName}.`,confirm:'Accept',actionTone:'success',action:async()=>{await answerTeamSubstitute(incoming.id,true)},cancelLabel:'Decline',cancelTone:'danger',cancelAction:async()=>{await answerTeamSubstitute(incoming.id,false)}};});
-  },[teamSubstituteRequests,players,kingTeams,user?.id]);
+  },[teamSubstituteRequests,players,kingTeams,courts.length,user?.id]);
   useEffect(()=>{
     if(!pendingNextGameEvent)return;
     if(me?.status==='rejoin'&&rejoinResponse){

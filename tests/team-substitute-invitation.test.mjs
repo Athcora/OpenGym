@@ -10,5 +10,6 @@ test('team-substitute invitations refresh pending request state before showing a
 });
 
 test('accepting a team-substitute invitation confirms the team number instead of roster names',()=>{
-  assert.match(app,/async function answerTeamSubstitute\(id:string,accept:boolean\)\{[\s\S]*rpc\('answer_team_substitute',\{p_request_id:id,p_accept:accept\},false\)[\s\S]*You are now a substitute for \$\{team\?\.name\?\?'your team'\}\./);
+  assert.match(app,/function numberedTeamLabel\(team:KingTeam\|undefined,teams:KingTeam\[\],courtCount:number\)[\s\S]*return `Team \$\{2\*\(team\.court_number-1\)\+team\.court_side\}`/);
+  assert.match(app,/async function answerTeamSubstitute\(id:string,accept:boolean\)\{[\s\S]*rpc\('answer_team_substitute',\{p_request_id:id,p_accept:accept\},false\)[\s\S]*You are now a substitute for \$\{numberedTeamLabel\(team,kingTeams,courts\.length\)\}\./);
 });

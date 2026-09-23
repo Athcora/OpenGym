@@ -4,10 +4,10 @@
 --
 -- Keep internal SECURITY DEFINER helpers callable only by their owning runtime
 -- role, and explicitly expose just the RPCs used by the browser application.
--- `current_facility_id` is the narrowly scoped RLS support helper used while
--- PostgreSQL evaluates every facility-isolation policy for an authenticated
--- request; it must remain executable by that role even though it is not a
--- client-invoked RPC.
+-- `current_facility_id` and `is_waitlist_admin` are narrowly scoped RLS
+-- support helpers used while PostgreSQL evaluates authenticated policies; they
+-- must remain executable by that role even though neither is a client-invoked
+-- RPC.
 
 revoke all on all functions in schema public from public, anon, authenticated;
 
@@ -37,7 +37,7 @@ declare
     'cancel_team_fill_in', 'cancel_team_sitout', 'claim_waitlist_device',
     'cleanup_king_rejoin_expirations', 'create_facility', 'current_facility_id',
     'fill_in_team_spot', 'join_king_team', 'join_new_king_team',
-    'join_waitlist_for_device', 'king_prepare_player',
+    'is_waitlist_admin', 'join_waitlist_for_device', 'king_prepare_player',
     'leave_player_group', 'leave_waitlist', 'rejoin_waitlist_at_back',
     'remove_player_from_group', 'remove_self_for_geofence',
     'rename_waitlist_player', 'request_player_group',

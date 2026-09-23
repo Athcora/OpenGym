@@ -19,9 +19,11 @@ test('every direct browser RPC is represented in the explicit allowlist',()=>{
   }
 });
 
-test('RLS support helper remains executable without becoming a client RPC',()=>{
-  assert.match(sql,/'current_facility_id'/);
-  assert.doesNotMatch(app,/rpc\(['"]current_facility_id/);
+test('RLS support helpers remain executable without becoming client RPCs',()=>{
+  for(const name of ['current_facility_id','is_waitlist_admin']){
+    assert.match(sql,new RegExp(`'${name}'`));
+    assert.doesNotMatch(app,new RegExp(`rpc\\(['\"]${name}`));
+  }
 });
 
 test('sensitive internal helpers are not in the browser allowlist',()=>{

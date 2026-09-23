@@ -5,7 +5,7 @@
 -- Keep internal SECURITY DEFINER helpers callable only by their owning runtime
 -- role, and explicitly expose just the RPCs used by the browser application.
 
-revoke all on all functions in schema public from public, anon;
+revoke all on all functions in schema public from public, anon, authenticated;
 
 alter default privileges for role postgres in schema public
   revoke execute on functions from public;

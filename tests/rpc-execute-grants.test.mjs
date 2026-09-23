@@ -6,7 +6,7 @@ const app=readFileSync(new URL('../app/WaitlistApp.tsx',import.meta.url),'utf8')
 const sql=readFileSync(new URL('../supabase/harden-rpc-execute-grants.sql',import.meta.url),'utf8');
 
 test('the browser RPC surface is explicitly authenticated-only, not PUBLIC or anon',()=>{
-  assert.match(sql,/revoke all on all functions in schema public from public, anon/);
+  assert.match(sql,/revoke all on all functions in schema public from public, anon, authenticated/);
   assert.match(sql,/alter default privileges for role postgres in schema public[\s\S]*revoke execute on functions from public/);
   assert.match(sql,/alter default privileges for role opengym_runtime in schema public[\s\S]*revoke execute on functions from public/);
   assert.match(sql,/grant execute on function %s to authenticated/);

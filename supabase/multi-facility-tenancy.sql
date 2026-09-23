@@ -36,10 +36,9 @@ create policy "users read facility session" on public.user_facility_sessions for
 
 create or replace function public.current_facility_id()
 returns uuid language sql stable security definer set search_path=public as $$
-  select coalesce(
-    (select facility_id from public.user_facility_sessions where user_id=auth.uid()),
-    (select id from public.facilities where slug='pacific-highlands-ranch')
-  )
+  select facility_id
+  from public.user_facility_sessions
+  where user_id=auth.uid()
 $$;
 
 create or replace function public.select_facility(p_slug text)

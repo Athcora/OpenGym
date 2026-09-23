@@ -34,6 +34,122 @@ begin
 end;
 $$;
 
+create or replace function public.capture_waitlist_state()
+returns jsonb language sql security definer set search_path=public as $$
+  with scope as (select public.current_facility_id() as fid)
+  select jsonb_build_object(
+    'players',coalesce((select jsonb_agg(to_jsonb(p) order by p.queue_position nulls last,p.id)
+      from public.waitlist_players p,scope where p.facility_id=scope.fid),'[]'::jsonb),
+    'config',(select to_jsonb(c) from public.waitlist_config c,scope where c.facility_id=scope.fid and c.id),
+    'courts',coalesce((select jsonb_agg(to_jsonb(c) order by c.court_number)
+      from public.waitlist_courts c,scope where c.facility_id=scope.fid),'[]'::jsonb),
+    'teams',coalesce((select jsonb_agg(to_jsonb(t) order by t.created_at,t.id)
+      from public.king_teams t,scope where t.facility_id=scope.fid),'[]'::jsonb),
+    'past_games',coalesce((select jsonb_agg(to_jsonb(g) order by g.game_number,g.id)
+      from public.past_games g,scope where g.facility_id=scope.fid),'[]'::jsonb)
+  );
+$$;
+
+create or replace function public.king_repair_initial_team_names()
+returns void language plpgsql security definer set search_path=public as $$
+declare fid uuid:=public.current_facility_id();
+begin
+  if fid is null or exists(select 1 from public.waitlist_courts where facility_id=fid and game_number<>court_number) then return; end if;
+  update public.king_teams set name='Repair '||id::text where facility_id=fid;
+  update public.king_teams t set name='Team '||(2*(t.court_number-1)+t.court_side)
+    where t.facility_id=fid and t.status='current' and t.court_number is not null and t.court_side in(1,2);
+  with ranked as(
+    select id,row_number() over(order by queue_position,created_at,id) rn
+    from public.king_teams where facility_id=fid and status='waiting'
+  ) update public.king_teams t set name='Team '||((select count(*)*2 from public.waitlist_courts where facility_id=fid)+ranked.rn)
+    from ranked where t.facility_id=fid and t.id=ranked.id;
+end;
+$$;
+
+create or replace function public.restore_waitlist_state(p_state jsonb)
+returns void language plpgsql security definer set search_path=public as $$
+declare item jsonb; restored_court_count integer; fid uuid:=public.current_facility_id();
+begin
+  if fid is null then raise exception 'Select a facility first.'; end if;
+  delete from public.waitlist_players where facility_id=fid;
+  delete from public.king_teams where facility_id=fid;
+  for item in select * from jsonb_array_elements(coalesce(p_state->'teams','[]'::jsonb)) loop
+    insert into public.king_teams(id,facility_id,name,status,queue_position,court_number,court_side,consecutive_wins,created_at,updated_at)
+    values((item->>'id')::uuid,fid,item->>'name',item->>'status',(item->>'queue_position')::bigint,
+      nullif(item->>'court_number','')::integer,nullif(item->>'court_side','')::integer,
+      coalesce((item->>'consecutive_wins')::integer,0),(item->>'created_at')::timestamptz,now());
+  end loop;
+  for item in select * from jsonb_array_elements(coalesce(p_state->'players','[]'::jsonb)) loop
+    insert into public.waitlist_players(id,facility_id,user_id,first_name,last_name,display_name,status,queue_position,restricted,rejoin_expires_at,created_at,updated_at,group_id,is_host,sitout_priority,sitout_from_game,court_number,team_id)
+    values((item->>'id')::uuid,fid,nullif(item->>'user_id','')::uuid,item->>'first_name',item->>'last_name',item->>'display_name',item->>'status',nullif(item->>'queue_position','')::bigint,
+      coalesce((item->>'restricted')::boolean,false),nullif(item->>'rejoin_expires_at','')::timestamptz,(item->>'created_at')::timestamptz,now(),nullif(item->>'group_id','')::uuid,
+      coalesce((item->>'is_host')::boolean,false),coalesce((item->>'sitout_priority')::boolean,false),nullif(item->>'sitout_from_game','')::integer,
+      nullif(item->>'court_number','')::integer,nullif(item->>'team_id','')::uuid);
+  end loop;
+  delete from public.king_teams t where t.facility_id=fid and not exists(
+    select 1 from public.waitlist_players p where p.facility_id=fid and p.team_id=t.id and p.status<>'left');
+  restored_court_count:=coalesce(nullif(p_state->'config'->>'court_count','')::integer,1);
+  update public.waitlist_config set game_number=(p_state->'config'->>'game_number')::integer,max_players=(p_state->'config'->>'max_players')::integer,
+    court_count=restored_court_count,mode=p_state->'config'->>'mode',king_max_wins=nullif(p_state->'config'->>'king_max_wins','')::integer,updated_at=now()
+    where facility_id=fid and id;
+  delete from public.waitlist_courts where facility_id=fid;
+  for item in select * from jsonb_array_elements(coalesce(p_state->'courts','[]'::jsonb)) loop
+    insert into public.waitlist_courts(facility_id,court_number,game_number,started_at,team_mode,team_max_wins)
+    values(fid,(item->>'court_number')::integer,(item->>'game_number')::integer,(item->>'started_at')::timestamptz,coalesce(item->>'team_mode','rotation'),nullif(item->>'team_max_wins','')::integer);
+  end loop;
+  delete from public.past_games where facility_id=fid;
+  for item in select * from jsonb_array_elements(coalesce(p_state->'past_games','[]'::jsonb)) loop
+    insert into public.past_games(id,facility_id,game_number,player_names,ended_at,court_number)
+    values((item->>'id')::uuid,fid,(item->>'game_number')::integer,item->'player_names',(item->>'ended_at')::timestamptz,coalesce(nullif(item->>'court_number','')::integer,1));
+  end loop;
+  perform public.king_fill_courts(); perform public.king_repair_initial_team_names();
+end;
+$$;
+
+create or replace function public.save_admin_undo(p_label text)
+returns void language plpgsql security definer set search_path=public as $$
+declare fid uuid:=public.current_facility_id();
+begin
+  if fid is null then raise exception 'Select a facility first.'; end if;
+  insert into public.admin_undo(facility_id,admin_user_id,label,snapshot) values(fid,auth.uid(),p_label,public.capture_waitlist_state());
+  delete from public.admin_undo where facility_id=fid and admin_user_id=auth.uid() and id not in(
+    select id from public.admin_undo where facility_id=fid and admin_user_id=auth.uid() order by id desc limit 5);
+  delete from public.admin_redo where facility_id=fid and admin_user_id=auth.uid();
+end;
+$$;
+
+create or replace function public.admin_undo_last()
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare entry public.admin_undo; fid uuid:=public.current_facility_id();
+begin
+  if fid is null or not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
+  select * into entry from public.admin_undo where facility_id=fid and admin_user_id=auth.uid() order by id desc limit 1 for update;
+  if entry.id is null then raise exception 'Nothing to undo.'; end if;
+  insert into public.admin_redo(facility_id,admin_user_id,label,snapshot) values(fid,auth.uid(),entry.label,public.capture_waitlist_state());
+  delete from public.admin_redo where facility_id=fid and admin_user_id=auth.uid() and id not in(select id from public.admin_redo where facility_id=fid and admin_user_id=auth.uid() order by id desc limit 5);
+  perform public.restore_waitlist_state(entry.snapshot);
+  delete from public.admin_undo where facility_id=fid and id=entry.id;
+  perform public.log_waitlist_operator_action('admin_undo','undid: '||entry.label||'.');
+  return jsonb_build_object('message','Undid: '||entry.label||'.');
+end;
+$$;
+
+create or replace function public.admin_redo_last()
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare entry public.admin_redo; fid uuid:=public.current_facility_id();
+begin
+  if fid is null or not public.is_waitlist_operator() then raise exception 'Admin or host access required.'; end if;
+  select * into entry from public.admin_redo where facility_id=fid and admin_user_id=auth.uid() order by id desc limit 1 for update;
+  if entry.id is null then raise exception 'Nothing to redo.'; end if;
+  insert into public.admin_undo(facility_id,admin_user_id,label,snapshot) values(fid,auth.uid(),entry.label,public.capture_waitlist_state());
+  delete from public.admin_undo where facility_id=fid and admin_user_id=auth.uid() and id not in(select id from public.admin_undo where facility_id=fid and admin_user_id=auth.uid() order by id desc limit 5);
+  perform public.restore_waitlist_state(entry.snapshot);
+  delete from public.admin_redo where facility_id=fid and id=entry.id;
+  perform public.log_waitlist_operator_action('admin_redo','redid: '||entry.label||'.');
+  return jsonb_build_object('message','Redid: '||entry.label||'.');
+end;
+$$;
+
 create or replace function public.set_open_gym_mode(p_mode text)
 returns jsonb language plpgsql security definer set search_path=public as $$
 declare current_mode text; fid uuid:=public.current_facility_id();

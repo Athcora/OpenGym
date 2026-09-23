@@ -247,6 +247,13 @@ Do not repeat the completed Regular/Teams Rejoin accept, explicit Leave, timeout
 - After authorized database access was restored, the final facility-scoped query returned `denied_player_rows=0` and `denied_join_events=0` for `Ipad Denied`. The blocked attempt therefore created neither a player row nor a join event.
 - The fixture cleanup was verified authoritatively: `qa-utc-geofence-20260921` now has `geofence_enabled=false` and `latitude`/`longitude` set to `NULL`.
 
+## Run 4 — Security and data-isolation audit (started 2026-09-22)
+
+- Run 3 is complete. Run 4 begins with a production-definition inventory: deployed RPCs, grants, RLS, `SECURITY DEFINER` functions, triggers, realtime exposure, and direct browser-call paths.
+- The audit will use only disposable facilities for any mutation probes. PHR, Ocean Air, `qa-multidevice-20260918`, and `qa-utc-geofence-20260921` remain protected from destructive testing.
+- **Confirmed critical finding:** the deployed catalog has 101 `SECURITY DEFINER` functions with PostgreSQL's default `PUBLIC` execute grant, which also grants direct access to `anon`. An unauthenticated PostgREST RPC call to internal helper `capture_waitlist_state()` returned HTTP 200 and a 432,498-byte snapshot containing 817 player records plus configuration. This is a server-side data-exposure issue; no player data is recorded in this checkpoint.
+- Prepared `supabase/harden-rpc-execute-grants.sql` to revoke `PUBLIC`/`anon` execute from every public-schema function, revoke future default `PUBLIC` function execution for both function-owning roles, and grant `authenticated` only the explicit browser RPC allowlist. `tests/rpc-execute-grants.test.mjs` protects that allowlist and passed 3/3. The migration is not yet applied to production.
+
 ## NEXT SESSION — START HERE
 
-Run 3 is complete. Do not rerun its completed Next Game/Reverse, Rejoin, Group/Swap, host, substitute/fill-in, duplicate-device, or geofence scenarios solely to repeat them. For a future product change, begin a new QA checkpoint and use a separate disposable facility; preserve PHR, Ocean Air, `qa-multidevice-20260918`, and `qa-utc-geofence-20260921` unless that new task expressly requires otherwise.
+Apply `supabase/harden-rpc-execute-grants.sql` to production after explicit permission-change confirmation. It fixes the confirmed unauthenticated `capture_waitlist_state()` data exposure. Immediately verify from an unauthenticated PostgREST client that the helper now returns 401/403, while an anonymous-authenticated browser session can still select a facility and execute the normal client RPCs. Then audit the remaining deployed RLS/table grants, triggers, realtime publication, facility isolation, and role bypasses. Do not rerun completed Run 3 behavior unless a Run 4 security finding specifically touches it.

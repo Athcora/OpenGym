@@ -19,8 +19,13 @@ test('every direct browser RPC is represented in the explicit allowlist',()=>{
   }
 });
 
+test('RLS support helper remains executable without becoming a client RPC',()=>{
+  assert.match(sql,/'current_facility_id'/);
+  assert.doesNotMatch(app,/rpc\(['"]current_facility_id/);
+});
+
 test('sensitive internal helpers are not in the browser allowlist',()=>{
-  for(const name of ['capture_waitlist_state','capture_court_reversal_state','record_court_reversal','repair_facility_court_assignments','current_facility_id']){
+  for(const name of ['capture_waitlist_state','capture_court_reversal_state','record_court_reversal','repair_facility_court_assignments']){
     assert.doesNotMatch(sql,new RegExp(`'${name}'`));
   }
 });

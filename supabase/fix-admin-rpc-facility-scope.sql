@@ -3,6 +3,8 @@
 -- the facility selected in user_facility_sessions, rather than relying on
 -- RLS or on globally unique-looking player ids.
 
+begin;
+
 create or replace function public.admin_move_player(p_player_id uuid,p_status text,p_index integer,p_court_number integer)
 returns jsonb language plpgsql security definer set search_path=public as $$
 declare player public.waitlist_players; source_court integer; destination_court integer; moving_count integer;
@@ -168,3 +170,5 @@ begin
 end $$;
 
 notify pgrst, 'reload schema';
+
+commit;

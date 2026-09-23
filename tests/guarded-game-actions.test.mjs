@@ -5,6 +5,7 @@ import {readFileSync} from 'node:fs';
 const sql=readFileSync(new URL('../supabase/guarded-game-actions.sql',import.meta.url),'utf8');
 const app=readFileSync(new URL('../app/WaitlistApp.tsx',import.meta.url),'utf8');
 const retired=readFileSync(new URL('../supabase/retire-unguarded-team-reverse.sql',import.meta.url),'utf8');
+const legacyReverse=readFileSync(new URL('../supabase/fix-reverse-next-game-facility-scope.sql',import.meta.url),'utf8');
 
 test('server-side guards lock the shared facility session and reject stale court games',()=>{
   assert.match(sql,/from public\.user_facility_sessions[\s\S]*?for share/);
@@ -42,6 +43,8 @@ test('immediate team reversal uses the observed Past Game through the guarded RP
   assert.match(app,/action:\(\)=>reverseKingGame\(courtNumber,expectedGame\)/);
   assert.match(retired,/revoke execute on function public\.reverse_king_game\(\) from public, anon, authenticated/);
   assert.match(retired,/revoke execute on function public\.reverse_next_game\(\) from public, anon, authenticated/);
+  assert.match(legacyReverse,/facility_id=fid and label='start next game'/);
+  assert.match(legacyReverse,/public\.restore_waitlist_state\(entry\.snapshot\)/);
 });
 
 test('an operator keeps the immediate team-reversal modal even when their account has a rejoin prompt',()=>{

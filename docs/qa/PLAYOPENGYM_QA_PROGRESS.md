@@ -635,3 +635,5 @@ Run 5 is active at the PHR Admin UI boundary. The six disposable QA facilities w
 ## NEXT SESSION — START HERE
 
 Run 5 is active at the PHR Admin sign-in screen. Enter the existing PHR Admin username and password directly into the two visible browser fields and submit; do not send either credential in chat. Once the browser shows the Admin queue, immediately continue the Run 5 long-queue drag/drop and repeated mode-dropdown testing on PHR, with Ocean Air as the second facility. Preserve the two real facilities' credentials and clean exact named test state after each scenario.
+
+- The user explicitly authorized PHR Admin login. The existing credential was recovered without display, but the browser runtime cannot reach the local secure one-time handoff required to place it in the isolated virtual clipboard. Do not place the password in an automation transcript; the visible PHR Admin form remains the exact handoff point.

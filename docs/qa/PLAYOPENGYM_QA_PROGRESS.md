@@ -595,3 +595,16 @@ Run 4 is complete. Do not begin Run 5 unless the user explicitly requests it. PH
 ## NEXT SESSION — START HERE
 
 Run 4 is complete at the checkpoint above. Do not start Run 5 without an explicit user request. If a follow-up asks for publication maintenance, the configured `sites` Git remote still has an expired token even though the authorized Sites browser workflow published the Rejoin-at-back client; restore that remote only when needed. Preserve PHR and Ocean Air.
+
+## RUN 5 — PRODUCTION RELEASE, STRESS, UI, AND FINAL READINESS AUDIT
+
+### Run 5 baseline reconstruction (2026-09-24)
+
+- Run 5 was explicitly authorized after Run 4 completion. Reconstructed from the durable QA progress/specification, current `main` HEAD `746172a`, repository status, recent commits, and linked Supabase CLI ledger. Tracked files are clean; the listed untracked `.sites-stage-*`, `art/`, `artifacts/`, and `tsconfig.tsbuildinfo` items predate Run 5 and remain untouched.
+- Local and remote Supabase migration histories match through `20260924070000`; linked `supabase db push --linked --dry-run` is empty. Run 4’s current deployed facility/RPC/grant boundary remains the starting baseline and will only be revisited if Run 5 exposes a regression.
+- The configured `sites` Git remote remains an expired-token path. The authorized Sites browser project for OpenGym was available in Run 4 and the public `playopengym.com` client is serving the guarded Rejoin-at-back endpoint. Run 5 must determine and restore a safe durable publication route as part of release integrity without exposing credentials.
+- Run 5 starts with the two user-reported Admin UI defects: long-queue drag/drop viewport jump and repeated waitlist-mode dropdown interaction. Each needs real deployed desktop/mobile reproduction before a source change. PHR and Ocean Air may be used for stateful QA under the user’s stated policy; no facility credential or authentication configuration may be modified.
+
+## NEXT SESSION — START HERE
+
+Run 5 is active. First inspect the current public bundle/service-worker cache contract and the authorized OpenGym Sites browser project to establish a durable publication path without exposing credentials. Then authenticate as the existing disposable QA Admin and construct a realistic long queue on `qa-multidevice-20260918` to reproduce the Admin drag/drop viewport jump at desktop and mobile widths. Record exact before/after scroll positions and authoritative player ordering. Next run repeated Regular/Rejoin/Teams/Teams Rejoin mode transitions, checking whether the mode dropdown becomes unclickable after each mutation, desktop and mobile. Do not alter facility credentials; preserve PHR and Ocean Air unless a later Run 5 test intentionally uses them.

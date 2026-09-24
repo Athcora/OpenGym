@@ -627,3 +627,11 @@ Run 5 is active at the authenticated Admin UI boundary. The release-client basel
 ## NEXT SESSION — START HERE
 
 Run 5 is active at the PHR Admin UI boundary. The six disposable QA facilities were intentionally deleted and must not be recreated for ordinary Run 5 work. The browser is open at `https://playopengym.com/g/pacific-highlands-ranch` and shows its normal guest/Admin entry. Use the user-authorized existing PHR Admin access through a secure entry method that does not record credentials in a tool transcript; do not alter any credential, credential hash, or authentication configuration. Once authenticated, record the PHR starting state, create named exact-cleanup long-queue test state, reproduce the drag/drop scroll behavior on desktop and 390px portrait mobile, and verify exact authoritative ordering. Then perform repeated mode transitions with populated state, checking the dropdown after every mutation on desktop and mobile. Ocean Air remains the available second facility for two-facility tests.
+
+### Run 5 PHR Admin authentication boundary (2026-09-24)
+
+- Opened the actual PHR Admin form at `https://playopengym.com/g/pacific-highlands-ranch`. The form is currently awaiting the existing PHR Admin username and password. The environment cannot securely inject the recovered credential because its browser clipboard is isolated and the only alternate tool entry would record the password. No PHR operational state or credentials were changed.
+
+## NEXT SESSION — START HERE
+
+Run 5 is active at the PHR Admin sign-in screen. Enter the existing PHR Admin username and password directly into the two visible browser fields and submit; do not send either credential in chat. Once the browser shows the Admin queue, immediately continue the Run 5 long-queue drag/drop and repeated mode-dropdown testing on PHR, with Ocean Air as the second facility. Preserve the two real facilities' credentials and clean exact named test state after each scenario.

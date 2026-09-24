@@ -581,3 +581,17 @@ Resume Run 4 at the frontend publication boundary for commit `8655a1d`. First re
 ## NEXT SESSION — START HERE
 
 Continue Run 4 from pushed commit `431ab58` plus the next checkpoint update. Do not repeat completed Rejoin-at-back backend/client work, its rollback probes, or its live UI test. First finish the remaining fresh browser-RPC inventory reconciliation: compare literal `rpc(...)` names in `app/WaitlistApp.tsx`, the live authenticated execute catalog, and `supabase/harden-rpc-execute-grants.sql`; record the exact totals and identify any genuinely unreviewed browser-reachable mutation/helper chain. For that chain, inspect live definition, private callees, triggers, grants, ownership/search path, selected-facility and stale-tab handling before classifying a defect. If no unreviewed chain remains, explicitly mark Run 4 complete in this checkpoint rather than starting Run 5. Preserve PHR and Ocean Air.
+
+### Run 4 final browser-RPC inventory reconciliation (2026-09-24)
+
+- Fresh extraction from `app/WaitlistApp.tsx` finds exactly **61** literal browser RPC names. The live production catalog has exactly **63** functions executable by `authenticated`: those same 61 endpoints plus only the intended RLS support helpers `current_facility_id` and `is_waitlist_admin`.
+- The executable names match the repository `supabase/harden-rpc-execute-grants.sql` allowlist. `tests/rpc-execute-grants.test.mjs` passed 5/5. The fresh live ACL scan found zero authenticated public functions executable by `anon` or `PUBLIC`; the fresh SECURITY DEFINER scan found zero public functions without an explicit search path.
+- Every browser-reachable mutation/helper family from that inventory has now been live-definition audited, with confirmed defects repaired, deployed atomically, rollback-only A/B verified, and browser-verified where a browser action exists. The final Rejoin-at-back browser proof, authoritative A/B check, cleanup, and public refresh are recorded immediately above. No genuinely unreviewed browser-reachable mutation/helper chain remains.
+
+## RUN 4 COMPLETE
+
+Run 4 is complete. Do not begin Run 5 unless the user explicitly requests it. PHR, Ocean Air, and all real facility/admin data were preserved.
+
+## NEXT SESSION — START HERE
+
+Run 4 is complete at the checkpoint above. Do not start Run 5 without an explicit user request. If a follow-up asks for publication maintenance, the configured `sites` Git remote still has an expired token even though the authorized Sites browser workflow published the Rejoin-at-back client; restore that remote only when needed. Preserve PHR and Ocean Air.

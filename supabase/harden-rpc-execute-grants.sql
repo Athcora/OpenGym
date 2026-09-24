@@ -19,7 +19,7 @@ alter default privileges for role opengym_runtime in schema public
 do $$
 declare
   allowed_names text[] := array[
-    'admin_accept_all_offline_rejoins', 'admin_add_player',
+    'admin_accept_all_offline_rejoins_for_facility', 'admin_add_player',
     'admin_answer_offline_rejoin', 'admin_group_players',
     'admin_leave_player', 'admin_list_members',
     'admin_list_offline_rejoins', 'admin_list_waitlist_history',

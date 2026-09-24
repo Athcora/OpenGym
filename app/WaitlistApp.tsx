@@ -223,7 +223,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     const stored=Number(localStorage.getItem(key));
     const started=Number.isFinite(stored)&&stored>0?stored:Date.now();
     if(started!==stored)localStorage.setItem(key,String(started));
-    const expire=async()=>{localStorage.removeItem(key);await supabase.rpc('leave_waitlist');await logout()};
+    const expire=async()=>{localStorage.removeItem(key);if(await leaveWaitlistForFacility(facilityRef.current))await logout()};
     const remaining=10*60_000-(Date.now()-started);
     if(remaining<=0){void expire();return;}
     const timer=window.setTimeout(()=>void expire(),remaining);
@@ -515,6 +515,13 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     if(error){setNotice({title:'Could not open this facility',message:error.message});return false;}
     return true;
   }
+  async function leaveWaitlistForFacility(target=facilityRef.current){
+    if(!target||!await ensureFacilityContext(target))return false;
+    const {error}=await supabase.rpc('leave_waitlist_for_facility',{p_expected_facility:target.id});
+    if(error){setNotice({title:'Could not complete that',message:error.message});return false;}
+    await broadcastQueueRefresh();
+    return true;
+  }
   async function refresh(activeUser?:User|null,expectedFacility=facilityRef.current,contextReady=false){
     if(!contextReady&&!await ensureFacilityContext(expectedFacility))return;
     const now=Date.now();
@@ -736,9 +743,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     const {data:latest,error:lookupError}=await supabase.from('waitlist_players').select('status').eq('facility_id',targetFacility.id).eq('user_id',session.user.id).maybeSingle();
     if(lookupError){expiredRejoinHandled.current=false;return;}
     if(latest&&['current','waiting','sitout'].includes(latest.status)){expiredRejoinHandled.current=false;setRejoinResponse(null);return;}
-    const {error}=await supabase.rpc('leave_waitlist');
-    if(error){expiredRejoinHandled.current=false;setNotice({title:'Could not update the waitlist',message:error.message});return;}
-    await broadcastQueueRefresh();
+    if(!await leaveWaitlistForFacility(targetFacility)){expiredRejoinHandled.current=false;return;}
     await logout();
     setNotice(REJOIN_TIMEOUT_NOTICE);
   }
@@ -813,7 +818,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     await rpc('admin_answer_offline_rejoin',{p_player_id:player.id,p_stay:stay},false);
   }
   async function acceptAllOfflineRejoins(){
-    await rpc('admin_accept_all_offline_rejoins',{},false);
+    await rpc('admin_accept_all_offline_rejoins_for_facility',{p_expected_facility:facilityRef.current?.id},false);
   }
   async function requestGroup(player:Player){
     if(!me)return;
@@ -1033,10 +1038,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     // auth synchronization and restore a just-left player as a stale Rejoin
     // session. Leave, broadcast, and sign out as one uninterrupted flow.
     setBusy(true);
-    if(!await ensureFacilityContext()){setBusy(false);return;}
-    const {error}=await supabase.rpc('leave_waitlist');
-    if(error){setBusy(false);setNotice({title:'Could not complete that',message:error.message});return;}
-    await broadcastQueueRefresh();
+    if(!await leaveWaitlistForFacility(facilityRef.current)){setBusy(false);return;}
     setBusy(false);
     await logout();
   }
@@ -1182,7 +1184,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   const canPlayerAdvanceKing=Boolean(ownKingCourt&&!me?.restricted&&!teamsPlayerSittingOut);
 
   return <Shell>
-    <header className="topbar"><Logo compact/><div className="top-actions">{pushSupported()&&!notifications&&<button className="icon-button" onClick={turnOnNotifications}>Enable alerts</button>}<button className="icon-button" onClick={()=>ask('Log out?','This will remove you from the waitlist and sign you out.','Log out',async()=>{await rpc('leave_waitlist',{},false);await logout()})}>Log out</button><label className="language-picker" aria-label="Change language"><span className="language-symbol" aria-hidden="true"><i>🌐</i><b>{language==='en'?'ENG':language==='es'?'ESP':'中文'}</b></span><select value={language} onChange={event=>setLanguage(event.target.value as AppLanguage)}><option value="en">English</option><option value="es">Español</option><option value="zh-CN">简体中文</option></select></label></div></header>
+    <header className="topbar"><Logo compact/><div className="top-actions">{pushSupported()&&!notifications&&<button className="icon-button" onClick={turnOnNotifications}>Enable alerts</button>}<button className="icon-button" onClick={()=>ask('Log out?','This will remove you from the waitlist and sign you out.','Log out',async()=>{if(await leaveWaitlistForFacility(facilityRef.current))await logout()})}>Log out</button><label className="language-picker" aria-label="Change language"><span className="language-symbol" aria-hidden="true"><i>🌐</i><b>{language==='en'?'ENG':language==='es'?'ESP':'中文'}</b></span><select value={language} onChange={event=>setLanguage(event.target.value as AppLanguage)}><option value="en">English</option><option value="es">Español</option><option value="zh-CN">简体中文</option></select></label></div></header>
     <main className={`queue-page ${!admin&&me&&!meIsVisibleInQueue?'rejoin-only-queue':''}`}>
       <section className="game-heading"><div><div className="facility-heading-label"><span>Facility</span> <strong>{facility?.name??'OpenGym'}</strong><button type="button" onClick={confirmFacilityChange}>Change</button></div><span className="kicker">{admin?'LIVE QUEUE · ADMIN':host?'LIVE QUEUE · HOST':'LIVE QUEUE'}</span><h1>{translateUiText(courts.length>1?`Game ${courts.map(court=>court.game_number).join(' · ')}`:`Game ${courts[0]?.game_number??config.game_number}`,language)}</h1></div><span className="live-pill"><i/>Live</span></section>
       {operator&&<section className="court-count-control"><label htmlFor="court-count"># of courts</label><div className="court-count-input"><input ref={courtCountInputRef} key={config.court_count} id="court-count" type="text" inputMode="numeric" pattern="[0-9]*" defaultValue={config.court_count} aria-label="Number of courts" onInput={event=>{event.currentTarget.value=event.currentTarget.value.replace(/\D/g,'').slice(0,2)}} onBlur={event=>void commitCourtCount(event.currentTarget)} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();event.currentTarget.blur()}}}/><div className="court-count-steppers"><button type="button" aria-label="Increase courts" disabled={busy||config.court_count>=12} onClick={()=>void stepCourtCount(1)}>&uarr;</button><button type="button" aria-label="Decrease courts" disabled={busy||config.court_count<=1} onClick={()=>void stepCourtCount(-1)}>&darr;</button></div></div></section>}

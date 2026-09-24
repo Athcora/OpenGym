@@ -818,7 +818,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     await rpc('admin_answer_offline_rejoin',{p_player_id:player.id,p_stay:stay},false);
   }
   async function acceptAllOfflineRejoins(){
-    await rpc('admin_accept_all_offline_rejoins',{},false);
+    await rpc('admin_accept_all_offline_rejoins_for_facility',{p_expected_facility:facilityRef.current?.id},false);
   }
   async function requestGroup(player:Player){
     if(!me)return;

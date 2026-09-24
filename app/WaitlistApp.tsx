@@ -1042,7 +1042,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     setBusy(false);
     await logout();
   }
-  async function rejoinAtBack(){if(!me)return;if(!await requireOnSite(rejoinAtBack))return;if(await rpc('rejoin_waitlist_at_back',{},false))setForceRejoin(false);}
+  async function rejoinAtBack(){if(!me)return;if(!await requireOnSite(rejoinAtBack))return;const facility=facilityRef.current;if(!facility)return;if(await rpc('rejoin_waitlist_at_back_for_facility',{p_expected_facility:facility.id},false))setForceRejoin(false);}
   async function returnToFacility(){
     if(!geofenceReturn)return;setBusy(true);
     try{

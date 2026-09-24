@@ -8,7 +8,7 @@ test('both rejoin modes automatically remove an expired player and explain why',
   assert.match(app,/config\.mode!==\'rejoin\'&&config\.mode!==\'teams_rejoin\'/);
   assert.match(app,/new Date\(rejoinResponse\.expires_at\)\.getTime\(\)>returnClock/);
   assert.match(app,/latestRejoin\.answered_at/);
-  assert.match(app,/async function expireRejoinSession\(\)[\s\S]*await supabase\.rpc\('leave_waitlist'\)[\s\S]*await logout\(\)[\s\S]*setNotice\(REJOIN_TIMEOUT_NOTICE\)/);
+  assert.match(app,/async function expireRejoinSession\(\)[\s\S]*leaveWaitlistForFacility\(targetFacility\)[\s\S]*await logout\(\)[\s\S]*setNotice\(REJOIN_TIMEOUT_NOTICE\)/);
 });
 
 test('the timeout dialog uses the requested message and a neutral OK dismissal',()=>{

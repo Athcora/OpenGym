@@ -38,7 +38,7 @@ declare
     'cleanup_king_rejoin_expirations', 'create_facility', 'current_facility_id',
     'fill_in_team_spot', 'join_king_team', 'join_new_king_team',
     'is_waitlist_admin', 'join_waitlist_for_device', 'king_prepare_player',
-    'leave_player_group', 'leave_waitlist', 'rejoin_waitlist_at_back',
+    'leave_player_group', 'leave_waitlist_for_facility', 'rejoin_waitlist_at_back',
     'remove_player_from_group', 'remove_self_for_geofence',
     'rename_waitlist_player', 'request_player_group',
     'request_player_substitute', 'request_team_substitute',

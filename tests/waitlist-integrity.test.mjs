@@ -81,7 +81,7 @@ assert.match(hardenedGrouping,/where facility_id=fid and group_id=old_target_gro
 assert.match(hardenedGrouping,/row_number\(\) over\(order by queue_position,id\) rn/);
 assert.doesNotMatch(hardenedGrouping,/case when id=target\.id then 1 else 0 end/);
 assert.match(app,/The generic RPC helper refreshes before sign-out/);
-assert.match(app,/await supabase\.rpc\('leave_waitlist'\)/);
+assert.match(app,/await leaveWaitlistForFacility\(facilityRef\.current\)/);
 assert.match(app,/Tabs share one authenticated Supabase facility session/);
 assert.match(app,/if\(document\.visibilityState!=='visible'\)return/);
 assert.match(app,/async function ensureFacilityContext/);

@@ -126,7 +126,6 @@ begin
 end; $$;
 
 grant execute on function public.admin_list_waitlist_history() to authenticated;
-grant execute on function public.join_waitlist(text,text) to authenticated;
 grant execute on function public.rejoin_waitlist_at_back() to authenticated;
 grant execute on function public.rename_waitlist_player(uuid,text,text) to authenticated;
 grant execute on function public.admin_set_facility_location(double precision,double precision,integer) to authenticated;

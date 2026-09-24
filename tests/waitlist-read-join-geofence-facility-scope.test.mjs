@@ -38,8 +38,9 @@ test('geofence configuration read/write RPCs only target the selected facility a
     assert.match(body(name), /facility_id=fid and id/);
   }
   for (const signature of [
-    'admin_list_waitlist_history()', 'join_waitlist(text,text)', 'rejoin_waitlist_at_back()',
+    'admin_list_waitlist_history()', 'rejoin_waitlist_at_back()',
     'rename_waitlist_player(uuid,text,text)', 'admin_set_facility_location(double precision,double precision,integer)',
     'admin_select_facility(text)', 'verify_facility_location(double precision,double precision)',
   ]) assert.match(sql, new RegExp(`grant execute on function public\\.${signature.replaceAll('(', '\\(').replaceAll(')', '\\)')} to authenticated`));
+  assert.doesNotMatch(sql, /grant execute on function public\.join_waitlist\(text,text\) to authenticated/);
 });

@@ -102,9 +102,10 @@ function preventNativeTouchScroll(event:TouchEvent){
 }
 let activeMobileDragScrollY=0,activeMobileDragMaxScroll=0;
 function setMobileAdminDragging(active:boolean,initialScrollY=window.scrollY){
+ const wasActive=document.body.classList.contains('mobile-admin-dragging');
  if(active&&!document.body.classList.contains('mobile-admin-dragging')){const pageBottom=(document.querySelector<HTMLElement>('.queue-page')?.getBoundingClientRect().bottom??window.innerHeight)+initialScrollY;activeMobileDragScrollY=initialScrollY;activeMobileDragMaxScroll=Math.max(activeMobileDragScrollY,pageBottom-window.innerHeight,document.body.getBoundingClientRect().height-window.innerHeight,Math.max(document.documentElement.scrollHeight,document.body.scrollHeight)-window.innerHeight);Object.assign(document.body.style,{position:'fixed',top:`-${activeMobileDragScrollY}px`,left:'0',right:'0',width:'100%'});}
  document.body.classList.toggle('mobile-admin-dragging',active);document.documentElement.classList.toggle('mobile-admin-dragging',active);
- if(!active){const top=activeMobileDragScrollY;Object.assign(document.body.style,{position:'',top:'',left:'',right:'',width:''});window.scrollTo({top,left:0,behavior:'instant'});}
+ if(!active&&wasActive){const top=activeMobileDragScrollY;Object.assign(document.body.style,{position:'',top:'',left:'',right:'',width:''});window.scrollTo({top,left:0,behavior:'instant'});}
 }
 function scrollActiveMobileDrag(top:number){activeMobileDragScrollY=Math.max(0,Math.min(activeMobileDragMaxScroll,top));document.body.style.top=`-${activeMobileDragScrollY}px`;}
 

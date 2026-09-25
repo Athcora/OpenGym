@@ -879,3 +879,12 @@ Do not repeat Sites publication, source tests/builds, or the successfully measur
 ## NEXT SESSION — START HERE
 
 FIRST restore the browser-control user/session availability itself (the current tool returns `User unavailable` before listing any browser). Once a browser surface is present, bind the PHR tab that the user already has open, confirm Admin and current fixture state without mutation, set 390×844, and run the mobile matrix in short individually verified groups: Rejoin↔Teams, Rejoin↔Teams Rejoin, Teams↔Teams Rejoin, Regular↔Teams, with before/busy/after scroll readings for deep Rejoin→Teams and top/middle/lower/bottom coverage. Verify selector reopen/label, no overlay/focus trap/horizontal overflow/clipped controls, all 47 fixture identities/team/queue state, refresh persistence, and authoritative state; then representative mobile-viewport drag/move only to the level actually supported. Do not redo the verified deployed desktop result, source work, or publication. Preserve Phr A./credentials; exact cleanup of fixture UUIDs remains required after the full matrix. Do not start Run 6.
+
+### Run 5 mobile bridge retry (2026-09-25)
+
+- Per the continuation instruction, made exactly one fresh browser-control inventory attempt. It again returned `Browsers: Error: User unavailable` before exposing any browser/tab inventory. No retry loop was run.
+- No PHR/Ocean Air state, mode, fixture player, queue/team ordering, database state, credential, authentication setting, or Site configuration was read or changed. The 390×844 mobile matrix remains entirely pending.
+
+## NEXT SESSION — START HERE
+
+The only immediate blocker is restoring the browser-control bridge for this Codex task; it must return an actual browser inventory rather than `User unavailable`. Once restored, reuse/bind the existing PHR tab (do not create a new session if it survives), confirm Admin + retained fixture before mutation, set 390×844, and complete short verified mobile transition groups and the touch-equivalent drag/move. Do not reattempt inventory in a loop while unavailable. Keep exact fixture cleanup, authoritative comparisons, and Run 6 prohibition in scope.

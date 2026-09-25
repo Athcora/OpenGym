@@ -108,6 +108,13 @@ function setMobileAdminDragging(active:boolean,initialScrollY=window.scrollY){
  if(!active&&wasActive){const top=activeMobileDragScrollY;Object.assign(document.body.style,{position:'',top:'',left:'',right:'',width:''});window.scrollTo({top,left:0,behavior:'instant'});}
 }
 function scrollActiveMobileDrag(top:number){activeMobileDragScrollY=Math.max(0,Math.min(activeMobileDragMaxScroll,top));document.body.style.top=`-${activeMobileDragScrollY}px`;}
+function settleModeViewport(pending:{scrollY:number;layoutRevision:number},layoutRevision:number){
+ const root=document.scrollingElement;
+ const maxScroll=Math.max(0,(root?.scrollHeight??0)-window.innerHeight);
+ const top=Math.min(pending.scrollY,maxScroll);
+ window.scrollTo({top,left:0,behavior:'instant'});
+ return maxScroll>=pending.scrollY||layoutRevision>pending.layoutRevision;
+}
 
 export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}={}) {
   const [user,setUser]=useState<User|null>(null);
@@ -137,7 +144,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   const [substituteRequests,setSubstituteRequests]=useState<SubstituteRequest[]>([]);
   const [rejoinResponse,setRejoinResponse]=useState<RejoinResponse|null>(null); const [rejoinChecked,setRejoinChecked]=useState(false);
   const [dragging,setDragging]=useState<string|null>(null);const [dragOver,setDragOver]=useState<DropPlacement|null>(null);
-  const [modeTransitionInProgress,setModeTransitionInProgress]=useState(false);
+  const [modeTransitionInProgress,setModeTransitionInProgress]=useState(false); const [modeLayoutRevision,setModeLayoutRevision]=useState(0);
   const [members,setMembers]=useState<Member[]>([]);
   const [adminFirst,setAdminFirst]=useState(''); const [adminLast,setAdminLast]=useState('');
   const [adminRejoins,setAdminRejoins]=useState<AdminRejoin[]>([]); const [adminEvents,setAdminEvents]=useState<AdminEvent[]>([]); const [playerEvents,setPlayerEvents]=useState<AdminEvent[]>([]); const [historySearch,setHistorySearch]=useState('');
@@ -152,7 +159,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   const [permissionPlayer,setPermissionPlayerState]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0); const [hostStatusReady,setHostStatusReady]=useState(false);
   const [pendingNextGameEvent,setPendingNextGameEvent]=useState<{message:string}|null>(null);
   const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const lastFullRefresh=useRef(0); const lastCleanupAt=useRef(0); const realtimeConnected=useRef(false); const lastEventRevision=useRef<string|null>(null); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const handledGroupRequestIds=useRef(new Set<string>()); const handledSwapRequestIds=useRef(new Set<string>()); const handledTeamSubRequestIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const renderedHostStatus=useRef<boolean|null>(null); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null); const facilityMenuRef=useRef<HTMLElement|null>(null); const refreshTimer=useRef<number|null>(null); const screenRef=useRef(screen); const realtimeChannel=useRef<ReturnType<typeof supabase.channel>|null>(null); const facilityRef=useRef<Facility|null>(null);
-  const activeStatusRef=useRef<PlayerStatus|null>(null); const waitlistModeRef=useRef<Config['mode']>('regular'); const ownPlayerRef=useRef<Player|null>(null); const modeViewportRef=useRef<{mode:Config['mode'];scrollY:number}|null>(null);
+  const activeStatusRef=useRef<PlayerStatus|null>(null); const waitlistModeRef=useRef<Config['mode']>('regular'); const ownPlayerRef=useRef<Player|null>(null); const modeViewportRef=useRef<{mode:Config['mode'];scrollY:number;layoutRevision:number}|null>(null);
   const rejoinLookupAttempts=useRef(0);
   const claimedDeviceForUser=useRef<string|null>(null);
   useEffect(()=>{
@@ -217,12 +224,10 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   useLayoutEffect(()=>{
     const pending=modeViewportRef.current;
     if(!pending||pending.mode!==config.mode)return;
-    const root=document.scrollingElement;
-    const maxScroll=Math.max(0,(root?.scrollHeight??0)-window.innerHeight);
-    window.scrollTo({top:Math.min(pending.scrollY,maxScroll),left:0,behavior:'instant'});
+    if(!settleModeViewport(pending,modeLayoutRevision))return;
     modeViewportRef.current=null;
     setModeTransitionInProgress(false);
-  },[config.mode]);
+  },[config.mode,modeLayoutRevision]);
   const tutorialNeedsDemo=onboarding==='tutorial'&&tutorialStep===5+(config.mode==='rejoin'?1:0)&&!admin&&Boolean(me)&&waiting.every(player=>player.id===me?.id);
   const tutorialWaiting=tutorialNeedsDemo?[...waiting,{id:'tutorial-demo-player',user_id:null,first_name:'Demo',last_name:'Player',display_name:'Demo Player',status:'waiting' as PlayerStatus,queue_position:(waiting.at(-1)?.queue_position??current.length)+1,restricted:false,group_id:null,team_id:null,is_host:false,court_number:null,sitout_priority:false,sitout_from_game:null}]:waiting;
 
@@ -563,6 +568,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     setTeamSubstituteRequests((teamSubRequestRows??[]) as TeamSubstituteRequest[]);
     const substitutePlayerIds=new Set(substituteRows.map(row=>row.player_id));
     setKingTeams(((teamRows??[]) as Omit<KingTeam,'members'>[]).map(team=>({...team,members:playerRows.filter(player=>player.team_id===team.id&&!substitutePlayerIds.has(player.id))})));
+    setModeLayoutRevision(revision=>revision+1);
     const activeUid=(activeUser??user)?.id;const activeHost=Boolean(playerRows.find(item=>item.user_id===activeUid)?.is_host);if(activeUid)syncOwnHostStatus(activeHost,activeUid);setHostStatusReady(true);
     if(a||activeHost){const {data:offline}=await supabase.rpc('admin_list_offline_rejoins');setAdminRejoins((offline??[]) as AdminRejoin[]);}else setAdminRejoins([]);
     setGroupRequests(((r??[]) as GroupRequest[]).map(request=>({...request,requester:playerRows.find(player=>player.id===request.requester_id)})));
@@ -1079,7 +1085,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   }
   async function changeWaitlistMode(mode:Config['mode']){
     if(mode===config.mode)return;
-    const pending={mode,scrollY:window.scrollY};
+    const pending={mode,scrollY:window.scrollY,layoutRevision:modeLayoutRevision};
     modeViewportRef.current=pending;
     setModeTransitionInProgress(true);
     if(!await rpc('set_open_gym_mode',{p_mode:mode},false)&&modeViewportRef.current===pending){

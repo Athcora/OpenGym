@@ -860,7 +860,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     }
   }
   async function removeGroupMember(player:Player){await rpc('remove_player_from_group',{p_target_id:player.id});}
-  function confirmLeaveOwnGroup(){ask('Leave your group?','You will keep your current queue position and become an individual player.','Leave Group',async()=>{await rpc('leave_player_group')});}
+  function confirmLeaveOwnGroup(){ask('Leave your group?','If you leave from the middle, you will move immediately after the remaining group so it stays together.','Leave Group',async()=>{await rpc('leave_player_group')});}
   async function adminRemoveGroupMember(player:Player){await rpc('admin_remove_player_from_group',{p_target_id:player.id});}
   function confirmMySitOut(){
     if(isTeamsMode(config.mode)&&me?.status==='sitout'){void rpc('cancel_team_sitout',{},false);return;}

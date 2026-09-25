@@ -637,3 +637,11 @@ Run 5 is active at the PHR Admin UI boundary. The six disposable QA facilities w
 Run 5 is active at the PHR Admin sign-in screen. Enter the existing PHR Admin username and password directly into the two visible browser fields and submit; do not send either credential in chat. Once the browser shows the Admin queue, immediately continue the Run 5 long-queue drag/drop and repeated mode-dropdown testing on PHR, with Ocean Air as the second facility. Preserve the two real facilities' credentials and clean exact named test state after each scenario.
 
 - The user explicitly authorized PHR Admin login. The existing credential was recovered without display, but the browser runtime cannot reach the local secure one-time handoff required to place it in the isolated virtual clipboard. Do not place the password in an automation transcript; the visible PHR Admin form remains the exact handoff point.
+
+### Run 5 authenticated PHR start (2026-09-24)
+
+- The user completed PHR Admin sign-in. Verified the live browser renders `LIVE QUEUE · ADMIN` for PHR with two empty courts and an empty waitlist. Switched the live mode from Rejoin to Regular and verified the Admin mode combobox remained rendered and usable immediately afterward. PHR operational state now intentionally has Regular mode; no credentials were changed.
+
+## NEXT SESSION — START HERE
+
+Run 5 is active in the authenticated PHR Admin session. First add named exact-cleanup players through the live Admin UI until the two courts and a long waiting list create a scrollable page. Capture starting player order and scroll position, then perform a downward and an upward drag/drop midway down the waitlist on desktop and 390px mobile, verifying scroll position and authoritative ordering after each. Continue repeated mode dropdown transitions with populated state, then the remaining Run 5 stress/readiness audit. Ocean Air is the only remaining second facility. Do not recreate deleted QA facilities or modify credentials.

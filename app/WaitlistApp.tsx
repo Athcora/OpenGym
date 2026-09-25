@@ -136,6 +136,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   const [substituteRequests,setSubstituteRequests]=useState<SubstituteRequest[]>([]);
   const [rejoinResponse,setRejoinResponse]=useState<RejoinResponse|null>(null); const [rejoinChecked,setRejoinChecked]=useState(false);
   const [dragging,setDragging]=useState<string|null>(null);const [dragOver,setDragOver]=useState<DropPlacement|null>(null);
+  const [modeTransitionInProgress,setModeTransitionInProgress]=useState(false);
   const [members,setMembers]=useState<Member[]>([]);
   const [adminFirst,setAdminFirst]=useState(''); const [adminLast,setAdminLast]=useState('');
   const [adminRejoins,setAdminRejoins]=useState<AdminRejoin[]>([]); const [adminEvents,setAdminEvents]=useState<AdminEvent[]>([]); const [playerEvents,setPlayerEvents]=useState<AdminEvent[]>([]); const [historySearch,setHistorySearch]=useState('');
@@ -150,7 +151,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   const [permissionPlayer,setPermissionPlayerState]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0); const [hostStatusReady,setHostStatusReady]=useState(false);
   const [pendingNextGameEvent,setPendingNextGameEvent]=useState<{message:string}|null>(null);
   const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const lastFullRefresh=useRef(0); const lastCleanupAt=useRef(0); const realtimeConnected=useRef(false); const lastEventRevision=useRef<string|null>(null); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const handledGroupRequestIds=useRef(new Set<string>()); const handledSwapRequestIds=useRef(new Set<string>()); const handledTeamSubRequestIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const renderedHostStatus=useRef<boolean|null>(null); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null); const facilityMenuRef=useRef<HTMLElement|null>(null); const refreshTimer=useRef<number|null>(null); const screenRef=useRef(screen); const realtimeChannel=useRef<ReturnType<typeof supabase.channel>|null>(null); const facilityRef=useRef<Facility|null>(null);
-  const activeStatusRef=useRef<PlayerStatus|null>(null); const waitlistModeRef=useRef<Config['mode']>('regular'); const ownPlayerRef=useRef<Player|null>(null);
+  const activeStatusRef=useRef<PlayerStatus|null>(null); const waitlistModeRef=useRef<Config['mode']>('regular'); const ownPlayerRef=useRef<Player|null>(null); const modeViewportRef=useRef<{mode:Config['mode'];scrollY:number}|null>(null);
   const rejoinLookupAttempts=useRef(0);
   const claimedDeviceForUser=useRef<string|null>(null);
   useEffect(()=>{
@@ -212,6 +213,15 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   const draggedPlayer=dragging?players.find(player=>player.id===dragging):null;
   const draggedCourtNumber=draggedPlayer?.status==='current'?draggedPlayer.court_number??null:null;
   useLayoutEffect(()=>{if(dragging)restoreDragPickupViewport(dragging)},[dragging,draggedCourtNumber]);
+  useLayoutEffect(()=>{
+    const pending=modeViewportRef.current;
+    if(!pending||pending.mode!==config.mode)return;
+    const root=document.scrollingElement;
+    const maxScroll=Math.max(0,(root?.scrollHeight??0)-window.innerHeight);
+    window.scrollTo({top:Math.min(pending.scrollY,maxScroll),left:0,behavior:'instant'});
+    modeViewportRef.current=null;
+    setModeTransitionInProgress(false);
+  },[config.mode]);
   const tutorialNeedsDemo=onboarding==='tutorial'&&tutorialStep===5+(config.mode==='rejoin'?1:0)&&!admin&&Boolean(me)&&waiting.every(player=>player.id===me?.id);
   const tutorialWaiting=tutorialNeedsDemo?[...waiting,{id:'tutorial-demo-player',user_id:null,first_name:'Demo',last_name:'Player',display_name:'Demo Player',status:'waiting' as PlayerStatus,queue_position:(waiting.at(-1)?.queue_position??current.length)+1,restricted:false,group_id:null,team_id:null,is_host:false,court_number:null,sitout_priority:false,sitout_from_game:null}]:waiting;
 
@@ -1067,7 +1077,14 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     setBusy(false);await refresh();
   }
   async function changeWaitlistMode(mode:Config['mode']){
-    await rpc('set_open_gym_mode',{p_mode:mode},false);
+    if(mode===config.mode)return;
+    const pending={mode,scrollY:window.scrollY};
+    modeViewportRef.current=pending;
+    setModeTransitionInProgress(true);
+    if(!await rpc('set_open_gym_mode',{p_mode:mode},false)&&modeViewportRef.current===pending){
+      modeViewportRef.current=null;
+      setModeTransitionInProgress(false);
+    }
   }
   async function joinKingTeam(teamId:string){
     if(!me)return;
@@ -1185,7 +1202,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
 
   return <Shell>
     <header className="topbar"><Logo compact/><div className="top-actions">{pushSupported()&&!notifications&&<button className="icon-button" onClick={turnOnNotifications}>Enable alerts</button>}<button className="icon-button" onClick={()=>ask('Log out?','This will remove you from the waitlist and sign you out.','Log out',async()=>{if(await leaveWaitlistForFacility(facilityRef.current))await logout()})}>Log out</button><label className="language-picker" aria-label="Change language"><span className="language-symbol" aria-hidden="true"><i>🌐</i><b>{language==='en'?'ENG':language==='es'?'ESP':'中文'}</b></span><select value={language} onChange={event=>setLanguage(event.target.value as AppLanguage)}><option value="en">English</option><option value="es">Español</option><option value="zh-CN">简体中文</option></select></label></div></header>
-    <main className={`queue-page ${!admin&&me&&!meIsVisibleInQueue?'rejoin-only-queue':''}`}>
+    <main className={`queue-page ${!admin&&me&&!meIsVisibleInQueue?'rejoin-only-queue':''} ${modeTransitionInProgress?'mode-transitioning':''}`}>
       <section className="game-heading"><div><div className="facility-heading-label"><span>Facility</span> <strong>{facility?.name??'OpenGym'}</strong><button type="button" onClick={confirmFacilityChange}>Change</button></div><span className="kicker">{admin?'LIVE QUEUE · ADMIN':host?'LIVE QUEUE · HOST':'LIVE QUEUE'}</span><h1>{translateUiText(courts.length>1?`Game ${courts.map(court=>court.game_number).join(' · ')}`:`Game ${courts[0]?.game_number??config.game_number}`,language)}</h1></div><span className="live-pill"><i/>Live</span></section>
       {operator&&<section className="court-count-control"><label htmlFor="court-count"># of courts</label><div className="court-count-input"><input ref={courtCountInputRef} key={config.court_count} id="court-count" type="text" inputMode="numeric" pattern="[0-9]*" defaultValue={config.court_count} aria-label="Number of courts" onInput={event=>{event.currentTarget.value=event.currentTarget.value.replace(/\D/g,'').slice(0,2)}} onBlur={event=>void commitCourtCount(event.currentTarget)} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();event.currentTarget.blur()}}}/><div className="court-count-steppers"><button type="button" aria-label="Increase courts" disabled={busy||config.court_count>=12} onClick={()=>void stepCourtCount(1)}>&uarr;</button><button type="button" aria-label="Decrease courts" disabled={busy||config.court_count<=1} onClick={()=>void stepCourtCount(-1)}>&darr;</button></div></div></section>}
       {admin&&facilityMenu&&<section ref={facilityMenuRef} className="facility-menu"><strong>Select facility</strong><p>Choose the affiliated recreation center for on-site check-in.</p><button className={config.geofence_enabled?'selected':''} disabled={!facilityCoordinates(facility)} onClick={()=>void chooseFacility(facility?.code??'')}><span>{facility?.code}</span><small>{facility?.name}<br/>{[facility?.address,facility?.city,facility?.region].filter(Boolean).join(', ')}</small></button><button className={!config.geofence_enabled?'selected':''} onClick={()=>void chooseFacility('NA')}><span>N/A</span><small>No facility location requirement</small></button></section>}

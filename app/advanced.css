@@ -439,6 +439,7 @@ body.mobile-admin-dragging .king-board{padding-bottom:clamp(260px,55vh,520px)}
 .tutorial-mode-demo .court-team-rule.tutorial-focus{box-sizing:border-box;width:100%;margin-left:0!important;margin-right:0!important;padding:8px 14px}
 
 /* Keep every facility's administrator controls in complete, gap-free rows. */
+.queue-page.mode-transitioning{overflow-anchor:none}
 .queue-page .admin-tools:not(.host-tools){--admin-action-row:2;--admin-detail-row:3;--admin-reset-row:4;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-flow:row dense}
 .queue-page .admin-tools:not(.host-tools):has(.next-game-tool){--admin-action-row:3;--admin-detail-row:4;--admin-reset-row:5}
 .queue-page .admin-tools:not(.host-tools)>select{grid-column:1/-1;grid-row:1}

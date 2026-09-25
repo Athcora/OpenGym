@@ -26,6 +26,13 @@ test('deep Rejoin to Teams waits through the measured intermediate mobile layout
   assert.equal(s.window.scrollY,4455.33);
 });
 
+test('a stale pre-replacement height cannot finalize restoration before the target layout revision',()=>{
+  const s=setup({scrollHeight:5299.33,scrollY:4455.33});
+  const pending={scrollY:4455.33,layoutRevision:7};
+  assert.equal(s.settleModeViewport(pending,7),false);
+  assert.equal(s.window.scrollY,4455.33);
+});
+
 test('deep Rejoin to Teams Rejoin reapplies the saved position after its target layout is ready',()=>{
   const s=setup({scrollHeight:3235,scrollY:4455.33});
   const pending={scrollY:4455.33,layoutRevision:12};
@@ -43,15 +50,17 @@ test('a genuinely shorter final layout clamps once its refresh layout revision i
 
 test('near-top and desktop transitions preserve their existing positions without waiting',()=>{
   const nearTop=setup({scrollHeight:6767,scrollY:18});
-  assert.equal(nearTop.settleModeViewport({scrollY:18,layoutRevision:2},2),true);
+  assert.equal(nearTop.settleModeViewport({scrollY:18,layoutRevision:2},3),true);
   assert.equal(nearTop.window.scrollY,18);
   const desktop=setup({scrollHeight:5101,innerHeight:764,scrollY:1103.33});
-  assert.equal(desktop.settleModeViewport({scrollY:1103.33,layoutRevision:9},9),true);
+  assert.equal(desktop.settleModeViewport({scrollY:1103.33,layoutRevision:9},10),true);
   assert.equal(desktop.window.scrollY,1103.33);
 });
 
 test('the mode effect stays pending until the completed refresh layout revision arrives',()=>{
+  assert.match(source,/return layoutRevision>pending\.layoutRevision;/);
   assert.match(source,/if\(!settleModeViewport\(pending,modeLayoutRevision\)\)return;/);
+  assert.match(source,/const frame=window\.requestAnimationFrame/);
   assert.match(source,/\},\[config\.mode,modeLayoutRevision\]\);/);
   assert.match(source,/setKingTeams[\s\S]*?setModeLayoutRevision\(revision=>revision\+1\);/);
 });

@@ -113,7 +113,7 @@ function settleModeViewport(pending:{scrollY:number;layoutRevision:number},layou
  const maxScroll=Math.max(0,(root?.scrollHeight??0)-window.innerHeight);
  const top=Math.min(pending.scrollY,maxScroll);
  window.scrollTo({top,left:0,behavior:'instant'});
- return maxScroll>=pending.scrollY||layoutRevision>pending.layoutRevision;
+ return layoutRevision>pending.layoutRevision;
 }
 
 export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}={}) {
@@ -225,8 +225,13 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     const pending=modeViewportRef.current;
     if(!pending||pending.mode!==config.mode)return;
     if(!settleModeViewport(pending,modeLayoutRevision))return;
-    modeViewportRef.current=null;
-    setModeTransitionInProgress(false);
+    const frame=window.requestAnimationFrame(()=>{
+      if(modeViewportRef.current!==pending)return;
+      settleModeViewport(pending,modeLayoutRevision);
+      modeViewportRef.current=null;
+      setModeTransitionInProgress(false);
+    });
+    return()=>window.cancelAnimationFrame(frame);
   },[config.mode,modeLayoutRevision]);
   const tutorialNeedsDemo=onboarding==='tutorial'&&tutorialStep===5+(config.mode==='rejoin'?1:0)&&!admin&&Boolean(me)&&waiting.every(player=>player.id===me?.id);
   const tutorialWaiting=tutorialNeedsDemo?[...waiting,{id:'tutorial-demo-player',user_id:null,first_name:'Demo',last_name:'Player',display_name:'Demo Player',status:'waiting' as PlayerStatus,queue_position:(waiting.at(-1)?.queue_position??current.length)+1,restricted:false,group_id:null,team_id:null,is_host:false,court_number:null,sitout_priority:false,sitout_from_game:null}]:waiting;

@@ -30,7 +30,6 @@ body.mobile-admin-dragging {
   overflow-anchor: none;
 }
 html.mobile-admin-dragging {
-  overflow: hidden;
   overscroll-behavior: none;
 }
 .court-section.drag-hidden-court {

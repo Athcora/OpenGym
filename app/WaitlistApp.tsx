@@ -103,11 +103,14 @@ function preventNativeTouchScroll(event:TouchEvent){
 let activeMobileDragScrollY=0,activeMobileDragMaxScroll=0;
 function setMobileAdminDragging(active:boolean,initialScrollY=window.scrollY){
  const wasActive=document.body.classList.contains('mobile-admin-dragging');
- if(active&&!document.body.classList.contains('mobile-admin-dragging')){const pageBottom=(document.querySelector<HTMLElement>('.queue-page')?.getBoundingClientRect().bottom??window.innerHeight)+initialScrollY;activeMobileDragScrollY=initialScrollY;activeMobileDragMaxScroll=Math.max(activeMobileDragScrollY,pageBottom-window.innerHeight,document.body.getBoundingClientRect().height-window.innerHeight,Math.max(document.documentElement.scrollHeight,document.body.scrollHeight)-window.innerHeight);Object.assign(document.body.style,{position:'fixed',top:`-${activeMobileDragScrollY}px`,left:'0',right:'0',width:'100%'});}
+ // Keep the document in normal flow while a touch drag is active. Fixing body
+ // turns it into a viewport-sized containing block on WebKit; the still-tall
+ // document can then be exposed below it as a blank page-sized region.
+ if(active&&!wasActive){const pageBottom=(document.querySelector<HTMLElement>('.queue-page')?.getBoundingClientRect().bottom??window.innerHeight)+initialScrollY;activeMobileDragScrollY=initialScrollY;activeMobileDragMaxScroll=Math.max(activeMobileDragScrollY,pageBottom-window.innerHeight,document.body.getBoundingClientRect().height-window.innerHeight,Math.max(document.documentElement.scrollHeight,document.body.scrollHeight)-window.innerHeight);}
  document.body.classList.toggle('mobile-admin-dragging',active);document.documentElement.classList.toggle('mobile-admin-dragging',active);
- if(!active&&wasActive){const top=activeMobileDragScrollY;Object.assign(document.body.style,{position:'',top:'',left:'',right:'',width:''});window.scrollTo({top,left:0,behavior:'instant'});}
+ if(!active&&wasActive){activeMobileDragMaxScroll=0;}
 }
-function scrollActiveMobileDrag(top:number){activeMobileDragScrollY=Math.max(0,Math.min(activeMobileDragMaxScroll,top));document.body.style.top=`-${activeMobileDragScrollY}px`;}
+function scrollActiveMobileDrag(top:number){activeMobileDragScrollY=Math.max(0,Math.min(activeMobileDragMaxScroll,top));window.scrollTo({top:activeMobileDragScrollY,left:0,behavior:'instant'});}
 function settleModeViewport(pending:{scrollY:number;layoutRevision:number},layoutRevision:number){
  const root=document.scrollingElement;
  const maxScroll=Math.max(0,(root?.scrollHeight??0)-window.innerHeight);

@@ -21,8 +21,9 @@ test('idle drag cleanup does not reset a populated mode-switch viewport',()=>{
   const s=setup();s.set(false);s.set(false);
   assert.equal(s.window.scrollY,1600);assert.equal(s.scrolls.length,0);
 });
-test('active drag restores its pickup position once, then idle cleanup preserves later scrolling',()=>{
-  const s=setup();s.set(true,1600);assert.equal(s.document.body.style.position,'fixed');
-  s.window.scrollY=0;s.set(false);assert.equal(s.window.scrollY,1600);assert.equal(s.scrolls.length,1);
-  s.window.scrollY=2400;s.set(false);assert.equal(s.window.scrollY,2400);assert.equal(s.scrolls.length,1);
+test('active drag keeps the document in normal flow and cleanup preserves the current viewport',()=>{
+  const s=setup();s.set(true,1600);assert.equal(s.document.body.style.position,undefined);
+  assert.equal(s.document.documentElement.classList.contains('mobile-admin-dragging'),true);
+  s.window.scrollY=2400;s.set(false);assert.equal(s.window.scrollY,2400);assert.equal(s.scrolls.length,0);
+  assert.equal(s.document.documentElement.classList.contains('mobile-admin-dragging'),false);
 });

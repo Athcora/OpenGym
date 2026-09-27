@@ -1092,3 +1092,13 @@ Continue only the targeted mobile drag/layout repair. Sites v486 is live with `W
 ## NEXT SESSION — START HERE
 
 Targeted mobile drag/layout repair source/deployment and deployed responsive desktop/390×844 pointer verification are complete, but the disposable facility `qa-mobile-drag-v486` and its 24 `QAMD NN` rows must now be removed. Immediately before executing the deletion in the Supabase SQL UI, obtain action-time user confirmation to delete that exact disposable facility and its dependent QA-only rows/temporary credential; do not delete PHR, Ocean Air, or any production credentials. Then run a read-only post-cleanup query proving `qa_facilities=0`, `qa_players=0`, and PHR/OAIR still exist; reset the viewport, commit/push this checkpoint, and report the physical WebKit touch/long-press limitation accurately. Do not start Run 6.
+
+### Targeted mobile drag/layout — QA cleanup (2026-09-27)
+
+- After action-time user confirmation, ran a guarded transaction that required the exact `qa-mobile-drag-v486` / `QAMD486` facility and exactly 24 dependent QA players before deleting it. The facility deletion removed its dependent fixture rows and temporary facility-admin credential only.
+- Post-cleanup authoritative result is `qa_facilities=0`, `qa_players=0`, and `protected_facilities=2` (PHR and Ocean Air). The temporary 390×844 viewport override was reset. No production facility, player, credential, or login configuration was deleted or changed.
+- The targeted repair is fully covered by source regression tests and deployed desktop/responsive-browser pointer checks. The one explicit residual limitation is physical WebKit touch/long-press attribution: this automation surface provides real pointer drag at 390×844 but not a physical-device touch event. Do not represent that as tested unless a physical mobile browser session is provided.
+
+## NEXT SESSION — START HERE
+
+The targeted mobile drag/layout repair is closed and its QA fixture is gone. Deployed Sites v486 serves `WaitlistApp-BVNu_cJo.js`; `dede199` contains the functional repair and checkpoint `d92d117` records live verification. Do not recreate `qa-mobile-drag-v486`, change PHR/Ocean Air, or start Run 6. If physical WebKit touch/long-press validation is explicitly requested later, begin with a device-capable browser session; do not repeat the completed source investigation, build, deployment, desktop, or 390×844 responsive-pointer matrix.

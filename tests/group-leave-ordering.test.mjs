@@ -80,4 +80,6 @@ test('all authoritative leave paths call the shared locked, normalized helper', 
     assert.match(body, /pg_advisory_xact_lock\(7429102\)/);
   }
   assert.match(sql, /revoke all on function public\.detach_group_member_preserving_queue\(uuid,uuid,uuid\) from public, anon, authenticated/i);
+  const runtimeGrant = readFileSync(new URL('../supabase/migrations/20260927214000_grant_group_leave_helper_to_runtime.sql', import.meta.url), 'utf8');
+  assert.match(runtimeGrant, /grant execute on function public\.detach_group_member_preserving_queue\(uuid,uuid,uuid\)\s+to opengym_runtime/i);
 });

@@ -1032,3 +1032,9 @@ Resume only the post-Run-5 group-leave repair. Commit `1ea8e21` is pushed; its b
 ## NEXT SESSION — START HERE
 
 The group-leave backend repair is live in commit `1ea8e21`, but actual browser/mobile verification remains blocked by two external prerequisites: (1) restore access to the existing Sites project `appgprj_6a71a3583c688191abb6964083a256b2` so the client dialog wording can be published and its served asset proved; and (2) provide an **already-existing**, isolated QA facility with an authorized Admin session (or explicitly authorize creation of a disposable QA facility and its separately managed test login). Do not create a test facility, credentials, or test players by inference. Once both exist, run desktop and 390×844 real browser tests of an interior group departure, edge departure, refresh, realtime second-client convergence, and authoritative queue/group query; then clean up the exact fixture. Do not test destructively on PHR/Ocean Air, alter their credentials/configuration, or start Run 6.
+
+### Post-interruption environment recheck (2026-09-27)
+
+- The restored Chrome session contains an authenticated **PHR** Admin tab only. Its live production queue has 15 current players across two courts; no destructive group action was taken there because PHR is not a QA fixture.
+- The custom domain is still serving the prior v484 client asset `assets/WaitlistApp-BY-KU4qq.js`. The `1ea8e21` dialog text is consequently not public. A single fresh native Sites `get_site` retry for `appgprj_6a71a3583c688191abb6964083a256b2` again returned `SitesConnectorError: Sites project not found`.
+- The first unfinished step remains unchanged: regain access to the existing Sites project and supply an existing isolated QA facility/session (or explicit authorization to create one). No credentials, facility configuration, player, group, or production ordering was changed.

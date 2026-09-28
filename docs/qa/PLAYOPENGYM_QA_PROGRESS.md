@@ -1212,3 +1212,13 @@ Continue the targeted Teams/Teams Rejoin drag-interaction convergence from **Sit
 ## NEXT SESSION — START HERE
 
 **First restore PHR before any further test.** User must place `https://playopengym.com/g/phr` back in its authorized Admin UI; do not request, reveal, type, reset, or alter credentials. Then use the Admin mode selector to change **Teams mode → Rejoin waitlist**, wait for realtime completion, reload, and query the authoritative state to confirm: mode `rejoin`, game `2`, two courts, zero `king_teams`, and the original 15 active PHR identities/statuses/queue positions/courts with no team ids. Only after baseline restoration and a usable admin session may start the requested v490 Teams/Teams Rejoin desktop and 390×844 mobile matrix. If the UI cannot be re-authenticated, stop: raw database rollback is not approved because it could violate application-managed Teams state. Do not create a fixture, touch Ocean Air, or modify any authentication/credential data.
+
+### PHR baseline restoration verified (2026-09-28)
+
+- User re-authenticated PHR Admin. The mode selector successfully restored **Teams mode → Rejoin waitlist**. The initially stale selector reference made it appear unchanged, but the rendered standard queue and authoritative database result prove the transition completed.
+- Authoritative post-restore state exactly matches the pre-test baseline: `mode=rejoin`, `game_number=2`, `court_count=2`, `king_teams=0`, `active_players=15`; every original active player has its recorded current status, position, court, and `team_id=null`.
+- A mandatory browser reload then returned the client to the facility picker again, proving that this in-app session does not persist facility/admin selection across reload. The restored server state remains safe; no player, game, court, credential, or Ocean Air data was changed beyond the temporary Teams-mode conversion and its app-mediated restoration.
+
+## NEXT SESSION — START HERE
+
+PHR has been restored and independently verified against its baseline. For live v490 drag QA, user must again open PHR in its authorized Admin UI and leave that session active; do not handle credentials. Before testing, take a fresh read-only baseline. Then run the full real Teams and Teams Rejoin matrix on PHR: valid move/drop, full-team non-termination, cancel, repeated move, edge auto-scroll, refresh/realtime, desktop and 390×844 mobile. Verify exact player/team identities in the database after each critical mutation and restore PHR through the Admin UI to baseline before stopping. Also test representative Regular/Rejoin desktop/mobile behavior. Do not create a fixture, touch Ocean Air, or modify auth/credentials.

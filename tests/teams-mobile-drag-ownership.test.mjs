@@ -15,6 +15,7 @@ test('Teams mobile drag uses the captured row as the active pointer owner', () =
 });
 
 test('Teams mobile drag arms a capture-phase non-passive touch blocker before hold activation', () => {
+  assert.match(king, /else\{try\{row\.setPointerCapture\(event\.pointerId\)\}catch\{\}document\.addEventListener/);
   assert.match(king, /document\.addEventListener\(\'touchmove\',preventNativeTouchScroll,\{passive:false,capture:true\}\);state\.timer=/);
   assert.match(king, /state\.active=true;document\.body\.classList\.add\(\'king-drag-holding\'\);setMobileAdminDragging/);
   assert.match(king, /document\.removeEventListener\(\'touchmove\',preventNativeTouchScroll,\{capture:true\}\)/);

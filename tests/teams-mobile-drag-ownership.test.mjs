@@ -33,8 +33,14 @@ test('Teams cancellation removes the preview and never commits a cancelled drop'
 
 test('Teams physical-touch diagnostic records stable-owner lifetime and premature termination facts', () => {
   assert.match(king, /window\.__openGymTeamDragTrace/);
+  assert.match(king, /sequence:\+\+traceSequence\.current/);
+  assert.match(king, /trace\.slice\(-240\)/);
   assert.match(king, /owner\.addEventListener\('lostpointercapture',lostCapture\)/);
   assert.match(king, /traceDrag\('post-activation-render'.*rowConnected:row\.isConnected.*previewConnected/s);
+  assert.match(king, /source-row-unmounted/);
+  assert.match(king, /board-render/);
+  assert.match(king, /native-\$\{event\.type\}/);
+  assert.match(king, /'pointerdown','pointermove','pointerup','pointercancel','lostpointercapture','touchstart','touchmove','touchend','touchcancel'/);
   assert.match(king, /traceDrag\('finish',\{commit,active:state\.active/);
   assert.match(king, /traceDrag\('pointercancel'\)/);
   assert.match(king, /traceDrag\('touchcancel'\)/);

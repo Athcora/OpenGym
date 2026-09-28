@@ -96,7 +96,7 @@ assert.doesNotMatch(app,/const scrollBeforeHold=/);
 assert.equal((app.match(/Math\.min\(88,Math\.max\(64,window\.innerHeight\*\.1\)\)/g)??[]).length,3);
 assert.match(app,/preserveDragScrollAwayFromEdges\(y,state\.scrollY\)/);
 assert.match(app,/preserveDragScrollAwayFromEdges\(y,mobileDrag\.current\.scrollY\)/);
-assert.match(app,/else\{try\{row\.setPointerCapture\(event\.pointerId\)\}catch\{\}document\.addEventListener\('touchmove',preventNativeTouchScroll,\{passive:false,capture:true\}\);state\.timer=/);
+assert.match(app,/else\{try\{row\.setPointerCapture\(event\.pointerId\)\}catch\{\}traceDrag\('pointer-captured-at-down'.*document\.addEventListener\('touchmove',preventNativeTouchScroll,\{passive:false,capture:true\}\);state\.timer=/s);
 assert.match(app,/positionPlayerDragPreview\(preview,state\.lastX,state\.lastY\);updateMobileTarget\(state\.lastX,state\.lastY\);startAutoScroll\(\);\},MOBILE_DRAG_HOLD_MS\)/);
 assert.match(app,/const left=Math\.min\(window\.innerWidth-width-edgePadding/);
 assert.match(app,/const top=Math\.min\(window\.innerHeight-height-edgePadding/);

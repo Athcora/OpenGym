@@ -123,7 +123,78 @@ Verified present in `WaitlistApp.tsx` and absent from the dictionary: the four "
 
 ## 5. Database layer — `supabase/*.sql`
 
-_(see section appended below)_
+Context: 111 SQL files, ~9,100 lines. The root `supabase/*.sql` files were applied by hand in the SQL editor in the order recorded in `docs/qa/PLAYOPENGYM_QA_PROGRESS.md`; the 11 files in `supabase/migrations/` were applied by CLI and are the most recent definitions. The **base schema** (tables `waitlist_players`, `waitlist_config`, `waitlist_events`, `past_games`, `admin_sessions`, `admin_undo`, `rejoin_responses`, `group_requests`, `push_subscriptions`) is **not in the repository**, so its permissive RLS policies and function ownership can only be inferred. Items marked *verify live* should be checked with `select proname, proowner::regrole, prosecdef from pg_proc where pronamespace='public'::regnamespace` and `select * from pg_policies where schemaname='public'`.
+
+### Security
+
+**S1. HIGH — Any player can take over another player's identity via `device_id`.**
+`supabase/prevent-duplicate-device-players.sql:42-45` (`join_waitlist_for_device`, the only browser join entry point):
+```sql
+select * into player from public.waitlist_players
+  where facility_id=fid and device_id=p_device_id and status<>'left' for update;
+if player.id is not null then
+  update public.waitlist_players set user_id=null where facility_id=fid and user_id=auth.uid() and id<>player.id;
+  update public.waitlist_players set user_id=auth.uid(),updated_at=now() where facility_id=fid and id=player.id;
+```
+Whoever supplies a matching `device_id` becomes the owner of that row; there is no check that the existing `user_id` is null or equals `auth.uid()`. `device_id` is not secret: every facility member can `select *` on `waitlist_players` (the app itself does at `WaitlistApp.tsx:589`) and the realtime subscription delivers full rows including `device_id` to every client. An attacker reads a victim's `device_id`, calls the RPC with it, and can then leave, rename, sit out, or answer rejoin/swap prompts as the victim, whose own app now shows them as not joined.
+**Fix:** only re-own when `player.user_id is null or player.user_id = auth.uid()`, otherwise raise; revoke column-level select on `device_id` (grant the explicit column list the app uses) and exclude it from the realtime publication; consider storing a salted hash.
+
+**S2. MEDIUM — `device_id` is a client-generated string, so the duplicate-device guard is bypassable by design.** `prevent-duplicate-device-players.sql:38-40` only checks length 16–100; clearing `localStorage` (or calling the RPC with any fresh string) yields a second active player. Treat it as a convenience, not a control; a server-issued signed token or join throttling would be needed for real enforcement.
+
+**S3. MEDIUM — Facility isolation relies on function ownership, and several later functions were never re-owned or scoped** (*verify live*). `multi-facility-tenancy.sql:112-120` re-owns SECURITY DEFINER functions to `opengym_runtime` so the restrictive `facility_isolation` policy applies to them. Functions created afterwards default to owner `postgres` (bypasses RLS) unless the file re-owns them. Three trigger bodies have no `facility_id` predicate and would write across facilities if postgres-owned: `restore_advanced_team_memberships` (`preserve-teams-on-next-game.sql:4-33`, applies the latest `king_round_history` snapshot from *any* facility), `capture_past_game_team_rosters` (`past-game-team-rosters.sql:4-35`, reads `king_teams` by court number only), `notify_group_request` (`group-request-notifications.sql:3-16`, reads `waitlist_config` without facility). **Fix:** add `where facility_id = new.facility_id` to all three and `alter function … owner to opengym_runtime`; reconcile `pg_proc.proowner` for every `prosecdef` function.
+
+**S4. MEDIUM — `reverse_next_game` was retired, then re-exposed without the guards every other reverse has.** `retire-unguarded-team-reverse.sql:6` revoked it; `harden-rpc-execute-grants.sql:45` allowlists it again and the app calls it (`WaitlistApp.tsx:1193`) from the "Next game started" notices, including for non-operators reversing their own advance. It takes no facility/expected-game argument (the multi-tab facility-switch race the QA doc rated P0 for `reverse_king_game`) and restores a whole-facility snapshot (see L5). **Fix:** route regular-mode reverse through `reverse_past_game_guarded` and revoke `reverse_next_game`.
+
+**S5. MEDIUM — Replaying `multi-facility-tenancy.sql` breaks login.** Lines 190-206 textually rewrite every function body, turning `on conflict(user_id)` into `on conflict(facility_id,user_id)`. That hits `select_facility` and `sign_in_waitlist_admin`, whose tables have no such unique index, so the rewritten functions fail with `42P10`. Production works only because the live bodies differ from this file. Delete the blanket rewrite block.
+
+**S6. MEDIUM — Undo/redo/reverse restores drop `device_id` and corrupt history.** `restore_waitlist_state` (`fix-mode-switch-facility-scope.sql:74-88`) deletes all facility players and re-inserts from the snapshot; the insert column list omits `device_id` (every undo erases the duplicate-device bindings), the delete cascades `geofence_return_prompts`, `team_fill_ins`, `team_substitutes` and pending requests, the re-insert fires `waitlist_player_history` (a fake "joined the waitlist" event per player), and re-inserting `past_games` fires `capture_past_game_team_rosters` which overwrites historical rosters with the current teams. **Fix:** restore all columns, gate history/roster triggers with a GUC during restores, or switch to the diff-merge model `reverse_past_game` already uses.
+
+**S7. LOW — Admin sign-in has no brute-force protection and sessions never expire.** `sign_in_waitlist_admin` (`multi-facility-tenancy.sql:147-161`) allows unlimited attempts from any anonymous session; `admin_sessions` rows are never expired and `is_waitlist_admin()` ignores `created_at`.
+
+**S8. LOW — `admin_move_king_player_to_empty` accepts `court_side = null`.** `fix-admin-rpc-facility-scope.sql:73`: `p_court_side not in (1,2)` is NULL for NULL input, so a third `current` team with `court_side=null` can be inserted on a court; the function also skips the 6-member cap. Use `coalesce(p_court_side,0) not in (1,2)`, add the cap, and add a partial unique index on `(facility_id, court_number, court_side) where status='current'`.
+
+**S9. INFO (*verify live*) — `push_subscriptions`.** The tenancy file adds `facility_id` and a restrictive policy but no permissive policy is in the repo; `push.ts` upserts on `endpoint` without `facility_id`. Depending on the live policy, re-enabling push after changing facility either fails RLS or enrolment fails entirely.
+
+**S10. INFO — Every `waitlist_events` row (including geofence departures and host changes) is broadcast to every facility member via realtime;** "Your history" filtering is client-side only.
+
+Not found: SQL injection (dynamic SQL uses `%I`/`regprocedure`), missing `search_path` on SECURITY DEFINER functions, grants to `anon`, or function-overload ambiguity.
+
+### Logic
+
+**L1. HIGH — Sit-out, leave, and geofence paths use a single-court allocator that destroys multi-court games.**
+`normalize_active_waitlist` (`fix-player-actions-facility-scope.sql:24-45`, final version) demotes every `current` player to `waiting`, then promotes the lowest `max_players` positions back to `current` **without setting `court_number`** and without reading `waitlist_courts`. It is called from `admin_set_player_sitout`, `admin_unsit_player`, `admin_leave_player`, `sit_out_one_game`, `sit_out_and_leave_group`, `remove_self_for_geofence` and `return_after_geofence`. With two courts and 24 players in play, one player tapping Sit out leaves 12 in `current` (spanning both courts with stale court numbers, promoted players with `court_number=null`) and dumps the other 12 to the waitlist. Every join/move/add path already uses the court-aware `fill_open_court_slots()`. **Fix:** make `normalize_active_waitlist` a thin wrapper over `fill_open_court_slots()` with no demotion step, or delete it.
+
+**L2. HIGH — Court seating race: three different advisory-lock keys plus `FOR UPDATE SKIP LOCKED`.** `king_fill_courts` (`fix-next-game-facility-scope.sql:125-128`) checks "side empty" then picks the head team with `skip locked`. Its callers serialize on *different* global keys: `7429101` (`end_court_game`, `answer_rejoin_prompt`, `admin_set_court_count`, `reverse_past_game`), `7429201` (`join_king_team`, `king_prepare_player`, `admin_move_king_player*`, `set_open_gym_mode`), `7429202` (`end_team_rotation`, `end_team_king_game`), and none for `cleanup_king_rejoin_expirations` (called by every client every 60 s). Nothing prevents two `current` teams on one `(facility_id, court_number, court_side)`. **Fix:** one per-facility lock (`pg_advisory_xact_lock(hashtext('opengym:'||fid::text))`) in every mutating RPC, drop `skip locked`, add the partial unique index from S8. Per-facility keys also stop all facilities serialising on one global key.
+
+**L3. MEDIUM — Lock-order deadlock between the guard wrappers and everything else.** `assert_expected_court_game` (`guarded-game-actions.sql:26-27`) locks the `waitlist_courts` row `for update` and *then* `end_court_game` takes the advisory lock; `reverse_past_game` and `admin_set_court_count` take the advisory lock first and then touch court rows. Concurrent Next Game vs Reverse on one court deadlocks (`40P01`). Take the advisory lock before the row lock in the wrapper.
+
+**L4. MEDIUM — Regular-mode rejoin and leave still use single-court capacity and drop `court_number`.** `answer_rejoin_prompt` (`fix-rejoin-facility-scope.sql:57-65`) computes `open_slots := max_players − count(current)` across *all* courts and promotes without a court; `leave_waitlist_for_facility` (`fix-leave-waitlist-expected-facility.sql:25-32`) promotes exactly one player, ignoring groups. With two courts of 12, a vacated seat is never refilled by a rejoin. Replace both with `perform public.fill_open_court_slots()` (as migration `20260925110000` already did for the offline path).
+
+**L5. MEDIUM — Whole-facility snapshot undo/redo/reverse erases later joins and interleaves operators.** Undoing "sit out player" ten minutes later deletes everyone who joined in between; undo stacks are per operator, so a host undo can roll back an admin's later actions. `reverse_next_game` inherits this.
+
+**L6. MEDIUM — Teams mode never releases an emptied team, so a court side can be permanently dead.** All leave paths set `status='left'` but keep `team_id`; no path deletes a `current` team whose last member left, and `king_fill_courts` only fills sides with no current team. Both members of a two-person team leaving blocks that side until an operator drags someone in, and `end_team_rotation` will rotate the empty team. **Fix:** delete member-less `king_teams` rows in each leave path (or an AFTER UPDATE trigger on status) and call `king_fill_courts()`.
+
+**L7. MEDIUM — Midnight reset is Pacific-only and has no catch-up.** `midnight-reset-all-facilities.sql:10-16` uses `America/Los_Angeles` for every facility and returns unless the local hour is 0; there is no `facilities.timezone`, and a missed 00:xx run skips that day. Add a per-facility timezone and reset whenever `local_date > last_reset_date`.
+
+**L8. MEDIUM — Rejoin expiry is enforced only by clients.** Expired `rejoin` rows are finalised only when a browser calls `cleanup_king_rejoin_expirations` (once per minute per client) or an operator opens the offline list. With no app open, expired players hold positions indefinitely. Schedule it in `pg_cron` per facility.
+
+**L9. LOW — Contradictory teams-rejoin rotation rule.** `team-rotation-preserve-first.sql:29` keeps side 1 when one team is waiting; `preserve-empty-rotation-teams.sql:35` and `fix-next-game-facility-scope.sql:170` keep side 2. Pick one and delete the other file.
+
+**L10. LOW — `fill_open_court_slots` head-of-queue group blocks a court.** `harden-player-grouping.sql:20` exits the loop when the first waiting group does not fit, even if singles behind it would; its final ranking excludes `sitout` rows so waiting and sit-out players can share a `queue_position`.
+
+**L11. LOW — "Accept all rejoins" writes N undo snapshots** (`fix-offline-rejoin-expected-facility.sql:30-37`), pushing the operator's real history out of the 5-entry retention.
+
+### Frontend/SQL drift
+- All 61 RPC names and argument names called from `WaitlistApp.tsx` exist in SQL, and the `harden-rpc-execute-grants.sql` allowlist matches that set. No drift.
+- Dead but still-defined SECURITY DEFINER functions with legacy unscoped bodies: `end_current_game`, `end_king_game`, `set_king_max_wins`, `reverse_king_game`, `rejoin_waitlist_at_back`, `leave_waitlist`, `admin_accept_all_offline_rejoins`, `fill_one_court_slots`, `repair_active_court_assignments`, `next_game_player_ids`. Drop them in a migration.
+- `supabase/fix-waitlist-read-join-geofence-facility-scope.sql` no longer byte-matches the applied migration `20260924020558` (the migration carries an extra grant), despite the QA doc's "byte-for-byte aligned" claim.
+
+### Migration hygiene
+1. `teams-rejoin-waitlist-mode.sql:44,109` use `as $ … end; $;` — invalid dollar quoting; the file cannot be replayed as written.
+2. Five files regex-edit live function bodies via `pg_get_functiondef` (`multi-facility-tenancy.sql:190-206`, `reverse-latest-court-game.sql:44-63`, `team-substitute-next-game.sql`, `fix-facility-player-join.sql`, `fix-king-player-null-owner-authorization.sql`). Their result depends on what was live at the time. Concrete hazard: the root `fix-group-and-king-action-facility-scope.sql:93,122,140` still contains the vulnerable `player.user_id<>auth.uid()` guard (NULL-owner bypass) that the CLI patch fixed in place; re-applying that root file in another environment re-introduces the bypass. Rewrite the source with `is distinct from`.
+3. Most historical files have no `begin/commit`, and several mutate data at deploy time (`select public.fill_open_court_slots()`, `delete from public.king_teams …`), so replays change live data.
+4. No baseline for the base schema exists in the repo; the environment cannot be rebuilt or its RLS audited from source.
+5. Six advisory-lock magic numbers are duplicated across ~40 files with no single definition, which is how L2 happened.
 
 ---
 

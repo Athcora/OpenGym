@@ -1311,3 +1311,12 @@ Push the clean integration branch normally and record its commit SHA. Then stop 
 ## NEXT SESSION — START HERE
 
 **PHR is clean and fully restored after the authorized repair.** Do not repeat the PHR bootstrap or cleanup. Continue the remaining Stage 8 evidence: use a second independent production client to confirm read-only convergence after a fresh reload, then move to the already-authorized Ocean Air Admin session only if it is available without handling credentials. Capture its semantic baseline before any mutation and repeat the first live blocker (Admin → Waitlist → King of the Court → wholly uninitialized board → Start KOTC), followed by the required desktop/390px, guard, refresh/reconnect, authoritative-state, and restoration checks. Keep Phone untouched and do not alter product source, deployment, Supabase security, or authentication.
+
+### Stage 8 — PHR repair browser proof complete; Ocean Air session unavailable (2026-10-01)
+
+- An independent Chrome client retained the prior disposable player session and surfaced the expected admin-update notice after its server-side removal; it was not used to create or modify any player. PHR’s restored Admin session remains active and clean.
+- Ocean Air’s exact slug is `ocean-air-recreation-center`. A new isolated in-app tab can select the facility, but it reaches only its public **Continue as guest / Admin** entry screen; it does not inherit PHR’s Admin session. The authenticated PHR tab’s Change action explicitly requires logout before switching facility, so it was cancelled to preserve the verified PHR session. No Ocean Air data was read or mutated.
+
+## NEXT SESSION — START HERE
+
+**The remaining Stage 8 blocker is an active Ocean Air Admin session.** The user must open `https://playopengym.com/g/ocean-air-recreation-center` in its authorized Admin UI and leave it active; do not request, reveal, type, reset, or change credentials. Then capture Ocean Air’s semantic baseline and execute the production live blocker test exactly once: Waitlist → King of the Court on the wholly uninitialized board → Start KOTC. Require visible Start KOTC, successful authoritative initialization, six-slot/open-slot rendering, permanent-group preservation, Start disappearance, and participant-guarded Win/Lose; verify desktop + 390×844, refresh/reconnect, independent-client convergence, authoritative state, and app-mediated restoration to its recorded baseline. PHR is already restored and must remain untouched; keep Phone untouched. Do not deploy or change source/configuration.

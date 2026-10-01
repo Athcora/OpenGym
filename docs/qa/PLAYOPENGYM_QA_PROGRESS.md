@@ -1257,3 +1257,24 @@ Use a real touch-capable device on **v492**, not v490/v491. In PHR Admin (or Oce
 ## NEXT SESSION — START HERE
 
 **Await the user's physical-phone acceptance test on Sites v493.** Do not make another source change or redeploy before their result. Ask them only to test the live site: in Teams, long-press a player, keep the same finger down, move it away from the original row, then release onto a valid non-full team; repeat independently in Teams Rejoin. The required result is that the player follows the same finger rather than snapping back or scrolling the page. If the user reports success, continue with the remaining requested browser/state verification and restore any QA modifications through the app. If it still fails, capture the exact observed behavior first; do not speculate or alter credentials/authentication.
+
+### Stage 8 — hybrid KOTC integration release pending validation (2026-10-01)
+
+- Production already has migration `20261001172013_hybrid_kotc_first_game_bootstrap.sql`. Read-only catalog verification confirms its public bootstrap RPC is `SECURITY DEFINER`, fixes `search_path` to `public`, denies `PUBLIC` and `anon` EXECUTE, and grants `authenticated` only.
+- Validated hybrid release source commit `f27447061966dd70ca997a29603a10f0418bc62b` was based on an older mainline. A fresh `integration/hybrid-kotc-stage8` branch now starts at current `github/main` `14a1476022cf8ee8050c4a9ade00e4c7fc215f98`; its cherry-pick deliberately keeps the newer Teams row-owned mobile-drag implementation while integrating the hybrid KOTC UI, guarded bootstrap/result paths, migrations, and regression coverage.
+- The existing OpenGym Sites project remains inaccessible to the current deployment workspace. No client deployment, alternate publication path, configuration bypass, PHR/Ocean Air mutation, or live hybrid QA is authorized while that remains true.
+
+## NEXT SESSION — START HERE
+
+Finish the integration branch validation: resolve the scoped cherry-pick, confirm no conflict markers or unrelated upstream removal, then run hybrid source/bootstrap contracts, Teams mobile-drag coverage, substitute invitation coverage, convergence coverage, TypeScript, changed-scope ESLint, a normal Vinext production build with `VITE_OPEN_GYM_E2E` unset, and the authenticated local hybrid Playwright flow. Push the resulting integration branch normally. Do not deploy until the existing Sites workspace can access project `appgprj_6a71a3583c688191abb6964083a256b2`; do not touch PHR or Ocean Air before a matching client is served and inspected.
+
+### Stage 8 — hybrid integration local release gate complete (2026-10-01)
+
+- Cherry-picked the validated hybrid release onto current GitHub main through fresh branch `integration/hybrid-kotc-stage8`. The semantic conflict resolution retains the upstream row-owned Teams/Teams Rejoin mobile-drag implementation while adding the hybrid Waitlist/KOTC UI and guarded bootstrap path. Placeholder team-number allocation is pure during render, avoiding a React lint violation without changing the drag behavior.
+- Integration validation: TypeScript PASS; focused hybrid/bootstrap, Teams mobile-drag, substitute invitation, convergence, grants, and cleanup tests PASS **23/23**; full tracked Node suite PASS **153/153**; changed-scope ESLint **0 errors** (31 pre-existing warnings); normal Vinext production build with `VITE_OPEN_GYM_E2E` absent completed all five stages with exit 0; artifact scan found none of the E2E observer, local Supabase URL, fixture, or credential markers.
+- Authenticated local Playwright PASS **1/1 in 26.1s**. The disposable local Admin saw an uninitialized hybrid KOTC board at desktop and 390px, started KOTC, received authoritative multi-court sides with explicit slots, then exercised guarded result, stale-action rejection, and two-client convergence.
+- Production client deployment remains blocked solely by missing access to the existing Sites project `appgprj_6a71a3583c688191abb6964083a256b2`. No alternative deployment was attempted and PHR/Ocean Air were not accessed or mutated.
+
+## NEXT SESSION — START HERE
+
+Push the clean integration branch normally and record its commit SHA. Then stop for the existing Sites project/account access blocker; do not deploy through another provider/project, change production configuration, or touch PHR/Ocean Air. Once the authorized Sites workspace is restored, deploy this exact branch with `VITE_OPEN_GYM_E2E` disabled, inspect the served custom-domain bundle, and only then resume the authorized live Stage 8 blocker retest.

@@ -1,4 +1,6 @@
 interface ImportMetaEnv {
+  readonly DEV?: boolean;
+  readonly VITE_OPEN_GYM_E2E?: string;
   readonly VITE_SUPABASE_URL?: string;
   readonly VITE_SUPABASE_ANON_KEY?: string;
   readonly VITE_SUPABASE_PUBLISHABLE_KEY?: string;
@@ -8,7 +10,7 @@ interface ImportMetaEnv {
 interface ImportMeta { readonly env: ImportMetaEnv }
 
 interface Fetcher { fetch(input:RequestInfo|URL,init?:RequestInit):Promise<Response> }
-interface D1Database {}
+type D1Database = object;
 
 declare module 'cloudflare:workers' {
   export const env: { DB?: D1Database };

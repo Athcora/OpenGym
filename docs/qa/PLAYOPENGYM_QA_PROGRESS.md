@@ -1278,3 +1278,12 @@ Finish the integration branch validation: resolve the scoped cherry-pick, confir
 ## NEXT SESSION — START HERE
 
 Push the clean integration branch normally and record its commit SHA. Then stop for the existing Sites project/account access blocker; do not deploy through another provider/project, change production configuration, or touch PHR/Ocean Air. Once the authorized Sites workspace is restored, deploy this exact branch with `VITE_OPEN_GYM_E2E` disabled, inspect the served custom-domain bundle, and only then resume the authorized live Stage 8 blocker retest.
+
+### Stage 8 — existing Sites access recheck still blocked (2026-10-01)
+
+- The production release branch is pushed: `integration/hybrid-kotc-stage8` at `2217a9a9288e86ccc3ed080e31f2cbf387bf952a`, based directly on `github/main` `14a1476022cf8ee8050c4a9ade00e4c7fc215f98`.
+- After the reported account restoration, the native Sites connector was asked for the exact manifest project `appgprj_6a71a3583c688191abb6964083a256b2`. It still returned `SitesConnectorError: Sites project not found` (`project_not_found`, HTTP 404). This is evidence that the active deployment session/workspace does not yet have access to the existing project; no project, binding, domain, configuration, archive, or deployment mutation was attempted.
+
+## NEXT SESSION — START HERE
+
+Before any deployment, have the user switch the Codex/Sites session to the workspace that owns `appgprj_6a71a3583c688191abb6964083a256b2`, or grant the active account access to that exact existing project. Do not request credentials in chat. Then call `get_site` with that unchanged ID; only a successful response establishing the current production environment and `playopengym.com` binding authorizes the normal deploy of pushed commit `2217a9a9288e86ccc3ed080e31f2cbf387bf952a`. Do not create a replacement Site or touch PHR/Ocean Air while access is unresolved.

@@ -232,6 +232,15 @@ until the data model and server invariants below are implemented and tested.
 - [ ] Exercise desktop and 390x844 mobile interactions, then query authoritative
   state and restore the documented clean facility baseline by exact IDs.
 
+  2026-10-01 restoration checkpoint: Ocean Air's post-bootstrap Teams Rejoin
+  allocation was restored only through the deployed Admin team's normal
+  `save_operator_undo` + `admin_move_king_player` action sequence. Two moves
+  produced U alone and G/B/Y/H/R/S together; authoritative state retains all
+  seven as current on Court 1 Game 3 with unchanged mode/court/history
+  semantics. The isolated browser reload dropped the transient Admin view, so
+  post-reload Admin rendering and the remaining desktop/mobile/guard/convergence
+  evidence are still pending. Do not alter PHR or use a direct data repair.
+
 ## Primary implementation risks
 
 - The live mode-switch and reversal helpers are broad state snapshots. Hybrid

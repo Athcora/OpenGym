@@ -241,6 +241,17 @@ until the data model and server invariants below are implemented and tested.
   post-reload Admin rendering and the remaining desktop/mobile/guard/convergence
   evidence are still pending. Do not alter PHR or use a direct data repair.
 
+  Follow-up signed-in Ocean Air evidence: the restored Teams Rejoin baseline
+  rendered correctly after a real reload and at 390×844 (`375px` document width,
+  no off-screen controls). A controlled hybrid KOTC render showed the expected
+  Version 1 sides/open slots and no Win/Lose controls for the non-participant
+  Admin at both desktop and mobile. Returning app-mediated to Teams Rejoin
+  restored U alone and G/B/Y/H/R/S together, all current on Court 1 Game 3;
+  the final server read also restored the dormant hybrid rotation to Two On /
+  Two Off. Participant-side guard, independent-client convergence, and final
+  reload/reconnect proof remain pending; deletion confirmation will be needed
+  before any disposable participant can be removed.
+
 ## Primary implementation risks
 
 - The live mode-switch and reversal helpers are broad state snapshots. Hybrid

@@ -252,6 +252,23 @@ until the data model and server invariants below are implemented and tested.
   reload/reconnect proof remain pending; deletion confirmation will be needed
   before any disposable participant can be removed.
 
+### Per-court configuration correction — PAUSED FOR PRODUCT DECISION (2026-10-01)
+
+The user superseded the remaining Stage 8 live QA with a required architecture
+correction. The current hybrid configuration is facility-scoped in
+`waitlist_config`; its rule, automatic-threshold state, version, and cap gate
+every court, and the bootstrap RPC intentionally initializes all courts.
+Consequently, simply moving or duplicating selectors would falsely imply
+independent court control. The correction must move court-affecting state and
+guards into a court-owned model, retain one facility mode selector under
+Managing, remove the standalone global configuration card, and render only
+each court's own configuration/board.
+
+Before implementation, the product owner must resolve Auto KOTC: the present
+threshold uses facility-wide eligible population, but independent court rules
+need a defined court-local population or an explicit facility-wide targeting
+policy. The implementation must not retain the old global switch implicitly.
+
 ## Primary implementation risks
 
 - The live mode-switch and reversal helpers are broad state snapshots. Hybrid

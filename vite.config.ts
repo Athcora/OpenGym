@@ -11,8 +11,13 @@ const { d1, r2 } = hostingConfig;
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 
+// Deploy settings for Cloudflare Workers. `vinext build` writes these into
+// dist/server/wrangler.json, which `npx wrangler deploy` uses automatically.
 const localBindingConfig = {
+  name: "opengym",
   main: "./worker/index.ts",
+  // worker/index.ts reads static files through env.ASSETS.
+  assets: { binding: "ASSETS" },
   compatibility_flags: ["nodejs_compat"],
   d1_databases: d1
     ? [

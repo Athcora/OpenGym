@@ -4,8 +4,23 @@ import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 
 type LocalEnv = Record<string, string>;
 type Session = { access_token: string; refresh_token: string; expires_at: number; expires_in: number; token_type: string; user: { id: string } };
+type FacilityResponse = { at: string; host: string; path: string; method: string; status: number; body: string; rowCount: number | null; cacheControl: string | null };
+type FacilityDiagnostics = {
+  fixtureAt: string;
+  fixture: unknown;
+  directAt: string;
+  direct: { host: string; path: string; status: number; body: string; rowCount: number | null };
+  navigationAt?: string;
+  browserResponses: FacilityResponse[];
+  boardResponses: Array<{ at: string; status: number; body: string }>;
+};
+type AdminCredential = { username: string; password: string };
 
 function pnpm() { return process.env.OPEN_GYM_PNPM ?? 'pnpm'; }
+function e2eUrl(path: string) {
+  const baseUrl = process.env.OPEN_GYM_E2E_BASE_URL;
+  return baseUrl ? new URL(path, baseUrl).toString() : path;
+}
 function localEnv(): LocalEnv {
   const output = execFileSync(pnpm(), ['supabase', 'status', '-o', 'env'], { encoding: 'utf8', shell: process.platform === 'win32' });
   return Object.fromEntries(output.split(/\r?\n/).flatMap(line => {
@@ -16,13 +31,28 @@ function localEnv(): LocalEnv {
 function psql(sql: string) {
   execFileSync('docker', ['exec', '-i', 'supabase_db_open-gym-sites', 'psql', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres', '-d', 'postgres'], { input: sql, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
 }
+function psqlJson(sql: string) {
+  return JSON.parse(execFileSync('docker', ['exec', 'supabase_db_open-gym-sites', 'psql', '-At', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres', '-d', 'postgres', '-c', sql], { encoding: 'utf8' }).trim());
+}
+function rowCount(body: string) {
+  try { return Array.isArray(JSON.parse(body)) ? JSON.parse(body).length : null; } catch { return null; }
+}
+async function activeFacilities(env: LocalEnv, session: Session) {
+  const url = new URL('/rest/v1/facilities', env.API_URL);
+  url.searchParams.set('select', 'id,slug,code,name,address,city,region,latitude,longitude');
+  url.searchParams.set('active', 'eq.true');
+  url.searchParams.set('order', 'name.asc');
+  const response = await fetch(url, { headers: { apikey: env.PUBLISHABLE_KEY, Authorization: `Bearer ${session.access_token}` } });
+  const body = await response.text();
+  return { host: url.host, path: `${url.pathname}${url.search}`, status: response.status, body, rowCount: rowCount(body) };
+}
 async function signUp(env: LocalEnv, label: string): Promise<Session> {
   const response = await fetch(`${env.API_URL}/auth/v1/signup`, { method: 'POST', headers: { apikey: env.PUBLISHABLE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: `${label}.${randomUUID()}@local.test`, password: 'LocalOnly-E2E-Password-2026' }) });
   const body = await response.json() as { access_token?: string; refresh_token?: string; expires_at?: number; expires_in?: number; token_type?: string; user?: { id?: string }; msg?: string };
   if (!response.ok || !body.access_token || !body.refresh_token || !body.user?.id) throw new Error(`Local Auth signup failed: ${body.msg ?? response.status}`);
   return body as Session;
 }
-async function openAuthenticated(context: BrowserContext, apiUrl: string, slug: string, session: Session): Promise<Page> {
+async function openAuthenticated(context: BrowserContext, apiUrl: string, slug: string, session: Session, diagnostics?: FacilityDiagnostics): Promise<Page> {
   const storageKey = `sb-${new URL(apiUrl).hostname.split('.')[0]}-auth-token`;
   // The application creates an anonymous session when no persisted Supabase
   // session exists. Install the real local Auth session before the first app
@@ -31,12 +61,25 @@ async function openAuthenticated(context: BrowserContext, apiUrl: string, slug: 
   const page = await context.newPage();
   const rpcResponses: string[] = [];
   page.on('response', async response => {
+    const url = new URL(response.url());
+    if (url.pathname === '/rest/v1/facilities') {
+      const body = await response.text();
+      diagnostics?.browserResponses.push({
+        at: new Date().toISOString(), host: url.host, path: `${url.pathname}${url.search}`,
+        method: response.request().method(), status: response.status(), body, rowCount: rowCount(body),
+        cacheControl: response.headers()['cache-control'] ?? null,
+      });
+    }
+    if (url.pathname === '/rest/v1/rpc/read_hybrid_kotc_board') {
+      diagnostics?.boardResponses.push({ at: new Date().toISOString(), status: response.status(), body: await response.text() });
+    }
     if (!response.url().includes('/rest/v1/rpc/')) return;
     const name = response.url().split('/rest/v1/rpc/')[1]?.split(/[?#]/)[0] ?? 'unknown';
     if (response.ok()) { rpcResponses.push(`${name}:${response.status()}`); return; }
     rpcResponses.push(`${name}:${response.status()}:${(await response.text()).slice(0, 500)}`);
   });
-  await page.goto(`/g/${slug}`);
+  if (diagnostics) diagnostics.navigationAt = new Date().toISOString();
+  await page.goto(e2eUrl(`/g/${slug}`));
   await expect.poll(() => page.evaluate(async ({ url, token }) => {
     const response = await fetch(`${url}/auth/v1/user`, { headers: { Authorization: `Bearer ${token}` } });
     return response.ok ? (await response.json() as { id: string }).id : null;
@@ -49,10 +92,39 @@ async function openAuthenticated(context: BrowserContext, apiUrl: string, slug: 
       screen: location.pathname,
       storedSessionKeys: Object.keys(localStorage).filter(key => key.includes('auth-token')),
       visibleText: document.body.innerText.slice(0, 1_000),
+      routeSegment: location.pathname.match(/^\/g\/([^/]+)\/?$/i)?.[1] ?? null,
+      serviceWorkerControlled: Boolean(navigator.serviceWorker?.controller),
+      observerDiagnostics: (window as Window & { __OPEN_GYM_E2E__?: { hybridKOTCDiagnostics?: () => unknown } }).__OPEN_GYM_E2E__?.hybridKOTCDiagnostics?.() ?? null,
     }));
-    throw new Error(`Hybrid board did not hydrate. browser=${JSON.stringify(state)} rpc=${JSON.stringify(rpcResponses)}`, { cause: error });
+    await test.info().attach('hybrid-hydration-diagnostics.json', {
+      body: JSON.stringify({ browser: state, rpcResponses, facilities: diagnostics }),
+      contentType: 'application/json',
+    });
+    throw new Error(`Hybrid board did not hydrate. browser=${JSON.stringify(state)} rpc=${JSON.stringify(rpcResponses)} facilities=${JSON.stringify(diagnostics)}`, { cause: error });
   }
   return page;
+}
+async function enterAdminManagement(page: Page, credential: AdminCredential) {
+  const managementContext = page.locator('.facility-admin-context');
+  const adminButton = page.getByRole('button', { name: 'Admin' });
+  const dismissTutorial = async () => {
+    const acknowledge = page.getByRole('button', { name: 'I acknowledge' });
+    if (await acknowledge.isVisible().catch(() => false)) {
+      await acknowledge.click();
+      const skipTutorial = page.getByRole('button', { name: 'Skip tutorial' });
+      if (await skipTutorial.isVisible().catch(() => false)) await skipTutorial.click();
+    }
+  };
+  await expect.poll(async () => (await managementContext.isVisible()) || (await adminButton.isVisible()), { timeout: 30_000 }).toBe(true);
+  if (!await managementContext.isVisible().catch(() => false)) {
+    await adminButton.click();
+    await expect(page.getByRole('heading', { name: 'Manage OpenGym' })).toBeVisible();
+    await page.getByLabel('Username').fill(credential.username);
+    await page.getByLabel('Password').fill(credential.password);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(managementContext).toBeVisible();
+  }
+  await dismissTutorial();
 }
 async function board(page: Page) {
   return page.evaluate(() => (window as Window & { __OPEN_GYM_E2E__?: { hybridKOTCBoard: () => unknown } }).__OPEN_GYM_E2E__?.hybridKOTCBoard() ?? null);
@@ -76,29 +148,44 @@ test('two independent clients converge after a guarded hybrid result and reject 
     insert into public.user_facility_sessions(user_id,facility_id) values('${aSession.user.id}','${facility}'),('${bSession.user.id}','${facility}');
     insert into public.facility_admin_credentials(facility_id,username,display_username,password_hash) values('${facility}','a','A',crypt('local-only-password',gen_salt('bf'))),('${facility}','b','B',crypt('local-only-password',gen_salt('bf')));
     insert into public.admin_sessions(user_id,username,facility_id) values('${aSession.user.id}','a','${facility}'),('${bSession.user.id}','b','${facility}');
-    insert into public.waitlist_config(facility_id,id,game_number,max_players,mode,court_count,geofence_enabled,hybrid_rotation_rule) values('${facility}',true,1,12,'hybrid_waitlist',1,false,'kotc');
-    insert into public.waitlist_courts(facility_id,court_number,game_number,team_mode) values('${facility}',1,1,'king');
+    insert into public.waitlist_config(facility_id,id,game_number,max_players,mode,court_count,geofence_enabled,hybrid_rotation_rule) values('${facility}',true,1,24,'hybrid_waitlist',2,false,'kotc');
+    insert into public.waitlist_courts(facility_id,court_number,game_number,team_mode,hybrid_rotation_rule,hybrid_config_version,hybrid_auto_kotc_threshold_teams,team_max_wins)
+      values('${facility}',1,1,'king','kotc',1,null,3),('${facility}',2,1,'regular','two_on_two_off',1,null,3);
     insert into public.daily_waitlist_reset_state(facility_id,id) values('${facility}',true);
     select set_config('request.jwt.claim.sub','${aSession.user.id}',false);
     insert into public.waitlist_players(id,facility_id,user_id,first_name,last_name,display_name,status,queue_position,court_number) values('${actorPlayer}','${facility}','${aSession.user.id}','Reporter','','Reporter','current',1,1),('${opponent}','${facility}',null,'Opponent','','Opponent','current',2,1);
   `);
+  const diagnostics: FacilityDiagnostics = {
+    fixtureAt: new Date().toISOString(),
+    fixture: psqlJson(`select json_build_object('id',id,'slug',slug,'code',code,'active',active) from public.facilities where id='${facility}'`),
+    directAt: new Date().toISOString(),
+    direct: await activeFacilities(env, aSession),
+    browserResponses: [],
+    boardResponses: [],
+  };
   const a = await browser.newContext(); const b = await browser.newContext();
   try {
-    const pageA = await openAuthenticated(a, env.API_URL, slug, aSession);
+    const pageA = await openAuthenticated(a, env.API_URL, slug, aSession, diagnostics);
     const pageB = await openAuthenticated(b, env.API_URL, slug, bSession);
-    // A first-use player tutorial is unrelated to the Admin bootstrap flow,
-    // but it deliberately blocks the page until acknowledged. Dismiss it
-    // through its real controls before testing the Admin action.
-    const acknowledge = pageA.getByRole('button', { name: 'I acknowledge' });
-    if (await acknowledge.isVisible().catch(() => false)) {
-      await acknowledge.click();
-      const skipTutorial = pageA.getByRole('button', { name: 'Skip tutorial' });
-      if (await skipTutorial.isVisible().catch(() => false)) await skipTutorial.click();
-    }
+    await enterAdminManagement(pageA, { username: 'a', password: 'local-only-password' });
+    await enterAdminManagement(pageB, { username: 'b', password: 'local-only-password' });
+    const modeSelector = pageA.locator('.hybrid-mode-selector select');
+    const facilityModeSelectors = pageA.locator('.admin-tools > select');
+    await expect(modeSelector).toHaveCount(1);
+    await expect(facilityModeSelectors).toHaveCount(1);
+    await expect(modeSelector).toHaveValue('hybrid_waitlist');
+    await expect(facilityModeSelectors.locator('option[value="hybrid_waitlist"]')).toHaveCount(1);
+    await expect(facilityModeSelectors.locator('option[value="hybrid_waitlist"]')).toHaveText('Waitlist');
+    await expect(pageA.getByText('Waitlist Configuration', { exact: true })).toHaveCount(0);
+    await expect(pageA.getByRole('combobox', { name: 'Court 1 format' })).toHaveValue('kotc');
+    await expect(pageA.getByRole('combobox', { name: 'Court 2 format' })).toHaveValue('two_on_two_off');
     await expect(pageA.getByRole('heading', { name: 'Authoritative court board' })).toBeVisible();
     await expect(pageA.getByRole('button', { name: 'Start KOTC' })).toBeVisible();
+    await expect(pageA.getByRole('button', { name: 'Start KOTC' })).toHaveCount(1);
+    await expect(pageA.getByRole('button', { name: 'Next game (Court 2)' })).toBeVisible();
     await pageA.setViewportSize({ width: 390, height: 844 });
     await expect(pageA.getByRole('button', { name: 'Start KOTC' })).toBeVisible();
+    await expect.poll(() => pageA.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await pageA.setViewportSize({ width: 1280, height: 844 });
     await pageA.getByRole('button', { name: 'Start KOTC' }).click();
     await expect(pageA.getByRole('button', { name: 'Start KOTC' })).toHaveCount(0);
@@ -134,6 +221,12 @@ test('two independent clients converge after a guarded hybrid result and reject 
       );
     `], { encoding: 'utf8' }).trim());
     expect(audit).toEqual({ history_rows: 1, reversal_rows: 1, orphan_reversals: 0, active_player_duplicates: 0, slot_substitute_conflicts: 0, orphan_slots: 0, orphan_substitutes: 0, teams_over_six_slots: 0 });
+    psql(`update public.waitlist_config set court_count=1 where facility_id='${facility}';`);
+    await pageA.reload();
+    await expect(pageA.getByRole('heading', { name: 'CURRENT GAME - Team 1 vs. Team 2' })).toBeVisible();
+    await expect(pageA.getByRole('combobox', { name: 'Court 1 format' })).toHaveValue('kotc');
+    await expect(pageA.getByRole('heading', { name: 'Authoritative court board' })).toBeVisible();
+    await expect(pageA.getByText('Waitlist Configuration', { exact: true })).toHaveCount(0);
   } finally {
     await a.close().catch(()=>{});
     await b.close().catch(()=>{});

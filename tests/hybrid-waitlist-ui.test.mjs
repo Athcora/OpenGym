@@ -5,10 +5,12 @@ import {readFileSync} from 'node:fs';
 const app=readFileSync('app/WaitlistApp.tsx','utf8');
 const board=readFileSync('app/HybridWaitlistBoard.tsx','utf8');
 
-test('Waitlist is an explicit admin-selectable mode and KOTC never submits legacy Next Game',()=>{
+test('Waitlist is an explicit admin-selectable mode and KOTC is selected per court',()=>{
   assert.match(app,/<option value="hybrid_waitlist">Waitlist<\/option>/);
-  assert.match(app,/const isHybridKotc=isHybridWaitlist&&config\.hybrid_rotation_rule==='kotc'/);
-  assert.match(app,/if\(config\.mode==='hybrid_waitlist'&&config\.hybrid_rotation_rule==='kotc'\)[\s\S]*guarded court result flow/);
+  assert.match(app,/const isHybridKotc=isHybridWaitlist&&hybridKotcCourts\.length>0/);
+  assert.match(app,/court\.rotation_rule==='kotc'/);
+  assert.match(app,/courts\.filter\(court=>!isHybridWaitlist\|\|court\.hybrid_rotation_rule!=='kotc'\)\.map/);
+  assert.match(app,/King of the Court results must be recorded through the guarded court result flow/);
   assert.match(app,/hybrid-kotc-mode/);
 });
 
@@ -25,8 +27,11 @@ test('KOTC UI uses only guarded hybrid RPC helpers and refresh-boundary actions'
   assert.match(app,/await broadcastQueueRefresh\(\);\s*await refresh\(undefined,activeFacility,true\)/);
 });
 
-test('only admins receive mutable Waitlist configuration controls, while hosts get view-only state',()=>{
-  assert.match(board,/\{admin\?<div className="hybrid-config-fields">/);
-  assert.match(board,/Only an admin can change Waitlist settings/);
+test('only admins receive mutable per-court Waitlist configuration controls, while hosts get view-only state',()=>{
+  assert.match(board,/HybridCourtConfiguration/);
+  assert.match(board,/\{admin\?<><label>Format<select/);
+  assert.match(board,/hybrid-config-readonly/);
+  assert.match(app,/hybrid-court-settings/);
+  assert.match(app,/CURRENT GAME - Team 1 vs\. Team 2/);
   assert.match(app,/configure_hybrid_waitlist/);
 });

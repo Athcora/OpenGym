@@ -203,6 +203,18 @@ For every second-device procedure, use a disposable facility, capture desktop/mo
 
 ## NEXT SESSION — START HERE
 
+### Stage 8 — per-court Waitlist correction in progress (2026-10-02)
+
+- The user corrected the prior global Waitlist configuration requirement: format and the optional `Two On / Two Off until N teams` threshold are per court, while eligibility remains the existing facility-wide current/waiting population.  A KOTC court must not affect a neighbouring normal court; a threshold crossing switches only the opted-in court.
+- Live Stage 8 QA is deliberately paused.  No new production deployment or Ocean Air mutation was made for this correction.
+- Created migration `20261002032904_hybrid_per_court_configuration.sql` with court-owned rule, threshold, armed flag, config version, per-court guarded configuration RPC, court-scoped KOTC board read, per-court KOTC result guard, and local migration/grant application.  The old global fields are retained only for old snapshot compatibility and reset to their neutral values after backfill.
+- Client work removes the duplicate top-level Waitlist selector and replaces the global configuration card with compact configuration under each court heading.  KOTC board rendering and Start controls are now court scoped. TypeScript and lint pass; the migration applied cleanly to the local database. The ordinary `pnpm run build` is Windows-incompatible because it uses POSIX inline env syntax; `cmd /c "set WRANGLER_LOG_PATH=.wrangler\\wrangler.log&& pnpm exec vinext build"` completed successfully.
+- This is NOT release-ready: the new per-court bootstrap currently safely rejects a court with existing current players rather than carrying over the already-validated current-roster formation logic. The normal queue UI is also not yet filtered so a KOTC court can still render through the legacy queue section, and the single existing Managing selector still needs its Waitlist option added in both Teams and standard branches. No tests were added yet.
+
+## NEXT SESSION — START HERE
+
+Continue the per-court Waitlist correction on `integration/hybrid-kotc-stage8-integration` before any deployment or resumption of live QA. First complete `bootstrap_hybrid_kotc_game` by porting the existing-current-roster branch from `20261001172013_hybrid_kotc_first_game_bootstrap.sql`, scoped strictly to `p_court_number`; it must never change a neighbouring court. Then make the normal court renderer skip only KOTC-configured courts, leave two-on/two-off courts on the legacy Rejoin scheduler, and add Waitlist to the one existing selector below `MANAGING` in both admin tool branches. Add focused UI/RPC regression coverage for independent Court 1/Court 2 formats, facility-wide threshold transition, stale per-court config version, and grants/search_path. Run local migration/reset, targeted/full tests, TypeScript, lint, Windows-compatible build, and local Playwright desktop + 390px. Only after all pass, deploy and browser-verify on a disposable QA facility; do not touch Ocean Air or PHR while this correction is in progress.
+
 Do not repeat the completed Regular/Teams Rejoin accept, explicit Leave, timeout, facility-scope migration, Group/Swap, Next Game/Reverse, or host appointment/demotion work. The immediate blocker is access to the OpenGym Sites publishing controls: the supplied in-app browser is signed into `Timothy Tran — Free`, which has no Codex/Sites workspace, and no Sites MCP tool is available. Use the ChatGPT account/workspace that owns the existing OpenGym Site, or restore the Sites deployment tool. Once that control is available, publish pushed commit `8ab4187c41dd3db4d46b097d6c22f7003613d74c` as a new Sites version, then fetch the public `WaitlistApp-*.js` module and confirm it contains `team_substitute_invite` before using Device A to send one fresh invitation to the existing active `Ipad` player on disposable `qa-multidevice-20260918`. Ask Device B only to observe and accept it. Verify the actionable popup, response, substitute visibility, and facility-scoped request/player/substitute rows; then test rejection, removal/cancellation, one-game fill-in/return, and restore the QA fixture. After substitutes are complete, continue genuine duplicate-device and real-device geofence validation; preserve PHR and Ocean Air.
 
 ## Substitute acceptance and fill-in continuation (2026-09-21)
@@ -1363,4 +1375,50 @@ Push the clean integration branch normally and record its commit SHA. Then stop 
 
 ## NEXT SESSION — START HERE
 
-**Stage 8 live QA remains paused.** Do not create a disposable player, reload the current Admin session, or mutate Ocean Air/PHR. Implement the per-court architecture only after the user specifies the intended Auto KOTC semantics: whether it is removed/deferred, evaluated from a named court-local population, or uses a facility-wide population with an explicit set of affected courts. Then create a new migration with `supabase migration new`, move hybrid configuration ownership to courts, override all global-rule gates/bootstrap/read paths, remove duplicate/global UI, add the full multi-court regression matrix, validate locally, deploy, and resume Stage 8 only after the corrected production UI is live.
+**Stage 8 live QA remains paused.** Do not create a disposable player, reload the current Admin session, or mutate Ocean Air/PHR. The user has now specified Auto KOTC: facility-wide eligible population is used exactly as in Teams mode, but only courts that chose `Two On / Two Off until N teams` change on the crossing; a manual KOTC or plain Two On / Two Off court remains independent.
+
+### Stage 8 — per-court Waitlist correction in progress (2026-10-02)
+
+- Created migration `20261002032904_hybrid_per_court_configuration.sql`: court-owned rule, threshold, armed flag, config version, guarded configuration RPC, court-scoped KOTC board read, per-court result guard, and local migration/grant application. Legacy global values are now compatibility-only and neutral after backfill.
+- Client work removes the duplicate selector and renders compact court-specific configuration under each court heading. KOTC board and Start controls are court scoped. TypeScript and lint pass; migration applied cleanly locally; Windows-compatible Vinext build completed.
+- Not release ready: port the existing-current-roster bootstrap path, filter legacy queue rendering only for KOTC courts, add Waitlist to the retained Managing selector, then add and run regression/Playwright coverage. No production deployment or facility mutation occurred.
+
+### Stage 8 — per-court current-roster bootstrap ported (2026-10-02)
+
+- Ported the established current-roster branch from `20261001172013_hybrid_kotc_first_game_bootstrap.sql` into the scoped `bootstrap_hybrid_kotc_game`. It validates permanent groups and restricted players only for the selected court, creates the two six-slot temporary KOTC appearances without changing existing `waitlist_players` current ownership or group IDs, and does not loop over or mutate another court. Empty-court queue packing remains the pre-existing `form_hybrid_kotc_side` path.
+- Added `tests/hybrid-per-court-configuration.test.mjs`. Focused result: **4/4 pass**. TypeScript and `git diff --check` pass.
+- The local Supabase reset was interrupted while Docker was pulling/recreating the database image; `supabase status` currently reports the local DB container absent. No production or remote database command was issued. Restart the local stack and replay migrations before treating the migration runtime-validated.
+- Still unfinished: court-specific normal renderer (mixed KOTC + Two On/Two Off), replacing remaining global-guarded KOTC helper paths, ensuring the retained Managing selector contains Waitlist, broader automated tests, local browser desktop/mobile verification, security audit, deployment, and resumed live QA.
+
+### Stage 8 — mixed court client split in progress (2026-10-02)
+
+- The client now fetches the authoritative hybrid board for every Waitlist facility, renders only `court.hybrid_rotation_rule === 'kotc'` rows in `HybridKOTCBoard`, and leaves Two On / Two Off rows in the existing court renderer. The existing generic renderer explicitly excludes only KOTC rows, so a KOTC court no longer hides a neighbouring normal court. Added focused mixed-rendering contract coverage; **5/5** per-court tests pass, plus TypeScript and diff checks.
+- Audit confirmed remaining server helpers still have legacy facility-global KOTC predicates: unknown-side result preparation/confirmation, KOTC fill-in, substitute invitation/swap, and sit-out. These must be redefined in the new migration with selected-court rule checks before release. The retained Managing selector also still needs its Waitlist option added.
+- Local Supabase remains unavailable after the attempted image recreation (`supabase_db_open-gym-sites` container absent), so the modified migration has not yet been replay-validated from a clean local reset.
+
+### Stage 8 — local Supabase replay environment restored (2026-10-02)
+
+- Restored only the project-local Supabase stack using `pnpm exec supabase start --ignore-health-check`; no tracked configuration, remote project, production database, PHR, or Ocean Air state changed. A clean `pnpm exec supabase db reset --local` completed its rebuild and the local migration ledger includes `20261002032904_hybrid_per_court_configuration.sql` as the final migration.
+- `pnpm exec supabase db lint --local` reports **No schema errors found**. The remaining work is functional court-scoped helper conversion, not a local container blocker.
+
+## NEXT SESSION — START HERE
+
+Continue the per-court correction before deployment or resumed Stage 8 QA. The local migration environment is healthy. Next, redefine the remaining KOTC helper RPCs with selected-court rule guards and add Waitlist to the one Managing selector. Then add/run multi-court, threshold, stale-version, grants/search_path tests plus desktop/390px Playwright. Use only a disposable QA facility after deployment—never Ocean Air or PHR during this correction.
+
+### Stage 8 — final unknown-side KOTC confirmation target-court replay (2026-10-02)
+
+- Corrected only the new, undeployed migration `20261002200617_hybrid_kotc_unknown_side_confirmation_target_court.sql`: its original standard-string regex passed doubled backslashes to PostgreSQL and could not match the final pre-migration clause `cfg.mode<>'hybrid_waitlist' or cfg.hybrid_rotation_rule<>'kotc'`. The migration now uses a narrowly scoped escape string and retains fail-closed verification.
+- Fresh local schema-only baseline replay completed: the eight documented historical ledger entries were repaired through the local Supabase CLI, every post-baseline migration applied in order, and `20261002200617...` applied successfully. The final confirmation function has the expected signature, target-court `is_hybrid_kotc_court(fid,p_court_number)` guard, authenticated-only EXECUTE, no anon/PUBLIC EXECUTE, SECURITY DEFINER, and `search_path=public`.
+- Transactional mixed-court confirmation proof passed: Court 1 configured KOTC prepares and confirms once; Court 2 configured Two On / Two Off rejects KOTC confirmation without semantic change; selected teammates from Court 2 reject; permanent-group/reporter and stale game/version protections reject; Court 2 state/history remains unchanged; one Court 1 result/history/reversal is created; active ownership, cross-court ownership, regular-slot/substitute dual ownership, orphan slot/substitute, oversized-side, and duplicate result/history checks all returned zero violations. Existing KOTC guarded-result and multi-court Reverse-isolation SQL regressions also passed. Focused Node contracts: **12/12 pass**. `git diff --check` passes and `supabase/config.toml` has zero diff.
+- Release gate remains blocked: `pnpm exec supabase db lint --local` reports **3 errors**, not 0: legacy `reverse_king_game` lacks its required ON CONFLICT constraint, while `evaluate_hybrid_auto_kotc_transition` and `configure_hybrid_waitlist` (from the earlier per-court migration) reference nonexistent `waitlist_courts.updated_at`. These are outside the approved final-confirmation matcher scope and remain untouched. No production, deployment, PHR, or Ocean Air action occurred.
+
+## NEXT SESSION — START HERE
+
+Do not claim `KNOWN SERVER TARGET-COURT RPC CONVERSION = COMPLETE` while schema lint has the recorded three errors. First obtain scope direction for the existing lint failures, especially the two per-court `updated_at` references; do not edit historical/deployed migrations or create a workaround migration without that direction. The unknown-side confirmation migration and its mixed-court proof are otherwise locally replay-validated. Production remains untouched.
+
+### Stage 8 local release gate (2026-10-04)
+
+- Authenticated convergence Playwright passed against disposable local data, including the Admin UI flow, one Managing selector, mixed KOTC/Two On–Two Off rendering, 390px viewport assertion, and single-court assertion.
+- Full tracked Node suite: **167/167 pass**. TypeScript, intended ESLint, diff check, local schema/security checks, and `supabase/config.toml` diff are green.
+- Normal Vinext production build completed stages **1/5–5/5** with exit code 0. Artifact scan found no E2E hook, local API URL, fixture identifier, or test credential leakage. No deployment or production facility was touched.
+- The authenticated browser proof covered desktop mixed-court UI, the 390px mobile viewport (including horizontal-overflow protection), and the single-court layout. Each used the sole Managing selector with `Waitlist` / `hybrid_waitlist`; Court 1 rendered KOTC and Court 2 rendered Two On / Two Off without a detached global configuration card.

@@ -307,3 +307,10 @@ Start Stage 1 by auditing the current deployed schema/function versions and
 creating a migration skeleton plus executable server/model tests. Do not expose
 the mode in the UI or modify facility state until the schema invariants and
 snapshot contract are in place.
+
+## Stage 8 local release evidence (2026-10-04)
+
+- Mixed-court local browser convergence passed: Court 1 KOTC and Court 2 Two On / Two Off remained isolated; the sole facility selector included Waitlist.
+- Node: 167/167; TypeScript and intended ESLint: pass; schema/grants/search-path gates: pass.
+- Production Vinext build: 5/5 stages, exit 0; artifact scan: pass. No deployment occurred.
+- Browser UI proof: desktop mixed-court, 390px mixed-court, and single-court layouts passed. The one Managing selector exposed Waitlist (`hybrid_waitlist`); court-specific configuration stayed under its court, with KOTC on Court 1 and Two On / Two Off on Court 2.

@@ -28,10 +28,11 @@ test('bootstrap uses six slots, fresh sides, permanent-group packing, and all co
   assert.match(sql,/perform public\.form_hybrid_kotc_side\(court\.court_number,2::smallint,court\.game_number\)/);
 });
 
-test('the KOTC board exposes Start KOTC only for an Admin with a wholly uninitialized board',()=>{
-  assert.match(board,/const canStartGames=admin&&board\.courts\.length>0&&board\.courts\.every\(court=>court\.teams\.length===0&&court\.initialized_game_number===null\)/);
+test('the KOTC board exposes Start KOTC only for an Admin on an uninitialized KOTC court',()=>{
+  assert.match(board,/const kotcCourts=board\.courts\.filter\(court=>court\.rotation_rule==='kotc'\)/);
+  assert.match(board,/admin&&court\.teams\.length===0&&court\.initialized_game_number===null/);
   assert.match(board,/Start KOTC/);
-  assert.match(app,/hybridRpc\('bootstrap_hybrid_kotc_games',\{p_facility_id:facility\.id\}/);
+  assert.match(app,/hybridRpc\('bootstrap_hybrid_kotc_game',\{p_facility_id:facility\.id,p_court_number:court\.court_number/);
   assert.match(app,/startGames=\{startHybridKOTCGames\}/);
-  assert.match(app,/if\(config\.mode==='hybrid_waitlist'&&config\.hybrid_rotation_rule==='kotc'\)[\s\S]*guarded court result flow/);
+  assert.match(app,/courts\.find\(court=>court\.court_number===courtNumber\)\?\.hybrid_rotation_rule==='kotc'/);
 });

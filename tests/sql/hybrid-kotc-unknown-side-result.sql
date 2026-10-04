@@ -6,6 +6,7 @@ declare
   reporter uuid:=gen_random_uuid(); mate uuid:=gen_random_uuid(); opponent_a uuid:=gen_random_uuid(); opponent_b uuid:=gen_random_uuid();
   waiting uuid:=gen_random_uuid(); other_court uuid:=gen_random_uuid(); left_player uuid:=gen_random_uuid(); sitout uuid:=gen_random_uuid(); other_facility_player uuid:=gen_random_uuid();
   reporter_group uuid:=gen_random_uuid(); opponent_group uuid:=gen_random_uuid(); pre jsonb; result jsonb; reversal_game_id uuid; before_teams integer; before_slots integer;
+  court2_game integer; court2_version bigint;
 begin
   insert into public.facilities(id,name,slug,code) values
     (fid,'Stage 5 unknown','stage5-unknown-'||left(fid::text,8),left(fid::text,8)),
@@ -19,8 +20,8 @@ begin
   perform set_config('request.jwt.claim.sub',actor::text,true);
   insert into public.waitlist_config(facility_id,id,game_number,max_players,mode,court_count,geofence_enabled,hybrid_rotation_rule)
     values(fid,true,1,24,'hybrid_waitlist',2,false,'kotc'),(other_fid,true,1,12,'hybrid_waitlist',1,false,'kotc');
-  insert into public.waitlist_courts(facility_id,court_number,game_number,team_mode,team_max_wins) values
-    (fid,1,1,'king',null),(fid,2,1,'king',null),(other_fid,1,1,'king',null);
+  insert into public.waitlist_courts(facility_id,court_number,game_number,team_mode,team_max_wins,hybrid_rotation_rule) values
+    (fid,1,1,'king',null,'kotc'),(fid,2,1,'king',null,'two_on_two_off'),(other_fid,1,1,'king',null,'kotc');
   insert into public.daily_waitlist_reset_state(facility_id,id) values(fid,true),(other_fid,true);
   insert into public.hybrid_kotc_court_state(facility_id,court_number,version,initialized_game_number) values(fid,1,10,1),(fid,2,17,1),(other_fid,1,3,1);
   insert into public.waitlist_players(id,facility_id,user_id,first_name,last_name,display_name,status,queue_position,court_number,group_id) values
@@ -33,6 +34,8 @@ begin
     (left_player,fid,null,'Left','','Left','left',7,null,null),
     (sitout,fid,null,'Sitout','','Sitout','sitout',8,null,null),
     (other_facility_player,other_fid,null,'Other facility','','Other facility','current',1,1,null);
+  select game_number into court2_game from public.waitlist_courts where facility_id=fid and court_number=2;
+  select version into court2_version from public.hybrid_kotc_court_state where facility_id=fid and court_number=2;
 
   -- The normal public path returns selection-required, but creates nothing:
   -- this is the Back/Cancel zero-mutation boundary.
@@ -58,6 +61,13 @@ begin
   exception when others then if position('Selected teammates' in sqlerrm)=0 then raise; end if; end;
   begin perform public.confirm_hybrid_kotc_unknown_result(1,'win',fid,1,10,array[reporter,mate,other_court]); raise exception 'other-court candidate accepted';
   exception when others then if position('Selected teammates' in sqlerrm)=0 then raise; end if; end;
+  begin perform public.confirm_hybrid_kotc_unknown_result(2,'win',fid,court2_game,court2_version,array[other_court]); raise exception 'Two On / Two Off court accepted KOTC confirmation';
+  exception when others then if position('court changed' in lower(sqlerrm))=0 then raise; end if; end;
+  if (select game_number from public.waitlist_courts where facility_id=fid and court_number=2)<>court2_game
+     or (select version from public.hybrid_kotc_court_state where facility_id=fid and court_number=2)<>court2_version
+     or not exists(select 1 from public.waitlist_players where id=other_court and status='current' and court_number=2)
+     or exists(select 1 from public.hybrid_kotc_teams where facility_id=fid and court_number=2)
+  then raise exception 'rejected Court 2 KOTC confirmation changed Court 2'; end if;
   begin perform public.confirm_hybrid_kotc_unknown_result(1,'win',fid,1,10,array[reporter,mate,left_player]); raise exception 'left candidate accepted';
   exception when others then if position('Selected teammates' in sqlerrm)=0 then raise; end if; end;
   begin perform public.confirm_hybrid_kotc_unknown_result(1,'win',fid,1,10,array[reporter,mate,sitout]); raise exception 'sit-out candidate accepted';
@@ -74,7 +84,39 @@ begin
     or (select group_id from public.waitlist_players where id=reporter) is distinct from reporter_group
     or (select group_id from public.waitlist_players where id=mate) is distinct from reporter_group
     or (select count(*) from public.hybrid_kotc_slots s join public.hybrid_kotc_teams t on t.id=s.team_id and t.facility_id=s.facility_id where t.facility_id=fid and t.court_number=1 and t.status='retired' and s.player_id is null)<>4
+    or (select game_number from public.waitlist_courts where facility_id=fid and court_number=2)<>court2_game
+    or (select version from public.hybrid_kotc_court_state where facility_id=fid and court_number=2)<>court2_version
+    or (select count(*) from public.past_games where facility_id=fid and court_number=2)<>0
+    or exists(select 1 from public.hybrid_kotc_teams where facility_id=fid and court_number=2)
   then raise exception 'underfilled identification/result did not preserve Stage 1B behavior: %',result; end if;
+  if exists(
+       select player_id from (
+         select s.player_id from public.hybrid_kotc_slots s join public.hybrid_kotc_teams t on t.id=s.team_id and t.facility_id=s.facility_id
+         where t.facility_id=fid and t.status='current' and s.player_id is not null
+         union all
+         select x.player_id from public.hybrid_kotc_substitutes x join public.hybrid_kotc_teams t on t.id=x.team_id and t.facility_id=x.facility_id
+         where t.facility_id=fid and t.status='current'
+       ) active_ownership group by player_id having count(*)>1
+     )
+     or exists(
+       select 1 from public.hybrid_kotc_slots s join public.hybrid_kotc_teams t on t.id=s.team_id and t.facility_id=s.facility_id
+       join public.waitlist_players p on p.id=s.player_id and p.facility_id=s.facility_id
+       where t.facility_id=fid and t.status='current' and s.player_id is not null and p.court_number is distinct from t.court_number
+     )
+     or exists(
+       select 1 from public.hybrid_kotc_slots s join public.hybrid_kotc_substitutes x on x.facility_id=s.facility_id and x.player_id=s.player_id
+       join public.hybrid_kotc_teams t on t.id=s.team_id and t.facility_id=s.facility_id
+       where t.facility_id=fid and t.status='current' and not s.is_substitute
+     )
+     or exists(select 1 from public.hybrid_kotc_slots s left join public.hybrid_kotc_teams t on t.id=s.team_id and t.facility_id=s.facility_id where t.id is null)
+     or exists(select 1 from public.hybrid_kotc_substitutes x left join public.hybrid_kotc_teams t on t.id=x.team_id and t.facility_id=x.facility_id where t.id is null)
+     or exists(
+       select 1 from public.hybrid_kotc_teams t join public.hybrid_kotc_slots s on s.team_id=t.id and s.facility_id=t.facility_id
+       where t.facility_id=fid and t.status='current' group by t.id having count(s.player_id)>6
+     )
+     or (select count(*) from public.past_games where facility_id=fid and court_number=1)<>1
+     or (select count(*) from public.court_game_reversals r join public.past_games g on g.id=r.game_id where r.facility_id=fid and g.court_number=1)<>1
+  then raise exception 'mixed-court confirmation integrity audit failed'; end if;
   select id into strict reversal_game_id from public.past_games where facility_id=fid and court_number=1 order by game_number desc,id desc limit 1;
   if not exists(select 1 from public.court_game_reversals r where r.facility_id=fid and r.game_id=reversal_game_id)
     or (select r.before_state->'hybrid_kotc_teams' from public.court_game_reversals r where r.game_id=reversal_game_id) <> '[]'::jsonb then

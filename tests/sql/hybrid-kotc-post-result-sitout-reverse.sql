@@ -14,7 +14,7 @@ begin
   insert into public.admin_sessions(user_id,username,facility_id) values(actor,'admin',fid);
   perform set_config('request.jwt.claim.sub',actor::text,true);
   insert into public.waitlist_config(facility_id,id,game_number,max_players,mode,court_count,geofence_enabled,hybrid_rotation_rule) values(fid,true,1,24,'hybrid_waitlist',2,false,'kotc');
-  insert into public.waitlist_courts(facility_id,court_number,game_number,team_mode) values(fid,1,1,'king'),(fid,2,9,'king');
+  insert into public.waitlist_courts(facility_id,court_number,game_number,team_mode,hybrid_rotation_rule) values(fid,1,1,'king','kotc'),(fid,2,9,'king','kotc');
   insert into public.daily_waitlist_reset_state(facility_id,id) values(fid,true);
   insert into public.hybrid_kotc_court_state(facility_id,court_number,version,initialized_game_number) values(fid,1,10,1),(fid,2,90,9);
   insert into public.waitlist_players(id,facility_id,user_id,first_name,last_name,display_name,status,queue_position,court_number,group_id) values

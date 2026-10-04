@@ -126,6 +126,11 @@ async function enterAdminManagement(page: Page, credential: AdminCredential) {
   }
   await dismissTutorial();
 }
+async function dismissNotice(page: Page) {
+  const acknowledgement = page.getByRole('button', { name: 'OK' });
+  await expect(acknowledgement).toBeVisible();
+  await acknowledgement.click();
+}
 async function board(page: Page) {
   return page.evaluate(() => (window as Window & { __OPEN_GYM_E2E__?: { hybridKOTCBoard: () => unknown } }).__OPEN_GYM_E2E__?.hybridKOTCBoard() ?? null);
 }
@@ -177,12 +182,28 @@ test('two independent clients converge after a guarded hybrid result and reject 
     await expect(facilityModeSelectors.locator('option[value="hybrid_waitlist"]')).toHaveCount(1);
     await expect(facilityModeSelectors.locator('option[value="hybrid_waitlist"]')).toHaveText('Waitlist');
     await expect(pageA.getByText('Waitlist Configuration', { exact: true })).toHaveCount(0);
-    await expect(pageA.getByRole('combobox', { name: 'Court 1 format' })).toHaveValue('kotc');
-    await expect(pageA.getByRole('combobox', { name: 'Court 2 format' })).toHaveValue('two_on_two_off');
+    const courtOneFormat = pageA.getByRole('combobox', { name: 'Court 1 format' });
+    const courtTwoFormat = pageA.getByRole('combobox', { name: 'Court 2 format' });
+    const courtOneSettings = pageA.locator('.hybrid-court-settings').filter({ has: courtOneFormat });
+    await expect(courtOneFormat).toHaveValue('kotc');
+    await expect(courtTwoFormat).toHaveValue('two_on_two_off');
     await expect(pageA.getByRole('heading', { name: 'Authoritative court board' })).toBeVisible();
     await expect(pageA.getByRole('button', { name: 'Start KOTC' })).toBeVisible();
     await expect(pageA.getByRole('button', { name: 'Start KOTC' })).toHaveCount(1);
     await expect(pageA.getByRole('button', { name: 'Next game (Court 2)' })).toBeVisible();
+    await courtOneFormat.selectOption('two_on_two_off');
+    await courtOneSettings.getByRole('button', { name: 'Save' }).click();
+    await expect(courtOneFormat).toHaveValue('two_on_two_off');
+    await dismissNotice(pageA);
+    await expect(pageA.getByRole('button', { name: 'Start KOTC' })).toHaveCount(0);
+    await expect(courtTwoFormat).toHaveValue('two_on_two_off');
+    await expect(pageA.getByRole('button', { name: 'Next game (Court 2)' })).toBeVisible();
+    await courtOneFormat.selectOption('kotc');
+    await courtOneSettings.getByRole('button', { name: 'Save' }).click();
+    await expect(courtOneFormat).toHaveValue('kotc');
+    await dismissNotice(pageA);
+    await expect(courtTwoFormat).toHaveValue('two_on_two_off');
+    await expect(pageA.getByRole('button', { name: 'Start KOTC' })).toHaveCount(1);
     await pageA.setViewportSize({ width: 390, height: 844 });
     await expect(pageA.getByRole('button', { name: 'Start KOTC' })).toBeVisible();
     await expect.poll(() => pageA.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

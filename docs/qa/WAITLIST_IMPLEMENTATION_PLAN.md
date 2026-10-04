@@ -314,3 +314,8 @@ snapshot contract are in place.
 - Node: 167/167; TypeScript and intended ESLint: pass; schema/grants/search-path gates: pass.
 - Production Vinext build: 5/5 stages, exit 0; artifact scan: pass. No deployment occurred.
 - Browser UI proof: desktop mixed-court, 390px mixed-court, and single-court layouts passed. The one Managing selector exposed Waitlist (`hybrid_waitlist`); court-specific configuration stayed under its court, with KOTC on Court 1 and Two On / Two Off on Court 2.
+
+## Stage 9 mode-transition evidence (2026-10-04)
+
+- The existing target-court configuration RPC already implements the required lifecycle boundary: changing KOTC to Two On / Two Off clears only that court's temporary KOTC records and leaves permanent player, queue, group, and neighbouring-court state intact. Above-threshold manual returns are disarmed until a later below-to-above facility-population crossing.
+- Local runtime coverage now verifies the KOTC → Two On / Two Off → KOTC round trip, temporary fill-in/substitute/invitation/empty-slot cleanup, fresh zero streaks, CAS/admin boundaries, and Court 2 isolation. The authenticated browser flow performs the same format transition through the existing Admin controls at desktop and 390px.

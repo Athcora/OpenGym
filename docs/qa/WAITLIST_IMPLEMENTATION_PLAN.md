@@ -319,3 +319,10 @@ snapshot contract are in place.
 
 - The existing target-court configuration RPC already implements the required lifecycle boundary: changing KOTC to Two On / Two Off clears only that court's temporary KOTC records and leaves permanent player, queue, group, and neighbouring-court state intact. Above-threshold manual returns are disarmed until a later below-to-above facility-population crossing.
 - Local runtime coverage now verifies the KOTC → Two On / Two Off → KOTC round trip, temporary fill-in/substitute/invitation/empty-slot cleanup, fresh zero streaks, CAS/admin boundaries, and Court 2 isolation. The authenticated browser flow performs the same format transition through the existing Admin controls at desktop and 390px.
+
+## Stage 10 production allocator and live-QA evidence (2026-10-04)
+
+- A live guest join exposed a server ownership defect: the normal open-slot allocator could promote a player to `current` on a KOTC court without giving that player a KOTC slot. Forward migration `20261004233000_skip_kotc_courts_in_standard_slot_fill.sql` fixes only that allocator boundary by skipping target courts identified by `is_hybrid_kotc_court(fid, court_number)`.
+- The guard is intentionally court-scoped: KOTC representation remains solely in the temporary KOTC slot model, while ordinary Two On / Two Off courts retain normal allocation. The KOTC predicate remains private to browser roles and is executable only by the allocator's runtime owner.
+- Local SQL/runtime, 173/173 Node, schema lint, grants/search-path, production migration, and live browser verification passed. Live proof exercised real participant Win, stale guarded replay rejection between independent clients, authoritative convergence, Court 2 isolation, 390px layout, and the KOTC → Two On / Two Off → KOTC transition.
+- App-mediated guarded reversals and Admin controls restored Ocean Air to Teams mode (Rejoin), two courts, Court 1 Game 3 / Court 2 Game 4, both Two On / Two Off, seven original current players, and no waiting player. The disposable participant was removed through the supported product path; its historical left-row audit trail was not directly edited.

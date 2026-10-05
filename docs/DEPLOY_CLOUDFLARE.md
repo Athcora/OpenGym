@@ -85,3 +85,23 @@ pnpm run build
 npx wrangler deploy --dry-run   # validates the bundle without uploading
 npx wrangler dev -c dist/server/wrangler.json   # serves the build on the Workers runtime
 ```
+
+## Alternative: Vercel
+
+The app also builds with standard Next.js, which Vercel runs natively.
+`vercel.json` makes Vercel run `next build` instead of the package `build`
+script (that script produces the Cloudflare Worker). Settings are read by
+`app/env.ts`, which accepts either `NEXT_PUBLIC_*` or `VITE_*` names.
+
+1. In Vercel, **Add New → Project → Import** `Athcora/OpenGym`. Vercel's GitHub
+   app needs access to the repository; an Athcora org owner may need to approve it.
+2. Leave the framework and commands as detected from `vercel.json`.
+3. Add environment variables `NEXT_PUBLIC_SUPABASE_URL`,
+   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+   (same values as listed above).
+4. Test the `*.vercel.app` address, then add `playopengym.com` under
+   **Settings → Domains** and update DNS at the registrar as Vercel instructs.
+
+Not carried over on Vercel: the Worker in `worker/index.ts`, which set
+`Cache-Control: no-store` on HTML pages. Vercel clears its cache on every
+deploy, so stale pages after a release are not expected.

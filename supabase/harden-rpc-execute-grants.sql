@@ -33,7 +33,7 @@ declare
     'admin_undo_last', 'admin_unsit_player', 'advance_court_game',
     'advance_team_king_game', 'advance_team_rotation',
     'answer_player_group', 'answer_player_substitute',
-    'answer_rejoin_prompt', 'answer_team_substitute',
+    'answer_rejoin_prompt', 'answer_team_substitute', 'bootstrap_hybrid_kotc_games',
     'cancel_team_fill_in', 'cancel_team_sitout', 'claim_waitlist_device',
     'cleanup_king_rejoin_expirations', 'create_facility', 'current_facility_id',
     'fill_in_team_spot', 'join_king_team', 'join_new_king_team',

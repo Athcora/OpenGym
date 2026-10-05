@@ -1,0 +1,25 @@
+begin;
+delete from public.facilities where id='30000000-0000-4000-8000-000000000002';
+insert into public.facilities(id,name,slug,code) values
+  ('30000000-0000-4000-8000-000000000002','Stage 3 threshold race','stage3-threshold-race','S3THRESH');
+insert into auth.users(id,instance_id,aud,role,email) values
+  ('30000000-0000-4000-8000-000000000021','00000000-0000-0000-0000-000000000000','authenticated','authenticated','stage3threshold@example.test')
+  on conflict (id) do nothing;
+insert into public.facility_admin_credentials(facility_id,username,display_username,password_hash)
+  values('30000000-0000-4000-8000-000000000002','stage3threshold','Stage 3 threshold',crypt('x',gen_salt('bf')));
+insert into public.admin_sessions(user_id,username,facility_id)
+  values('30000000-0000-4000-8000-000000000021','stage3threshold','30000000-0000-4000-8000-000000000002');
+insert into public.user_facility_sessions(user_id,facility_id)
+  values('30000000-0000-4000-8000-000000000021','30000000-0000-4000-8000-000000000002');
+select set_config('request.jwt.claim.sub','30000000-0000-4000-8000-000000000021',false);
+insert into public.waitlist_config(facility_id,id,game_number,max_players,mode,court_count,geofence_enabled,hybrid_rotation_rule,hybrid_auto_kotc_threshold_teams,hybrid_auto_kotc_armed)
+  values('30000000-0000-4000-8000-000000000002',true,1,24,'hybrid_waitlist',1,false,'two_on_two_off',4,true);
+insert into public.waitlist_courts(facility_id,court_number,game_number,team_mode)
+  values('30000000-0000-4000-8000-000000000002',1,1,'rotation');
+insert into public.daily_waitlist_reset_state(facility_id,id)
+  values('30000000-0000-4000-8000-000000000002',true);
+insert into public.waitlist_players(facility_id,first_name,last_name,display_name,status,queue_position)
+  select '30000000-0000-4000-8000-000000000002', 'Race'||g, '', 'Race'||g, 'waiting', g from generate_series(1,23) g;
+set constraints waitlist_players_hybrid_auto_kotc_transition immediate;
+select 'Stage 3 threshold race setup complete' as result;
+commit;

@@ -24,3 +24,8 @@ export const VAPID_PUBLIC_KEY =
   (hasProcess ? process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY : undefined)
   || fromVite('VITE_VAPID_PUBLIC_KEY')
   || 'BDtDfvK_fXa_ayCDGirOKx_sha-Tr1FTAxtfawF4fD4uqMyRDg9u2XIkkndr_M9HKEjhdo89myc6EAgzHazdPfc';
+
+// Development-only switch for the local browser-test hook in WaitlistApp.
+// It is true only in a vinext dev server started with VITE_OPEN_GYM_E2E=1,
+// and always false in production builds and under standard Next.js.
+export const IS_LOCAL_E2E = viteEnv.DEV === true && viteEnv.VITE_OPEN_GYM_E2E === '1';

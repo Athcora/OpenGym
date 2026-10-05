@@ -6,7 +6,7 @@ const app=fs.readFileSync(new URL('../app/WaitlistApp.tsx',import.meta.url),'utf
 
 test('team-substitute invitations refresh pending request state before showing any generic event notice',()=>{
   assert.match(app,/if\(event\.event_type==='team_substitute_invite'\)\{\s*scheduleRefresh\(\);\s*return;/);
-  assert.match(app,/const incoming=teamSubstituteRequests\.find\(request=>!handledTeamSubRequestIds\.current\.has\(request\.id\)[\s\S]*title:'Substitute invitation'[\s\S]*confirm:'Accept'[\s\S]*cancelLabel:'Decline'/);
+  assert.match(app,/const incoming=teamSubstituteRequests\.find\(request=>!request\.hybrid_team_id&&!handledTeamSubRequestIds\.current\.has\(request\.id\)[\s\S]*title:'Substitute invitation'[\s\S]*confirm:'Accept'[\s\S]*cancelLabel:'Decline'/);
 });
 
 test('a mobile recipient reloads pending invitations after returning from the background',()=>{

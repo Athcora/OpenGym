@@ -11,8 +11,13 @@ const { d1, r2 } = hostingConfig;
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 
+// Deploy settings for Cloudflare Workers. `vinext build` writes these into
+// dist/server/wrangler.json, which `npx wrangler deploy` uses automatically.
 const localBindingConfig = {
+  name: "opengym",
   main: "./worker/index.ts",
+  // worker/index.ts reads static files through env.ASSETS.
+  assets: { binding: "ASSETS" },
   compatibility_flags: ["nodejs_compat"],
   d1_databases: d1
     ? [
@@ -34,6 +39,7 @@ const localBindingConfig = {
 };
 
 export default defineConfig(async () => {
+  const isLocalE2E = process.env.VITE_OPEN_GYM_E2E === "1";
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
   process.env.WRANGLER_WRITE_LOGS ??= "false";
@@ -41,7 +47,9 @@ export default defineConfig(async () => {
   process.env.MINIFLARE_REGISTRY_PATH ??= ".wrangler/registry";
 
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.
-  const { cloudflare } = await import("@cloudflare/vite-plugin");
+  const { cloudflare } = isLocalE2E
+    ? { cloudflare: null }
+    : await import("@cloudflare/vite-plugin");
 
   return {
     server: isCodexSeatbeltSandbox
@@ -50,10 +58,10 @@ export default defineConfig(async () => {
     plugins: [
       vinext(),
       sites(),
-      cloudflare({
+      ...(cloudflare ? [cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
         config: localBindingConfig,
-      }),
+      })] : []),
     ],
   };
 });

@@ -1,3 +1,4 @@
+import { VAPID_PUBLIC_KEY } from './env';
 import { supabase } from './supabase';
 
 function decodeBase64Url(value: string) {
@@ -16,7 +17,7 @@ export function pushSupported() {
 
 export async function enablePush() {
   if (!pushSupported()) throw new Error('Push notifications are not supported on this browser.');
-  const publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY || 'BDtDfvK_fXa_ayCDGirOKx_sha-Tr1FTAxtfawF4fD4uqMyRDg9u2XIkkndr_M9HKEjhdo89myc6EAgzHazdPfc';
+  const publicKey = VAPID_PUBLIC_KEY;
   if (!publicKey) throw new Error('The app administrator still needs to add the VAPID public key.');
 
   const permission = await Notification.requestPermission();

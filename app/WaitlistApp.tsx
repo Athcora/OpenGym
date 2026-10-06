@@ -1793,7 +1793,7 @@ function WlCourtRule({court,setting,streak,admin,busy,configure}:{court:Court;se
 function WlSubstituteArea({subs,players,me,busy,expanded,toggle,canInvite,canRemove,invite,remove}:{subs:WlPartySubstitute[];players:Player[];me:Player|null;busy:boolean;expanded:boolean;toggle:()=>void;canInvite:boolean;canRemove:(sub:WlPartySubstitute)=>boolean;invite:()=>void;remove:(sub:WlPartySubstitute)=>void}){
  if(!subs.length&&!canInvite)return null;
  return <section className="team-substitute-area wl-substitute-area">
-  {subs.length>0&&<button className="team-substitute-toggle wl-substitute-toggle" onClick={toggle} aria-expanded={expanded} aria-label={`Substitutes (${subs.length})`}>Substitutes <span>{expanded?'▾':'▸'}</span></button>}
+  {subs.length>0&&<button className="team-substitute-toggle wl-substitute-toggle" onClick={toggle} aria-expanded={expanded} aria-label={`Substitutes (${subs.length})`}>Substitutes <span>{expanded?'▴':'▾'}</span></button>}
   {expanded&&subs.length>0&&<div className="team-substitute-list">{subs.map((sub,index)=>{const player=players.find(item=>item.id===sub.player_id);return <article className="player-row team-substitute-player" key={sub.id}><span className="position">S{index+1}</span><div className="player-name"><strong>{player?.display_name??'Substitute'}</strong></div>{player&&player.user_id===me?.user_id&&<span className="you">You</span>}{canRemove(sub)&&<button className="admin-leave-button" disabled={busy} onClick={()=>remove(sub)}>Remove</button>}</article>})}</div>}
   {canInvite&&<button className="team-add-substitute wl-add-substitute" disabled={busy} onClick={invite}>+ Substitutes</button>}
  </section>;

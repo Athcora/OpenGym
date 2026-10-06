@@ -86,7 +86,7 @@ test('the court header shows the admin format controls, read-only rules for play
 
 test('substitutes appear under a full party and are hidden from the waiting list',()=>{
   assert.match(app,/\+ Substitutes<\/button>/);
-  assert.match(app,/Substitutes <span>\{expanded\?'▾':'▸'\}<\/span>/);
+  assert.match(app,/Substitutes <span>\{expanded\?'▴':'▾'\}<\/span>/);
   assert.match(app,/canInvite=\{ownParty&&subs\.length<6\}/);
   assert.match(app,/const expanded=wlExpandedSubs\.get\(groupId\)\?\?ownSub;/);
   assert.match(app,/\(p\.status==='waiting'\|\|p\.status==='sitout'\)&&!wlActiveSubIds\.has\(p\.id\)/);

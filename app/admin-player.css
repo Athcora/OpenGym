@@ -212,3 +212,8 @@
 .wl-add-substitute{min-height:52px;font-size:1rem}
 .kotc-team-toolbar .group-done:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:720px){.wl-court-rule{margin:0 12px 10px}.wl-court-rule .court-team-rule select{flex:1;min-width:110px}}
+/* Waitlist (New): reporting a King of the Court result shows only that court */
+.kotc-team-selecting .court-section:not(.kotc-selecting-court),.kotc-team-selecting [data-drop-status="waiting"]{display:none!important}
+.wl-team-label{padding:8px 18px 4px}
+.wl-team-streak{color:#fbbf24;font-size:.78rem;font-weight:800;letter-spacing:.035em;text-transform:uppercase}
+.theme-light .wl-team-streak{color:#b45309}

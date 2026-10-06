@@ -296,8 +296,8 @@ body.mobile-admin-dragging { overscroll-behavior:none; }
 /* Make the signed-in player's exact row immediately visible, even when it is
    nested inside a larger group border. */
 .player-row.own { position:relative; box-shadow:none; }
-.player-row.own::after { content:""; position:absolute; inset:3px; z-index:1; border:2px solid #54b88f; border-radius:12px; pointer-events:none; }
-.theme-light .player-row.own::after { border-color:#26966a; }
+.player-row.own::after { content:""; position:absolute; inset:3px; z-index:1; border:2px solid #e3c06a; border-radius:12px; pointer-events:none; }
+.theme-light .player-row.own::after { border-color:#d1a43a; }
 
 /* Adjacent group members read as one shared, continuous container. */
 .player-row.grouped { box-shadow:none; border-left:3px solid #54b88f; border-right:3px solid #54b88f; }

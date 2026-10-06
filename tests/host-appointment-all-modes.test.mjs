@@ -11,8 +11,11 @@ test('host permission controls are rendered in standard and teams modes',()=>{
   assert.match(app,/admin\|\|\(operator&&!own&&!player\.is_host&&Boolean\(player\.user_id\)\)/);
   assert.match(app,/host&&item\.user_id!==me\?\.user_id&&!item\.is_host&&Boolean\(item\.user_id\)/);
   assert.match(app,/className="admin-player-actions" onPointerDown=\{event=>event\.stopPropagation\(\)\}/);
-  assert.match(app,/HOST_APPOINTED\|.*setHostTutorialStep\(0\);setHostTutorial\(true\)/);
-  assert.match(app,/if\(isHost\).*setHostTutorialStep\(0\);setHostTutorial\(true\)/);
+  // Appointment shows the "appointed as a Session Host" notice first; its
+  // button (acknowledgeHostAppointment) starts the host tutorial.
+  assert.match(app,/HOST_APPOINTED\|.*setHostTutorial\(false\);.*setHostAppointmentNotice\(HOST_APPOINTED_MESSAGE\)/);
+  assert.match(app,/if\(isHost\).*setHostTutorial\(false\);.*setHostAppointmentNotice\(HOST_APPOINTED_MESSAGE\)/);
+  assert.match(app,/function acknowledgeHostAppointment\(\)\{[\s\S]*?setHostTutorialStep\(0\);setHostTutorial\(true\);/);
 });
 
 test('host cap is facility scoped and does not restrict admins',()=>{

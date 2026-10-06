@@ -3,6 +3,7 @@ import {readFileSync} from 'node:fs';
 import test from 'node:test';
 
 const app=readFileSync(new URL('../app/WaitlistApp.tsx',import.meta.url),'utf8');
+const css=readFileSync(new URL('../app/admin-player.css',import.meta.url),'utf8');
 const sql=readFileSync(new URL('../supabase/migrations/20261006033802_waitlist_new_mode.sql',import.meta.url),'utf8');
 const fn=name=>{const start=sql.indexOf(`create or replace function public.${name}(`);assert.ok(start>=0,`missing ${name}`);return sql.slice(start,sql.indexOf('\n$$;',start));};
 
@@ -80,14 +81,33 @@ test('the court header shows the admin format controls, read-only rules for play
   assert.match(app,/<span>until there are<\/span>/);
   assert.match(app,/\[3,4,5,6,7\]\.map\(count=>/);
   assert.match(app,/<span>consecutive games MAX<\/span>/);
-  assert.match(app,/Win Streak: \{streak\}/);
+  // The streak sits above each team on the court, not in the header.
+  assert.match(app,/<span key="king" className="wl-team-streak">Win Streak: \{teams\.streak\}<\/span>/);
+  assert.match(app,/groupOverride=\{teamGroups\} groupLabels=\{teamLabels\}/);
   assert.match(app,/headerExtra=\{waitlistNew\?<WlCourtRule/);
 });
 
 test('substitutes appear under a full party and are hidden from the waiting list',()=>{
   assert.match(app,/\+ Substitutes<\/button>/);
-  assert.match(app,/Substitutes <span>\{expanded\?'▾':'▸'\}<\/span>/);
+  assert.match(app,/Substitutes <span>\{expanded\?'▴':'▾'\}<\/span>/);
   assert.match(app,/canInvite=\{ownParty&&subs\.length<6\}/);
   assert.match(app,/const expanded=wlExpandedSubs\.get\(groupId\)\?\?ownSub;/);
   assert.match(app,/\(p\.status==='waiting'\|\|p\.status==='sitout'\)&&!wlActiveSubIds\.has\(p\.id\)/);
+});
+
+test('known King of the Court sides report without picking teammates, and selection focuses one court',()=>{
+  assert.match(app,/if\(teams\)\{const side=teams\.kings\.some\(player=>player\.id===reporter\.id\)\?teams\.kings:teams\.challengers;await submitKotcResult/);
+  assert.match(app,/scrollIntoView\(\{block:'center',behavior:'smooth'\}\)/);
+  assert.match(css,/\.kotc-team-selecting \.court-section:not\(\.kotc-selecting-court\)/);
+});
+
+test('selection modes act on a tap, so scrolling never selects a player',()=>{
+  assert.match(app,/function listenForRowTaps\(/);
+  assert.match(app,/Math\.hypot\(event\.clientX-tap\.x,event\.clientY-tap\.y\)>TAP_MOVE_TOLERANCE\|\|Math\.abs\(window\.scrollY-tap\.scrollY\)>4/);
+  assert.doesNotMatch(app,/document\.addEventListener\('pointerdown',selectPlayer,true\)/);
+});
+
+test('the drop slot is measured from the rows themselves, not from the card header',()=>{
+  assert.match(app,/const naturalMiddles=rows\.map/);
+  assert.doesNotMatch(app,/Math\.round\(\(point\.y-contentTop\)\/rowHeight-\.5\)/);
 });

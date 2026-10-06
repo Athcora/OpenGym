@@ -172,7 +172,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   const [wlSubstitutes,setWlSubstitutes]=useState<WlPartySubstitute[]>([]);
   const [wlSubRequests,setWlSubRequests]=useState<WlSubstituteRequest[]>([]);
   const [wlInviteGroupId,setWlInviteGroupId]=useState<string|null>(null);
-  const [wlExpandedSubs,setWlExpandedSubs]=useState<Set<string>>(()=>new Set());
+  const [wlExpandedSubs,setWlExpandedSubs]=useState<Map<string,boolean>>(()=>new Map());
   const [kotcSelect,setKotcSelect]=useState<KotcSelection|null>(null);
   const wlEnabledRef=useRef(false); const wlOwnAdvance=useRef<{at:number;staying:boolean}|null>(null); const handledWlSubRequestIds=useRef(new Set<string>());
   useEffect(()=>{document.body.classList.toggle('team-sub-invite-selecting',Boolean(inviteSubTeamId||wlInviteGroupId));document.querySelectorAll<HTMLElement>('[data-player-id]').forEach(row=>row.classList.toggle('substitute-selected',row.dataset.playerId===inviteSubTargetId));return()=>document.body.classList.remove('team-sub-invite-selecting')},[inviteSubTeamId,wlInviteGroupId,inviteSubTargetId,players]);
@@ -1271,7 +1271,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     if(!players.some(player=>player.status==='waiting'&&!wlActiveSubIds.has(player.id))){setNotice({title:'No one is waiting',message:'There’s no one on the waitlist yet. Try again once more people show up.'});return;}
     const reporter=!admin&&me&&me.status==='current'&&me.court_number===courtNumber?me:null;
     if(!reporter){
-      setNotice({title:'Select the winning team',message:`Select the team that won${courts.length>1?` on Court ${courtNumber}`:''}, then choose Continue. They will stay on the court.`,cancelLabel:'OK',blocking:true,showBack:true,cancelAction:async()=>beginKotcSelection({court:courtNumber,game:gameNumber,result:'win',reporterId:null})});
+      setNotice({title:'Pick the winning team members',message:`Tap each player on the team that won${courts.length>1?` on Court ${courtNumber}`:''}, then choose Continue. They will stay on the court.`,cancelLabel:'OK',blocking:true,showBack:true,cancelAction:async()=>beginKotcSelection({court:courtNumber,game:gameNumber,result:'win',reporterId:null})});
       return;
     }
     setNotice({title:'Did you win or lose?',message:`Game ${gameNumber}${courts.length>1?` on Court ${courtNumber}`:''}`,blocking:true,showBack:true,confirm:'Win',actionTone:'success',action:async()=>chooseKotcResult(courtNumber,gameNumber,'win',reporter),cancelLabel:'Lose',cancelTone:'danger',cancelAction:async()=>chooseKotcResult(courtNumber,gameNumber,'lose',reporter)});
@@ -1340,8 +1340,10 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     if(members.length!==6)return null;
     const subs=wlSubstitutes.filter(sub=>sub.group_id===groupId&&wlActiveSubIds.has(sub.player_id));
     const ownParty=Boolean(activeMe&&members.some(member=>member.id===activeMe.id));
-    const expanded=wlExpandedSubs.has(groupId);
-    const toggle=()=>setWlExpandedSubs(currentIds=>{const next=new Set(currentIds);if(next.has(groupId))next.delete(groupId);else next.add(groupId);return next});
+    // The list starts open for the substitutes themselves and closed for everyone else.
+    const ownSub=Boolean(activeMe&&subs.some(sub=>sub.player_id===activeMe.id));
+    const expanded=wlExpandedSubs.get(groupId)??ownSub;
+    const toggle=()=>setWlExpandedSubs(current=>{const next=new Map(current);next.set(groupId,!expanded);return next});
     return <WlSubstituteArea subs={subs} players={players} me={me} busy={busy} expanded={expanded} toggle={toggle} canInvite={ownParty&&subs.length<6} canRemove={sub=>operator||ownParty||sub.player_id===activeMe?.id} invite={()=>startWlSubInvite(groupId)} remove={removeWlSubstitute}/>;
   }:undefined;
   async function joinKingTeam(teamId:string){
@@ -1776,10 +1778,12 @@ function WlCourtRule({court,setting,streak,admin,busy,configure}:{court:Court;se
  const label=(value:WlFormat)=>value==='kotc'?'King of the Court':'2 on 2 off';
  return <div className="wl-court-rule">
   {admin?<div className="court-team-rule wl-court-rule-controls">
-   <select aria-label={`Court ${court.court_number} format`} disabled={busy} value={format} onChange={event=>configure(event.target.value as WlFormat,threshold,maxWins)}><option value="two_on_two_off">2 on 2 off</option><option value="kotc">KOTC</option></select>
-   <span>until there are</span>
+   <select aria-label={`Court ${court.court_number} format`} disabled={busy} value={format} onChange={event=>{const next=event.target.value as WlFormat;configure(next,next==='kotc'?null:threshold,maxWins)}}><option value="two_on_two_off">2 on 2 off</option><option value="kotc">KOTC</option></select>
+   {/* Like Teams mode (Rejoin): KOTC only has a consecutive-games cap. The
+       team-count rule belongs to 2 on 2 off and switches it to KOTC. */}
+   {format==='two_on_two_off'&&<><span>until there are</span>
    <select aria-label={`Court ${court.court_number} team count`} disabled={busy} value={threshold??'unlimited'} onChange={event=>configure(format,event.target.value==='unlimited'?null:Number(event.target.value),maxWins)}>{[3,4,5,6,7].map(count=><option key={count} value={count}>{count}</option>)}<option value="unlimited">Unlimited</option></select>
-   <span>teams</span>
+   <span>teams</span></>}
    {(format==='kotc'||threshold!==null)&&<><span>with</span><select aria-label={`Court ${court.court_number} consecutive games`} disabled={busy} value={maxWins??'unlimited'} onChange={event=>configure(format,threshold,event.target.value==='unlimited'?null:Number(event.target.value))}><option value="2">2</option><option value="3">3</option><option value="unlimited">Unlimited</option></select><span>consecutive games MAX</span></>}
   </div>:<div className="court-team-rule"><span className="king-rule-display"><b>{active==='kotc'?'KING OF THE COURT':'2 ON, 2 OFF'}</b>{active==='kotc'&&<small>{maxWins==null?'No game limit':`(${maxWins} CONSECUTIVE GAMES MAX)`}</small>}</span></div>}
   {admin&&active!==format&&<small className="wl-court-now">Now playing: {label(active)}</small>}

@@ -22,12 +22,14 @@ test('per-court settings and the win streak live outside the tables that undo re
   assert.doesNotMatch(subs,/references public\.waitlist_players/);
 });
 
-test('the team-count rule switches to the other format at the threshold and back below it',()=>{
-  const body=fn('wl_apply_auto_format');
-  assert.match(body,/wl_team_count\(p_facility_id\)>=s\.threshold_teams/);
-  assert.match(body,/case when s\.format='kotc' then 'two_on_two_off' else 'kotc' end/);
-  assert.match(body,/delete from public\.wl_kotc_state/);
+test('2 on 2 off switches to King of the Court at the team count and back below it; KOTC only has a games cap',()=>{
+  const rules=readFileSync(new URL('../supabase/migrations/20261006050000_waitlist_new_kotc_rules.sql',import.meta.url),'utf8');
+  assert.match(rules,/if s\.format='kotc' then desired:='kotc';/);
+  assert.match(rules,/case when public\.wl_team_count\(p_facility_id\)>=s\.threshold_teams then 'kotc' else 'two_on_two_off' end/);
+  assert.match(rules,/threshold:=case when p_format='kotc' then null else p_threshold_teams end;/);
+  assert.match(rules,/delete from public\.wl_kotc_state/);
   assert.match(fn('wl_team_count'),/count\(\*\)\/6/);
+  assert.match(app,/\{format==='two_on_two_off'&&<><span>until there are<\/span>/);
 });
 
 test('King of the Court results are guarded, validated and capped like Teams mode',()=>{
@@ -86,5 +88,6 @@ test('substitutes appear under a full party and are hidden from the waiting list
   assert.match(app,/\+ Substitutes<\/button>/);
   assert.match(app,/Substitutes <span>\{expanded\?'▾':'▸'\}<\/span>/);
   assert.match(app,/canInvite=\{ownParty&&subs\.length<6\}/);
+  assert.match(app,/const expanded=wlExpandedSubs\.get\(groupId\)\?\?ownSub;/);
   assert.match(app,/\(p\.status==='waiting'\|\|p\.status==='sitout'\)&&!wlActiveSubIds\.has\(p\.id\)/);
 });

@@ -202,3 +202,13 @@
 .team-sub-invite-selecting [data-player-id]{cursor:pointer}
 .team-sub-invite-selecting [data-player-status="waiting"]:hover{outline:2px solid #3b82f6;outline-offset:-2px}
 @media(max-width:640px){.team-substitute-toggle,.team-add-substitute{min-height:44px;padding:0 14px}.team-substitute-area{margin-bottom:14px}}
+/* Waitlist (New): per-court format row, win streak and party substitutes */
+.wl-court-rule{display:grid;gap:5px;margin:0 20px 10px}
+.wl-court-rule .court-team-rule{margin:0;flex-wrap:wrap}
+.wl-court-now{color:#9197a3;font-size:.72rem;font-weight:700}
+.wl-win-streak{color:#fbbf24;font-size:.78rem;font-weight:800;letter-spacing:.035em;text-transform:uppercase}
+.theme-light .wl-win-streak{color:#b45309}
+.wl-substitute-area{margin:0 0 6px}
+.wl-add-substitute{min-height:52px;font-size:1rem}
+.kotc-team-toolbar .group-done:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:720px){.wl-court-rule{margin:0 12px 10px}.wl-court-rule .court-team-rule select{flex:1;min-width:110px}}

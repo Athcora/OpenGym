@@ -111,3 +111,8 @@ test('the drop slot is measured from the rows themselves, not from the card head
   assert.match(app,/const naturalMiddles=rows\.map/);
   assert.doesNotMatch(app,/Math\.round\(\(point\.y-contentTop\)\/rowHeight-\.5\)/);
 });
+
+test('a press that never becomes a drag does not leave other courts hidden',()=>{
+  assert.match(app,/const prepareDesktopDrag=\(event:PointerEvent\)=>\{if\(document\.body\.classList\.contains\('admin-group-selecting'\)/);
+  assert.match(app,/useEffect\(\(\)=>\{if\(dragging\)return;document\.querySelectorAll\('\.court-section\.drag-hidden-court'\)/);
+});

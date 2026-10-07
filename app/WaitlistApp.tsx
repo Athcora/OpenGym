@@ -1369,7 +1369,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     const ownSub=Boolean(activeMe&&subs.some(sub=>sub.player_id===activeMe.id));
     const expanded=wlExpandedSubs.get(groupId)??ownSub;
     const toggle=()=>setWlExpandedSubs(current=>{const next=new Map(current);next.set(groupId,!expanded);return next});
-    return <WlSubstituteArea subs={subs} players={players} me={me} busy={busy} expanded={expanded} toggle={toggle} canInvite={ownParty&&subs.length<6} canRemove={sub=>operator||ownParty||sub.player_id===activeMe?.id} invite={()=>startWlSubInvite(groupId)} remove={removeWlSubstitute}/>;
+    return <WlSubstituteArea subs={subs} players={players} me={me} busy={busy} expanded={expanded} toggle={toggle} canInvite={ownParty&&subs.length<6} canRemove={sub=>operator||ownParty||sub.player_id===activeMe?.id} invite={()=>startWlSubInvite(groupId)} remove={removeWlSubstitute} operator={operator} adminRemove={confirmAdminLeave}/>;
   }:undefined;
   async function joinKingTeam(teamId:string){
     if(!me)return;
@@ -1837,11 +1837,11 @@ function WlCourtRule({court,setting,admin,busy,configure}:{court:Court;setting:W
   {admin&&active!==format&&<small className="wl-court-now">Now playing: {label(active)}</small>}
  </div>;
 }
-function WlSubstituteArea({subs,players,me,busy,expanded,toggle,canInvite,canRemove,invite,remove}:{subs:WlPartySubstitute[];players:Player[];me:Player|null;busy:boolean;expanded:boolean;toggle:()=>void;canInvite:boolean;canRemove:(sub:WlPartySubstitute)=>boolean;invite:()=>void;remove:(sub:WlPartySubstitute)=>void}){
+function WlSubstituteArea({subs,players,me,busy,expanded,toggle,canInvite,canRemove,invite,remove,operator,adminRemove}:{subs:WlPartySubstitute[];players:Player[];me:Player|null;busy:boolean;expanded:boolean;toggle:()=>void;canInvite:boolean;canRemove:(sub:WlPartySubstitute)=>boolean;invite:()=>void;remove:(sub:WlPartySubstitute)=>void;operator:boolean;adminRemove:(player:Player)=>void}){
  if(!subs.length&&!canInvite)return null;
  return <section className="team-substitute-area wl-substitute-area">
   {subs.length>0&&<button className="team-substitute-toggle wl-substitute-toggle" onClick={toggle} aria-expanded={expanded} aria-label={`Substitutes (${subs.length})`}>Substitutes <span>{expanded?'▴':'▾'}</span></button>}
-  {expanded&&subs.length>0&&<div className="team-substitute-list">{subs.map((sub,index)=>{const player=players.find(item=>item.id===sub.player_id);return <article className="player-row team-substitute-player" key={sub.id}><span className="position">S{index+1}</span><div className="player-name"><strong>{player?.display_name??'Substitute'}</strong></div>{player&&player.user_id===me?.user_id&&<span className="you">You</span>}{player&&me&&player.id===me.id?<button className="admin-leave-group-button wl-sub-leave-button" disabled={busy} onClick={()=>remove(sub)}>Leave group</button>:canRemove(sub)&&<button className="admin-leave-button wl-sub-remove-button" disabled={busy} onClick={()=>remove(sub)}>Remove</button>}</article>})}</div>}
+  {expanded&&subs.length>0&&<div className="team-substitute-list">{subs.map((sub,index)=>{const player=players.find(item=>item.id===sub.player_id);return <article className="player-row team-substitute-player" key={sub.id}><span className="position">S{index+1}</span><div className="player-name"><strong>{player?.display_name??'Substitute'}</strong></div>{player&&player.user_id===me?.user_id&&<span className="you">You</span>}{operator&&player?<><button className="admin-leave-group-button wl-sub-leave-button" disabled={busy} onClick={()=>remove(sub)}>Leave group</button><div className="admin-player-actions wl-sub-admin-actions"><button className="admin-leave-button" disabled={busy} onClick={()=>adminRemove(player)}>Remove</button></div></>:player&&me&&player.id===me.id?<button className="admin-leave-group-button wl-sub-leave-button" disabled={busy} onClick={()=>remove(sub)}>Leave group</button>:canRemove(sub)&&<button className="group-button remove-group-button wl-sub-remove-button" disabled={busy} onClick={()=>remove(sub)}>Remove</button>}</article>})}</div>}
   {canInvite&&<button className="team-add-substitute wl-add-substitute" disabled={busy} onClick={invite}>+ Substitutes</button>}
  </section>;
 }

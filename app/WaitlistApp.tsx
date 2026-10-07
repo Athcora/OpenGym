@@ -1358,7 +1358,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   }
   function removeWlSubstitute(substitute:WlPartySubstitute){
     const name=players.find(player=>player.id===substitute.player_id)?.display_name??'this substitute';
-    ask(`Remove ${name} as a substitute?`,'They will stay on the waitlist.','Remove',async()=>{await rpc('remove_waitlist_substitute',{p_substitute_id:substitute.id},false)},'danger');
+    const self=Boolean(activeMe&&substitute.player_id===activeMe.id); ask(self?'Leave this group?':`Remove ${name} as a substitute?`,self?'You will no longer be a substitute, but you will stay on the waitlist.':'They will stay on the waitlist.',self?'Leave group':'Remove',async()=>{await rpc('remove_waitlist_substitute',{p_substitute_id:substitute.id},false)},'danger');
   }
   const renderWlGroupExtra=waitlistNew?(groupId:string)=>{
     const members=players.filter(player=>player.group_id===groupId&&WL_ACTIVE_STATUSES.includes(player.status));
@@ -1841,7 +1841,7 @@ function WlSubstituteArea({subs,players,me,busy,expanded,toggle,canInvite,canRem
  if(!subs.length&&!canInvite)return null;
  return <section className="team-substitute-area wl-substitute-area">
   {subs.length>0&&<button className="team-substitute-toggle wl-substitute-toggle" onClick={toggle} aria-expanded={expanded} aria-label={`Substitutes (${subs.length})`}>Substitutes <span>{expanded?'▴':'▾'}</span></button>}
-  {expanded&&subs.length>0&&<div className="team-substitute-list">{subs.map((sub,index)=>{const player=players.find(item=>item.id===sub.player_id);return <article className="player-row team-substitute-player" key={sub.id}><span className="position">S{index+1}</span><div className="player-name"><strong>{player?.display_name??'Substitute'}</strong></div>{player&&player.user_id===me?.user_id&&<span className="you">You</span>}{canRemove(sub)&&<button className="admin-leave-button" disabled={busy} onClick={()=>remove(sub)}>Remove</button>}</article>})}</div>}
+  {expanded&&subs.length>0&&<div className="team-substitute-list">{subs.map((sub,index)=>{const player=players.find(item=>item.id===sub.player_id);return <article className="player-row team-substitute-player" key={sub.id}><span className="position">S{index+1}</span><div className="player-name"><strong>{player?.display_name??'Substitute'}</strong></div>{player&&player.user_id===me?.user_id&&<span className="you">You</span>}{player&&me&&player.id===me.id?<button className="admin-leave-group-button wl-sub-leave-button" disabled={busy} onClick={()=>remove(sub)}>Leave group</button>:canRemove(sub)&&<button className="admin-leave-button wl-sub-remove-button" disabled={busy} onClick={()=>remove(sub)}>Remove</button>}</article>})}</div>}
   {canInvite&&<button className="team-add-substitute wl-add-substitute" disabled={busy} onClick={invite}>+ Substitutes</button>}
  </section>;
 }

@@ -207,7 +207,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   const [geofenceReturn,setGeofenceReturn]=useState<GeofenceReturn|null>(null);
   const [permissionPlayer,setPermissionPlayerState]=useState<Player|null>(null); const [hostAppointmentNotice,setHostAppointmentNotice]=useState<string|null>(null); const [hostTutorial,setHostTutorial]=useState(false); const [hostTutorialStep,setHostTutorialStep]=useState(0); const [hostStatusReady,setHostStatusReady]=useState(false);
   const [pendingNextGameEvent,setPendingNextGameEvent]=useState<{message:string}|null>(null);
-  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const lastFullRefresh=useRef(0); const lastCleanupAt=useRef(0); const realtimeConnected=useRef(false); const lastEventRevision=useRef<string|null>(null); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const handledGroupRequestIds=useRef(new Set<string>()); const handledSwapRequestIds=useRef(new Set<string>()); const handledTeamSubRequestIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const renderedHostStatus=useRef<boolean|null>(null); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null); const facilityMenuRef=useRef<HTMLElement|null>(null); const refreshTimer=useRef<number|null>(null); const hybridBoardRequest=useRef(0); const screenRef=useRef(screen); const realtimeChannel=useRef<ReturnType<typeof supabase.channel>|null>(null); const facilityRef=useRef<Facility|null>(null);
+  const geofenceRemovalInProgress=useRef(false); const expiredRejoinHandled=useRef(false); const lastResumeRefresh=useRef(0); const lastFullRefresh=useRef(0); const lastCleanupAt=useRef(0); const realtimeConnected=useRef(false); const lastEventRevision=useRef<string|null>(null); const adminMoveInProgress=useRef(false); const handledNotificationIds=useRef(new Set<string>()); const handledGroupRequestIds=useRef(new Set<string>()); const handledSwapRequestIds=useRef(new Set<string>()); const handledTeamSubRequestIds=useRef(new Set<string>()); const ownHostStatus=useRef(false); const renderedHostStatus=useRef<boolean|null>(null); const adminAccess=useRef(false); const ownPlayerIdRef=useRef<string|null>(null); const hostTrackedUserId=useRef<string|null>(null); const hostTransitionHandledAt=useRef(0); const hostAppointmentActive=useRef(false); const locationIntroShown=useRef(false); const courtCountInputRef=useRef<HTMLInputElement|null>(null); const facilityMenuRef=useRef<HTMLElement|null>(null); const refreshTimer=useRef<number|null>(null); const authEpoch=useRef(0); const hybridBoardRequest=useRef(0); const screenRef=useRef(screen); const realtimeChannel=useRef<ReturnType<typeof supabase.channel>|null>(null); const facilityRef=useRef<Facility|null>(null);
   const activeStatusRef=useRef<PlayerStatus|null>(null); const waitlistModeRef=useRef<Config['mode']>('regular'); const ownPlayerRef=useRef<Player|null>(null); const modeViewportRef=useRef<{mode:Config['mode'];scrollY:number;layoutRevision:number}|null>(null);
   const rejoinLookupAttempts=useRef(0);
   const claimedDeviceForUser=useRef<string|null>(null);
@@ -617,7 +617,13 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     return true;
   }
   async function refresh(activeUser?:User|null,expectedFacility=facilityRef.current,contextReady=false){
+    // Logging out bumps authEpoch. A refresh that started under the previous
+    // session (1s sync loop, realtime-scheduled refresh, resume refresh) must
+    // not write that old user's player/admin state back after logout, or it
+    // flips the screen from the guest welcome back to the queue.
+    const epoch=authEpoch.current;const stale=()=>epoch!==authEpoch.current;
     if(!contextReady&&!await ensureFacilityContext(expectedFacility))return;
+    if(stale())return;
     const now=Date.now();
     if(now-lastCleanupAt.current>=60_000){lastCleanupAt.current=now;await supabase.rpc('cleanup_king_rejoin_expirations');}
     const [{data:p},{data:c},{data:courtRows},{data:teamRows},{data:a},{data:r},{data:s},{data:rejoin,error:rejoinError},{data:geo}]=await Promise.all([
@@ -631,6 +637,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
       supabase.from('rejoin_responses').select('id,expires_at,choice,answered_at').eq('facility_id',expectedFacility?.id??'00000000-0000-0000-0000-000000000000').eq('user_id',(activeUser??user)?.id??'00000000-0000-0000-0000-000000000000').order('created_at',{ascending:false}).limit(1).maybeSingle(),
       supabase.from('geofence_return_prompts').select('id,removed_at,saved_position_until,expires_at').is('resolved_at',null).gt('expires_at',new Date().toISOString()).order('removed_at',{ascending:false}).limit(1).maybeSingle()
     ]);
+    if(stale())return;
     const playerRows=(p??[]) as Player[];setPlayers(playerRows);
     if(c)setConfig(c as Config);
     const hybridRequest=++hybridBoardRequest.current;
@@ -647,6 +654,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
       supabase.from('team_substitutes').select('id,team_id,player_id'),
       supabase.from('team_substitute_requests').select('id,team_id,hybrid_team_id,requester_id,target_id,status,expected_game_number,expected_version').eq('status','pending').gt('created_at',new Date(Date.now()-5*60_000).toISOString()),
     ]);
+    if(stale())return;
     setTeamFillIns((fillRows??[]) as TeamFillIn[]);
     const substituteRows=(teamSubRows??[]) as TeamSubstitute[];setTeamSubstitutes(substituteRows.map(row=>({...row,player:playerRows.find(player=>player.id===row.player_id)})));
     setTeamSubstituteRequests((teamSubRequestRows??[]) as TeamSubstituteRequest[]);
@@ -671,12 +679,19 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     if(a||activeHost){const {data:offline}=await supabase.rpc('admin_list_offline_rejoins');setAdminRejoins((offline??[]) as AdminRejoin[]);}else setAdminRejoins([]);
     setGroupRequests(((r??[]) as GroupRequest[]).map(request=>({...request,requester:playerRows.find(player=>player.id===request.requester_id)})));
     setSubstituteRequests(((s??[]) as SubstituteRequest[]).map(request=>({...request,requester:playerRows.find(player=>player.id===request.requester_id)})));
+    if(stale())return;
     const latestRejoin=rejoin as RejoinResponse|null;
     const timedOut=Boolean(latestRejoin&&new Date(latestRejoin.expires_at).getTime()<=Date.now()&&(latestRejoin.choice===null||(latestRejoin.choice==='leave'&&latestRejoin.answered_at&&new Date(latestRejoin.answered_at).getTime()>=new Date(latestRejoin.expires_at).getTime())));
     setRejoinResponse(latestRejoin?.choice===null?latestRejoin:null);setRejoinChecked(!rejoinError);if(rejoin?.id)rejoinLookupAttempts.current=0;
     setGeofenceReturn((geo as GeofenceReturn|null)??null);
     const uid=(activeUser??user)?.id; let own=playerRows.find(item=>item.user_id===uid)??null;
     if(uid&&!own){const {data:storedOwn}=await supabase.from('waitlist_players').select('*').eq('facility_id',expectedFacility?.id??'00000000-0000-0000-0000-000000000000').eq('user_id',uid).maybeSingle();own=(storedOwn as Player|null)??null;}
+    if(stale())return;
+    // Never adopt a player row that belongs to a different auth user than the
+    // one currently signed in (for example a refresh that captured the user
+    // from before logout).
+    if(uid&&(await supabase.auth.getSession()).data.session?.user.id!==uid)return;
+    if(stale())return;
     if(!a&&timedOut&&own&&['rejoin','left'].includes(own.status)&&!expiredRejoinHandled.current){
       expiredRejoinHandled.current=true;await expireRejoinSession();return;
     }
@@ -890,11 +905,26 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   async function turnOnNotifications(){setBusy(true);try{await enablePush();setNotifications(true);setNotice({title:'Notifications are on',message:"We’ll alert you when your game starts or needs a response."});}catch(error){setNotice({title:'Notifications unavailable',message:error instanceof Error?error.message:'Could not enable notifications.'});}setBusy(false);}
   async function saveName(player:Player){if(isInappropriateName(editName)){setNotice(inappropriateNameNotice);return;}const parts=cleanName(editName).split(' ');const f=parts.shift()??'';const l=parts.join(' ');if(!f){setNotice({title:'Enter a player name',message:'The player name needs to contain letters.'});return;}if(!namePartsWithinLimit(f,l)){setNotice({title:'Name is too long',message:`First and last names can each contain up to ${NAME_CHARACTER_LIMIT} characters.`});return;}if(await rpc('rename_waitlist_player',{p_player_id:player.id,p_first_name:f,p_last_name:l}))setEditing(null);}
   async function logout(){
-    await supabase.auth.signOut();
-    setPlayers([]);setKingTeams([]);setUser(null);setOwnPlayer(null);setForceRejoin(false);setRejoinResponse(null);setPendingNextGameEvent(null);setAdmin(false);setScreen('welcome');
-    ownPlayerIdRef.current=null;ownHostStatus.current=false;hostTrackedUserId.current=null;renderedHostStatus.current=null;setHostStatusReady(false);
-    claimedDeviceForUser.current=null;
+    // Invalidate every in-flight refresh and stop the old session's realtime
+    // channel before anything else so no late event can restore the queue.
+    authEpoch.current+=1;
+    if(refreshTimer.current!==null){window.clearTimeout(refreshTimer.current);refreshTimer.current=null;}
+    const oldChannel=realtimeChannel.current;realtimeChannel.current=null;realtimeConnected.current=false;
+    if(oldChannel)void supabase.removeChannel(oldChannel);
+    setPlayers([]);setKingTeams([]);setUser(null);setOwnPlayer(null);setForceRejoin(false);setRejoinResponse(null);setPendingNextGameEvent(null);setAdmin(false);setAdminRejoins([]);setGeofenceReturn(null);
+    setHostAppointmentNotice(null);setHostTutorial(false);setOnboarding('idle');setScreen('welcome');
+    ownPlayerIdRef.current=null;ownHostStatus.current=false;hostTrackedUserId.current=null;renderedHostStatus.current=null;hostAppointmentActive.current=false;setHostStatusReady(false);
+    claimedDeviceForUser.current=null;expiredRejoinHandled.current=false;
+    const {error}=await supabase.auth.signOut();
+    // signOut() keeps the local session when the network call fails (offline,
+    // timeout, server error). Drop it locally anyway so boot() starts a fresh
+    // guest session instead of silently restoring the old player.
+    if(error||(await supabase.auth.getSession()).data.session)await supabase.auth.signOut({scope:'local'}).catch(()=>undefined);
+    if((await supabase.auth.getSession()).data.session){
+      for(const key of Object.keys(localStorage))if(/^sb-.*-auth-token/.test(key))localStorage.removeItem(key);
+    }
     await boot();
+    setScreen(open=>open==='facility'?open:'welcome');
   }
   async function expireRejoinSession(){
     // Re-read the authoritative status before removing anyone: another device
@@ -1208,6 +1238,17 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     await broadcastQueueRefresh();await refresh();
   }
   async function answerRejoin(choice:'stay'|'leave'){if(choice==='stay'&&!await requireOnSite(()=>answerRejoin('stay')))return;if(rejoinResponse&&await rpc('answer_rejoin_prompt',{p_response_id:rejoinResponse.id,p_choice:choice},false)){setRejoinResponse(null);if(choice==='leave')await logout();}}
+  async function logoutFromWaitlist(){
+    // Leave first (retrying once after re-selecting the facility). If the
+    // leave still fails, offer to log out anyway instead of leaving the user
+    // stuck signed in after they pressed Log out.
+    setBusy(true);
+    let left=await leaveWaitlistForFacility(facilityRef.current);
+    if(!left)left=await leaveWaitlistForFacility(facilityRef.current);
+    setBusy(false);
+    if(left){await logout();return;}
+    setNotice({title:'Could not leave the waitlist',message:'We could not remove you from the waitlist right now. You can log out anyway, and an admin or host can remove your spot.',confirm:'Log out anyway',action:logout,actionTone:'danger',cancelLabel:'Stay signed in'});
+  }
   async function leaveOwnWaitlist(){
     // The generic RPC helper refreshes before sign-out, which can race with
     // auth synchronization and restore a just-left player as a stale Rejoin
@@ -1487,7 +1528,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   const modeSelect=<select value={waitlistNew?'waitlist_new':config.mode} onChange={e=>void chooseWaitlistMode(e.target.value)}><option value="regular">Regular waitlist</option><option value="rejoin">Rejoin waitlist</option><option value="teams">Teams mode</option><option value="teams_rejoin">Teams mode (Rejoin)</option><option value="hybrid_waitlist">Waitlist</option><option value="waitlist_new">Waitlist (New)</option></select>;
 
   return <Shell>
-    <header className="topbar"><Logo compact/><div className="top-actions">{pushSupported()&&!notifications&&<button className="icon-button" onClick={turnOnNotifications}>Enable alerts</button>}<button className="icon-button" onClick={()=>ask('Log out?','This will remove you from the waitlist and sign you out.','Log out',async()=>{if(await leaveWaitlistForFacility(facilityRef.current))await logout()})}>Log out</button><label className="language-picker" aria-label="Change language"><span className="language-symbol" aria-hidden="true"><i>🌐</i><b>{language==='en'?'ENG':language==='es'?'ESP':'中文'}</b></span><select value={language} onChange={event=>setLanguage(event.target.value as AppLanguage)}><option value="en">English</option><option value="es">Español</option><option value="zh-CN">简体中文</option></select></label></div></header>
+    <header className="topbar"><Logo compact/><div className="top-actions">{pushSupported()&&!notifications&&<button className="icon-button" onClick={turnOnNotifications}>Enable alerts</button>}<button className="icon-button" onClick={()=>ask('Log out?','This will remove you from the waitlist and sign you out.','Log out',logoutFromWaitlist)}>Log out</button><label className="language-picker" aria-label="Change language"><span className="language-symbol" aria-hidden="true"><i>🌐</i><b>{language==='en'?'ENG':language==='es'?'ESP':'中文'}</b></span><select value={language} onChange={event=>setLanguage(event.target.value as AppLanguage)}><option value="en">English</option><option value="es">Español</option><option value="zh-CN">简体中文</option></select></label></div></header>
     <main className={`queue-page ${!admin&&me&&!meIsVisibleInQueue?'rejoin-only-queue':''} ${modeTransitionInProgress?'mode-transitioning':''} ${isHybridKotc?'hybrid-kotc-mode':''}`}>
       <section className="game-heading"><div><div className="facility-heading-label"><span>Facility</span> <strong>{facility?.name??'OpenGym'}</strong><button type="button" onClick={confirmFacilityChange}>Change</button></div><span className="kicker">{admin?'LIVE QUEUE · ADMIN':host?'LIVE QUEUE · HOST':'LIVE QUEUE'}</span><h1>{translateUiText(courts.length>1?`Game ${courts.map(court=>court.game_number).join(' · ')}`:`Game ${courts[0]?.game_number??config.game_number}`,language)}</h1></div><span className="live-pill"><i/>Live</span></section>
       {operator&&<section className="court-count-control"><label htmlFor="court-count"># of courts</label><div className="court-count-input"><input ref={courtCountInputRef} key={config.court_count} id="court-count" type="text" inputMode="numeric" pattern="[0-9]*" defaultValue={config.court_count} aria-label="Number of courts" onInput={event=>{event.currentTarget.value=event.currentTarget.value.replace(/\D/g,'').slice(0,2)}} onBlur={event=>void commitCourtCount(event.currentTarget)} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();event.currentTarget.blur()}}}/><div className="court-count-steppers"><button type="button" aria-label="Increase courts" disabled={busy||config.court_count>=12} onClick={()=>void stepCourtCount(1)}>&uarr;</button><button type="button" aria-label="Decrease courts" disabled={busy||config.court_count<=1} onClick={()=>void stepCourtCount(-1)}>&darr;</button></div></div></section>}

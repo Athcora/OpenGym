@@ -228,43 +228,17 @@
   border-top: 0;
 }
 
-/* Waitlist (New) substitutes: red Remove (group/admin) and red Leave group (the sub themselves) */
-.team-substitute-player .wl-sub-remove-button,
-.team-substitute-player .wl-sub-leave-button {
-  margin-left: auto;
-  padding: 7px 9px;
-  border: 0;
-  border-radius: 9px;
-  color: #fff;
-  font-size: 0.66rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform 0.16s, box-shadow 0.16s, filter 0.16s, background 0.16s;
-}
+/* Waitlist (New) substitutes: Leave group / Remove buttons on substitute rows */
+.team-substitute-player .wl-sub-leave-button,
 .team-substitute-player .wl-sub-remove-button {
-  background: rgb(143, 45, 56);
+  margin-left: auto;
 }
-.team-substitute-player .wl-sub-remove-button:hover {
-  background: rgb(168, 57, 69);
-  box-shadow: 0 0 15px rgba(196, 75, 88, 0.44);
+.team-substitute-player .wl-sub-admin-actions {
+  margin-left: 8px;
 }
-.team-substitute-player .wl-sub-leave-button {
-  background: rgb(154, 74, 85);
-}
-.team-substitute-player .wl-sub-leave-button:hover {
-  filter: brightness(1.08);
-  transform: translateY(-1px);
-  box-shadow: 0 0 16px rgba(181, 82, 95, 0.4);
-}
-.theme-light .team-substitute-player .wl-sub-remove-button {
-  background: rgb(201, 55, 69);
-}
-.theme-light .team-substitute-player .wl-sub-remove-button:hover {
-  background: rgb(217, 71, 84);
-  box-shadow: 0 0 15px rgba(201, 55, 69, 0.4);
-}
-.team-substitute-player .wl-sub-remove-button:disabled,
-.team-substitute-player .wl-sub-leave-button:disabled {
-  opacity: 0.6;
-  cursor: default;
+@media (max-width: 620px) {
+  .team-substitute-player .wl-sub-admin-actions {
+    width: auto;
+    margin: 0 0 0 5px;
+  }
 }

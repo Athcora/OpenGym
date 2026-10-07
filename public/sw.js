@@ -1,5 +1,6 @@
 self.addEventListener('push', (event) => {
-  const payload = event.data?.json() ?? {};
+  let payload = {};
+  try { payload = event.data?.json() ?? {}; } catch { payload = { body: event.data?.text() }; }
   const kind = payload.kind ?? 'game_started';
   const options = {
     body: payload.body ?? 'Open the waitlist for an update.',
@@ -32,8 +33,13 @@ self.addEventListener('notificationclick', (event) => {
     const windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
     const existing = windows.find((client) => new URL(client.url).origin === self.location.origin);
     if (existing) {
-      await existing.navigate(target.href);
-      return existing.focus();
+      // navigate() rejects for uncontrolled windows; fall back to a new window (audit P3).
+      try {
+        await existing.navigate(target.href);
+        return existing.focus();
+      } catch {
+        return clients.openWindow(target.href);
+      }
     }
     return clients.openWindow(target.href);
   })());

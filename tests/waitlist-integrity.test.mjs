@@ -64,7 +64,7 @@ assert.match(advancedCss,/@media \(max-width:520px\) \{ \.topbar\{position:relat
 assert.match(app,/me\.status==='rejoin'\|\|admin\|\|!config\.geofence_enabled/);
 assert.doesNotMatch(app,/admin\|\|isTeamsMode\(config\.mode\)\|\|!config\.geofence_enabled/);
 assert.match(app,/className="facility-heading-label"><span>Facility<\/span> <strong>\{facility\?\.name\?\?'OpenGym'\}<\/strong><button type="button" onClick=\{confirmFacilityChange\}>Change<\/button>/);
-assert.match(app,/confirm:'Log out',action:logout,actionTone:'danger',actionOnLeft:true,cancelLabel:'Never mind'/);
+assert.match(app,/confirm:'Log out',action:logoutFromWaitlist,actionTone:'danger',actionOnLeft:true,cancelLabel:'Never mind'/);
 assert.match(advancedCss,/\.facility-heading-label\{display:flex;/);
 assert.match(app,/handledSwapRequestIds=useRef\(new Set<string>\(\)\)/);
 assert.match(app,/find\(request=>!handledSwapRequestIds\.current\.has\(request\.id\).*handledSwapRequestIds\.current\.add\(incoming\.id\)/s);

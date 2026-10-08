@@ -23,7 +23,14 @@ export async function enablePush() {
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') throw new Error('Notification permission was not granted.');
 
-  const registration = await navigator.serviceWorker.ready;
+  // navigator.serviceWorker.ready never resolves without a registration, which
+  // froze the page on /g/<slug> entry links (audit P1). Register if needed and
+  // time out instead of hanging.
+  if (!(await navigator.serviceWorker.getRegistration())) await navigator.serviceWorker.register('/sw.js');
+  const registration = await Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Notifications are still starting up. Please try again in a moment.')), 10_000)),
+  ]);
   const existing = await registration.pushManager.getSubscription();
   const subscription = existing ?? await registration.pushManager.subscribe({
     userVisibleOnly: true,

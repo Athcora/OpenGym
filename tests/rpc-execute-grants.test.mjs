@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,readdirSync} from 'node:fs';
 
 const app=readFileSync(new URL('../app/WaitlistApp.tsx',import.meta.url),'utf8');
 const sql=readFileSync(new URL('../supabase/harden-rpc-execute-grants.sql',import.meta.url),'utf8');
 const hybridBoardGrant=readFileSync(new URL('../supabase/migrations/20260929230203_hybrid_kotc_board_read_model.sql',import.meta.url),'utf8');
 const waitlistNewGrants=readFileSync(new URL('../supabase/migrations/20261006033802_waitlist_new_mode.sql',import.meta.url),'utf8');
+const migrationsDir=new URL('../supabase/migrations/',import.meta.url);
+const allMigrationGrants=readdirSync(migrationsDir).filter(name=>name.endsWith('.sql')).map(name=>readFileSync(new URL(name,migrationsDir),'utf8')).join('\n');
 
 test('the browser RPC surface is explicitly authenticated-only, not PUBLIC or anon',()=>{
   assert.match(sql,/revoke all on all functions in schema public from public, anon, authenticated/);
@@ -20,7 +22,8 @@ test('every direct browser RPC is represented in the explicit allowlist',()=>{
     const authorizedByFinalMigration=name==='read_hybrid_kotc_board'
       && new RegExp(`grant execute on function public\\.${name}\\(\\) to authenticated`).test(hybridBoardGrant);
     const authorizedByWaitlistNew=new RegExp(`grant execute on function public\\.${name}\\([^)]*\\) to authenticated`).test(waitlistNewGrants);
-    assert.ok(authorizedByFinalMigration||authorizedByWaitlistNew||new RegExp(`'${name}'`).test(sql),`missing authenticated grant for ${name}`);
+    const authorizedByLaterMigration=new RegExp(`grant execute on function public\\.${name}\\([^)]*\\) to authenticated`).test(allMigrationGrants);
+    assert.ok(authorizedByFinalMigration||authorizedByWaitlistNew||authorizedByLaterMigration||new RegExp(`'${name}'`).test(sql),`missing authenticated grant for ${name}`);
   }
 });
 

@@ -74,7 +74,7 @@ test('the app routes King of the Court courts through Win/Lose, team selection a
   assert.match(app,/title:'Already recorded'/);
   assert.match(app,/There’s no one on the waitlist yet\. Try again once more people show up\./);
   assert.match(app,/if\(wlIsKotc\(court\.court_number\)\)\{startKotcNext\(court\.court_number,court\.game_number\);return;\}/);
-  assert.match(app,/confirm:'Continue',actionTone:'success',action:async\(\)=>\{\},cancelLabel:'Reverse',cancelTone:'danger',cancelAction:reverseNextGame,blocking:wlEnabledRef\.current\|\|undefined/);
+  assert.match(app,/confirm:'Continue',actionTone:'success',action:async\(\)=>\{\},cancelLabel:'Reverse',cancelTone:'danger',cancelAction:\(\)=>reverseNextGame\(startedGameNumber\(event\.message\)\),blocking:wlEnabledRef\.current\|\|undefined/);
 });
 
 test('the court header shows the admin format controls, read-only rules for players and the win streak',()=>{

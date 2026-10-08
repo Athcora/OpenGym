@@ -20,7 +20,7 @@ test('expiration cleanup and client prompt lookup cannot mutate or surface anoth
   assert.match(sql,/where facility_id=fid and status='rejoin' and rejoin_expires_at<=now\(\)/);
   assert.match(sql,/where t\.facility_id=fid/);
   assert.match(app,/from\('rejoin_responses'\)[\s\S]*\.eq\('facility_id',expectedFacility\?\.id/);
-  assert.match(app,/from\('waitlist_players'\)\.select\('\*'\)\.eq\('facility_id',expectedFacility\?\.id/);
+  assert.match(app,/from\('waitlist_players'\)\.select\(PLAYER_COLUMNS\)\.eq\('facility_id',expectedFacility\?\.id/);
 });
 
 test('timeout, leave, and operator offline-Rejoin helpers are facility-scoped too',()=>{

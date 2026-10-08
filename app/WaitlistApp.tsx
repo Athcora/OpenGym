@@ -987,7 +987,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     await logout();
     setNotice(REJOIN_TIMEOUT_NOTICE);
   }
-  function confirmFacilityChange(){setNotice({title:'Change facility?',message:'If you want to change your facility, you need to log out first. You can then select a different facility when joining again.',confirm:'Log out',action:logout,actionTone:'danger',actionOnLeft:true,cancelLabel:'Never mind'});}
+  function confirmFacilityChange(){setNotice({title:'Change facility?',message:'If you want to change your facility, you need to log out first. You can then select a different facility when joining again.',confirm:'Log out',action:logoutFromWaitlist,actionTone:'danger',actionOnLeft:true,cancelLabel:'Never mind'});}
   async function startGuestFlow(){
     setBusy(true);
     const signOutResult=await supabase.auth.signOut();

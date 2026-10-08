@@ -89,6 +89,8 @@ function getDeviceId(){
 
 const cleanName = (value:string) => value.replace(/[^\p{L}\s]/gu, '').replace(/\s+/g, ' ').trim();
 const NAME_CHARACTER_LIMIT=30;
+// "Alex started Game 12." -> 12 (used to guard Reverse against a newer game).
+function startedGameNumber(message?:string|null){const match=message?.match(/Game (\d+)/);return match?Number(match[1]):null}
 // Admin sign-ins expire after this many hours (enforced in is_waitlist_admin()).
 const ADMIN_SESSION_HOURS=12;
 // Every waitlist_players column the browser may read. device_id is deliberately
@@ -368,16 +370,20 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     void check();const timer=window.setInterval(()=>{if(document.visibilityState==='visible'&&!realtimeConnected.current)void check()},15_000);return()=>{stopped=true;window.clearInterval(timer)};
   },[user?.id,admin]);
   useEffect(()=>{
-    if(!user||!facility)return;let stopped=false;let refreshing=false;
+    if(!user||!facility)return;let stopped=false;let refreshing=false;let lastCheck=0;
     lastEventRevision.current=null;
-    // Broadcasts remain the fastest path. This tiny event-revision check makes
-    // every visible role self-heal within a second if a websocket event is lost.
+    // Realtime (websocket) is the normal path and delivers changes instantly.
+    // This is only a backup (audit F5): with a live connection, a tiny
+    // "anything new?" check every 15 s self-heals a missed event; without one,
+    // a full reload every 5 s. Previously every phone hit the database every second.
     const sync=async()=>{
       if(stopped||refreshing||document.visibilityState!=='visible')return;
-      refreshing=true;
+      const now=Date.now();const connected=realtimeConnected.current;
+      if(lastCheck&&now-lastCheck<(connected?15_000:5_000))return;
+      refreshing=true;lastCheck=now;
       try{
-        if(!realtimeConnected.current){await refresh(user);return;}
-        const {data,error}=await supabase.from('waitlist_events').select('id').order('created_at',{ascending:false}).limit(1).maybeSingle();
+        if(!connected){await refresh(user);return;}
+        const {data,error}=await supabase.from('waitlist_events').select('id').eq('facility_id',facility.id).order('created_at',{ascending:false}).limit(1).maybeSingle();
         if(error)return;
         const revision=`${facility.id}:${data?.id??'empty'}`;
         // A mobile browser can resume after the websocket event was missed.
@@ -596,7 +602,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
             // Waitlist (New): a King of the Court winner stays on the court, so
             // the rejoin reminder does not apply. Keep the choice explicit.
             const ownAdvance=wlOwnAdvance.current;const staying=Boolean(wlEnabledRef.current&&ownAdvance&&Date.now()-ownAdvance.at<30_000&&ownAdvance.staying);
-            setNotice({title:'Next game started',message:staying?event.message:`${event.message} **Don’t forget to rejoin the queue if you plan to stay.**`,confirm:'Continue',actionTone:'success',action:async()=>{},cancelLabel:'Reverse',cancelTone:'danger',cancelAction:reverseNextGame,blocking:wlEnabledRef.current||undefined});
+            setNotice({title:'Next game started',message:staying?event.message:`${event.message} **Don’t forget to rejoin the queue if you plan to stay.**`,confirm:'Continue',actionTone:'success',action:async()=>{},cancelLabel:'Reverse',cancelTone:'danger',cancelAction:()=>reverseNextGame(startedGameNumber(event.message)),blocking:wlEnabledRef.current||undefined});
             return;
           }
           if(waitlistModeRef.current==='rejoin'&&(activeStatusRef.current==='current'||activeStatusRef.current==='rejoin')){
@@ -605,7 +611,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
             return;
           }
           const canReverse=adminAccess.current||ownHostStatus.current||event.actor_user_id===session?.user.id;
-          setNotice(canReverse?{title:'Next game started',message:event.message,confirm:'Reverse',actionTone:'danger',cancelLabel:'OK',action:reverseNextGame}:{title:'Waitlist update',message:event.message});
+          setNotice(canReverse?{title:'Next game started',message:event.message,confirm:'Reverse',actionTone:'danger',cancelLabel:'OK',action:()=>reverseNextGame(startedGameNumber(event.message))}:{title:'Waitlist update',message:event.message});
           return;
         }
         const quietSitOut=/sit[_-]?out/i.test(event.event_type??'');
@@ -1340,10 +1346,6 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
       :await supabase.rpc('advance_court_game',{p_court_number:courtNumber,p_facility_id:activeFacility.id,p_expected_game_number:expectedGame});
     if(error){setBusy(false);setNotice({title:'Could not start the next game',message:error.message});return;}
     await broadcastQueueRefresh();
-    const {data:newCurrent}=await supabase.from('waitlist_players').select('user_id').eq('status','current').eq('court_number',courtNumber);
-    const currentIds=(newCurrent??[]).map(row=>row.user_id).filter((id):id is string=>Boolean(id)&&id!==user?.id);
-    if(currentIds.length)await supabase.functions.invoke('send-push',{body:{userIds:currentIds,notification:{title:`Game ${data.game_number} has started`,body:'You are in the current game. Head to the court!',kind:'game_started',url:'/'}}});
-    for(const prompt of data.rejoin_prompts??[]){await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.response_id}}});}
     setBusy(false);await refresh();
   }
   async function changeWaitlistMode(mode:Config['mode']){
@@ -1439,10 +1441,6 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
       await refresh();return;
     }
     await broadcastQueueRefresh();
-    const {data:newCurrent}=await supabase.from('waitlist_players').select('user_id').eq('status','current').eq('court_number',courtNumber);
-    const currentIds=(newCurrent??[]).map(row=>row.user_id).filter((id):id is string=>Boolean(id)&&id!==user?.id);
-    if(currentIds.length)await supabase.functions.invoke('send-push',{body:{userIds:currentIds,notification:{title:`Game ${data.game_number} has started`,body:'You are in the current game. Head to the court!',kind:'game_started',url:'/'}}});
-    for(const prompt of data.rejoin_prompts??[]){await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.response_id}}});}
     setBusy(false);await refresh();
   }
   function startWlSubInvite(groupId:string){
@@ -1499,11 +1497,10 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   async function rotateTeamCourt(courtNumber:number,confirmedGame?:number){
     const occupiedWaitingTeams=kingTeams.filter(team=>team.status==='waiting'&&team.members.length>0).length;
     const activeFacility=facilityRef.current;const expectedGame=confirmedGame??courts.find(court=>court.court_number===courtNumber)?.game_number;
-    setBusy(true);if(!activeFacility||expectedGame==null||!await ensureFacilityContext(activeFacility)){setBusy(false);return;}if(operator){const {error:snapshotError}=await supabase.rpc('save_operator_undo',{p_label:'start next team game'});if(snapshotError){setBusy(false);setNotice({title:'Could not prepare undo',message:snapshotError.message});return;}}const {data,error}=await supabase.rpc('advance_team_rotation',{p_court_number:courtNumber,p_facility_id:activeFacility.id,p_expected_game_number:expectedGame});setBusy(false);
+    setBusy(true);if(!activeFacility||expectedGame==null||!await ensureFacilityContext(activeFacility)){setBusy(false);return;}const {data,error}=await supabase.rpc('advance_team_rotation',{p_court_number:courtNumber,p_facility_id:activeFacility.id,p_expected_game_number:expectedGame});setBusy(false);
     if(error){setNotice({title:'Could not advance this court',message:error.message});return;}
     await broadcastQueueRefresh();
     const prompts=(data?.rejoin_prompts??[]) as {id:string;user_id:string|null}[];
-    for(const prompt of prompts){if(prompt.user_id)await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.id}}});}
     const {data:nextTeams}=await supabase.from('king_teams').select('name').eq('status','current').eq('court_number',courtNumber).order('court_side');
     await refresh();
     const advancedLabels=(nextTeams??[]).map(team=>team.name).join(' and ');
@@ -1513,11 +1510,10 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   async function recordKingWinner(courtNumber:number,winnerId:string,confirmedGame?:number){
     const winnerTeamName=kingTeams.find(team=>team.id===winnerId)?.name??'The winning team';
     const activeFacility=facilityRef.current;const expectedGame=confirmedGame??courts.find(court=>court.court_number===courtNumber)?.game_number;
-    setBusy(true);if(!activeFacility||expectedGame==null||!await ensureFacilityContext(activeFacility)){setBusy(false);return;}if(operator){const {error:snapshotError}=await supabase.rpc('save_operator_undo',{p_label:'start next king game'});if(snapshotError){setBusy(false);setNotice({title:'Could not prepare undo',message:snapshotError.message});return;}}const {data,error}=await supabase.rpc('advance_team_king_game',{p_court_number:courtNumber,p_winning_team_id:winnerId,p_facility_id:activeFacility.id,p_expected_game_number:expectedGame});setBusy(false);
+    setBusy(true);if(!activeFacility||expectedGame==null||!await ensureFacilityContext(activeFacility)){setBusy(false);return;}const {data,error}=await supabase.rpc('advance_team_king_game',{p_court_number:courtNumber,p_winning_team_id:winnerId,p_facility_id:activeFacility.id,p_expected_game_number:expectedGame});setBusy(false);
     if(error){setNotice({title:'Could not advance King of the Court',message:error.message});return;}
     await broadcastQueueRefresh();
     const prompts=(data?.rejoin_prompts??[]) as {id:string;user_id:string|null}[];
-    for(const prompt of prompts){if(prompt.user_id)await supabase.functions.invoke('send-push',{body:{userIds:[prompt.user_id],notification:{title:'Rejoin the OpenGym waitlist?',body:'Choose Rejoin or Leave within five minutes.',kind:'rejoin',url:'/',responseId:prompt.id}}});}
     await refresh();
     const currentUserNeedsRejoin=prompts.some(prompt=>prompt.user_id===user?.id);
     if(shouldShowTeamCompletionNotice({isOperator:operator,currentUserNeedsRejoin}))setNotice({title:'Advancement complete',message:data?.winner_stays===false?`${winnerTeamName} has hit the max number of consecutive games and will sit out. If this was a mistake, reverse the advancement.`:`${winnerTeamName} advanced. If this was a mistake, reverse the advancement.`,confirm:'Reverse',actionTone:'danger',action:()=>reverseKingGame(courtNumber,expectedGame),cancelLabel:'Continue',cancelTone:'success'});
@@ -1557,8 +1553,10 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   function confirmTeamNext(courtNumber:number){
     confirmKingNext(courtNumber);
   }
-  async function reverseNextGame(){
-    setBusy(true);const {data,error}=await supabase.rpc('reverse_next_game');setBusy(false);
+  async function reverseNextGame(expectedGame?:number|null){
+    // Guarded reverse: the server checks this tab's facility and that the game on
+    // screen is still the latest one, and only reverts what Next Game changed.
+    setBusy(true);const {data,error}=await supabase.rpc('reverse_next_game_guarded',{p_facility_id:facilityRef.current?.id??null,p_expected_game:expectedGame??null});setBusy(false);
     if(error){setNotice({title:'Could not reverse the game',message:error.message});return;}
     await refresh();setNotice({title:'Next game reversed',message:data?.message??'The previous game and queue order have been restored.'});
   }

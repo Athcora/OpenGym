@@ -91,10 +91,17 @@ const cleanName = (value:string) => value.replace(/[^\p{L}\s]/gu, '').replace(/\
 const NAME_CHARACTER_LIMIT=30;
 function NameLimitCounter({value}:{value:string}){const used=value.length;return used>=NAME_CHARACTER_LIMIT-5?<small className="name-limit-counter" aria-live="polite">{used}/{NAME_CHARACTER_LIMIT}</small>:null}
 function namePartsWithinLimit(firstName:string,lastName:string){return firstName.length<=NAME_CHARACTER_LIMIT&&lastName.length<=NAME_CHARACTER_LIMIT}
-const blockedNameTerms = [
-  'fuck','fuk','fck','shit','bitch','btch','cunt','dick','pussy','asshole','whore','slut',
-  'nigger','nigga','nigha','niga','niger','faggot','fagot','fag','retard','kike','chink','spic','wetback',
-  'porn','rape','rapist','nazi','hitler','stalin','yourmom','urmom','yomama','yourmama',
+// Terms that never occur inside a legitimate name are blocked anywhere in the
+// name (catches "xfuckx" and run-together words). Everything else is matched
+// only as a whole word, so real names such as Mitch, Dickson, Dickinson,
+// Fukuda, Nazir, Kikelomo, Spicer, Fagan, Draper and Hiller are allowed.
+// Keep in sync with public.is_inappropriate_player_name().
+const blockedNameSubstrings = [
+  'fuck','fck','shit','bitch','btch','cunt','pussy','asshole','whore',
+  'nigger','nigga','faggot','fagot','wetback','rapist','hitler','yourmom','yomama','yourmama',
+];
+const blockedNameTokens = [
+  'fuk','dick','slut','niga','nigha','fag','retard','kike','chink','spic','porn','rape','nazi','stalin','urmom',
 ];
 function normalizedNameForms(value:string){
   const leet=value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase()
@@ -102,7 +109,7 @@ function normalizedNameForms(value:string){
     .replace(/[!1|]/g,'i').replace(/[0]/g,'o').replace(/[$5]/g,'s').replace(/[7+]/g,'t');
   const spaced=leet.replace(/[^a-z]+/g,' ').trim();
   const compact=spaced.replace(/\s/g,'').replace(/(.)\1{2,}/g,'$1$1');
-  return {tokens:spaced.split(' ').filter(Boolean),compact};
+  return {tokens:spaced.split(' ').filter(Boolean).map(token=>token.replace(/(.)\1{2,}/g,'$1$1')),compact};
 }
 function oneEditAway(value:string,target:string){
   if(Math.abs(value.length-target.length)>1)return false;
@@ -116,7 +123,10 @@ function oneEditAway(value:string,target:string){
 }
 function isInappropriateName(value:string){
   const {tokens,compact}=normalizedNameForms(value);
-  return blockedNameTerms.some(term=>compact.includes(term)||tokens.some(token=>term.length>=5&&token.length>=4&&oneEditAway(token,term)));
+  if(blockedNameSubstrings.some(term=>compact.includes(term)))return true;
+  if(tokens.some(token=>blockedNameTokens.includes(token)))return true;
+  // One-letter misspellings only for the slur that has no name look-alikes.
+  return tokens.some(token=>token.length>=6&&oneEditAway(token,'nigger'));
 }
 const inappropriateNameNotice = {title:'Choose a different name',message:'This name is not allowed. Please enter an appropriate name.'};
 function preventNativeTouchScroll(event:TouchEvent){
@@ -183,7 +193,21 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   const [newFacility,setNewFacility]=useState({name:'',slug:'',code:'',username:'',password:'',address:'',city:'',region:''});
   const [first,setFirst]=useState(''); const [last,setLast]=useState('');
   const [email,setEmail]=useState(''); const [authMode,setAuthMode]=useState<'signin'|'signup'>('signin');
-  const [busy,setBusy]=useState(false); const [notice,setNotice]=useState<Notice>(null);
+  const [busy,setBusy]=useState(false); const [notice,setNoticeState]=useState<Notice>(null); const deferredNotices=useRef<Exclude<Notice,null>[]>([]);
+  // Group/swap/substitute requests are shown once (their id is marked handled
+  // when shown). Never let another notice replace an unanswered request dialog;
+  // queue it and show it after the request is closed (audit F3).
+  function setNotice(next:Notice|((current:Notice)=>Notice)){
+    setNoticeState(current=>{
+      const value=typeof next==='function'?next(current):next;
+      if(value&&current?.blocking&&current.requestId&&value!==current&&value.requestId!==current.requestId){
+        if(!deferredNotices.current.includes(value))deferredNotices.current.push(value);
+        return current;
+      }
+      return value;
+    });
+  }
+  useEffect(()=>{if(!notice&&deferredNotices.current.length)setNoticeState(deferredNotices.current.shift()??null)},[notice]);
   const [editing,setEditing]=useState<string|null>(null); const [editName,setEditName]=useState('');
   const [notifications,setNotifications]=useState(
     typeof Notification !== 'undefined' && Notification.permission === 'granted',
@@ -253,6 +277,8 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   const hybridKotcCourts=(hybridKOTCBoard as HybridBoard|null)?.courts.filter(court=>court.rotation_rule==='kotc')??[];
   const isHybridKotc=isHybridWaitlist&&hybridKotcCourts.length>0;
   const rejoinOnly=Boolean(!admin&&me&&(!meIsVisibleInQueue||!['current','waiting','sitout'].includes(me.status)));
+  // The 10-minute auto-logout uses the server status only, never render visibility (audit F7).
+  const serverInactive=Boolean(!admin&&me&&!['current','waiting','sitout'].includes(me.status));
   ownPlayerIdRef.current=me?.id??ownPlayer?.id??null;
   const host=Boolean(meIsVisibleInQueue&&me?.is_host&&!admin); const operator=admin||host;
   useEffect(()=>{
@@ -300,11 +326,26 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   const tutorialNeedsDemo=onboarding==='tutorial'&&tutorialStep===5+(config.mode==='rejoin'?1:0)&&!admin&&Boolean(me)&&waiting.every(player=>player.id===me?.id);
   const tutorialWaiting=tutorialNeedsDemo?[...waiting,{id:'tutorial-demo-player',user_id:null,first_name:'Demo',last_name:'Player',display_name:'Demo Player',status:'waiting' as PlayerStatus,queue_position:(waiting.at(-1)?.queue_position??current.length)+1,restricted:false,group_id:null,team_id:null,is_host:false,court_number:null,sitout_priority:false,sitout_from_game:null}]:waiting;
 
+  // Lock-screen "Stay"/"Leave" buttons open the app with ?response=<id>&choice=<stay|leave>
+  // (public/sw.js). Capture them before boot() rewrites the URL (audit P2).
+  const notificationAnswer=useRef<{responseId:string;choice:'stay'|'leave'}|null>(null);
+  useEffect(()=>{
+    // Register the service worker on every entry point, including /g/<slug> QR links (audit P1).
+    if('serviceWorker' in navigator)void navigator.serviceWorker.register('/sw.js').catch(()=>undefined);
+    const params=new URLSearchParams(window.location.search);const responseId=params.get('response');const choice=params.get('choice');
+    if(responseId&&(choice==='stay'||choice==='leave'))notificationAnswer.current={responseId,choice};
+    if(responseId||choice){params.delete('response');params.delete('choice');const rest=params.toString();window.history.replaceState(null,'',window.location.pathname+(rest?`?${rest}`:''));}
+  },[]);
+  useEffect(()=>{
+    const pending=notificationAnswer.current;
+    if(!pending||!rejoinResponse||rejoinResponse.id!==pending.responseId)return;
+    notificationAnswer.current=null;void answerRejoin(pending.choice);
+  },[rejoinResponse?.id]);
   useEffect(()=>{let cleanup:(()=>void)|undefined;let stopped=false;void boot().then(remove=>{if(stopped)remove?.();else cleanup=remove});return()=>{stopped=true;cleanup?.();if(refreshTimer.current!==null)window.clearTimeout(refreshTimer.current)}},[]);
   useEffect(()=>{
     if(!user)return;
     const key=`opengym-rejoin-only-since:${user.id}`;
-    if(!rejoinOnly){localStorage.removeItem(key);return;}
+    if(!serverInactive){localStorage.removeItem(key);return;}
     const stored=Number(localStorage.getItem(key));
     const started=Number.isFinite(stored)&&stored>0?stored:Date.now();
     if(started!==stored)localStorage.setItem(key,String(started));
@@ -313,7 +354,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     if(remaining<=0){void expire();return;}
     const timer=window.setTimeout(()=>void expire(),remaining);
     return()=>window.clearTimeout(timer);
-  },[user?.id,rejoinOnly]);
+  },[user?.id,serverInactive]);
   useEffect(()=>{
     if(!user||admin)return;let stopped=false;
     // Realtime delivers notifications immediately. This slower visible-page
@@ -775,7 +816,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     input.value=String(value);
     await commitCourtCount(input);
   }
-  async function finishJoin(f:string,l:string){if(await rpc('join_waitlist_for_device',{p_first_name:f,p_last_name:l,p_device_id:getDeviceId()},false)){if(isTeamsMode(config.mode)){const joined=players.find(player=>player.user_id===user?.id);const {data:fresh}=joined?{data:joined}:await supabase.from('waitlist_players').select('id').eq('user_id',user?.id).single();if(fresh?.id)await rpc('king_prepare_player',{p_player_id:fresh.id},false);}setScreen('queue');if(needsTutorial(user,config.mode))setOnboarding('disclaimer');}}
+  async function finishJoin(f:string,l:string){if(await rpc('join_waitlist_for_device',{p_first_name:f,p_last_name:l,p_device_id:getDeviceId()},false)){if(isTeamsMode(config.mode)){const joined=players.find(player=>player.user_id===user?.id);const {data:fresh}=joined?{data:joined}:await supabase.from('waitlist_players').select('id').eq('facility_id',facilityRef.current?.id??'00000000-0000-0000-0000-000000000000').eq('user_id',user?.id??'00000000-0000-0000-0000-000000000000').in('status',['current','waiting','sitout']).maybeSingle();if(!fresh?.id)setNotice({title:'Team placement pending',message:'You joined the waitlist, but we could not place you on a team yet. Refresh, or ask an admin or host to add you to a team.'});if(fresh?.id)await rpc('king_prepare_player',{p_player_id:fresh.id},false);}setScreen('queue');if(needsTutorial(user,config.mode))setOnboarding('disclaimer');}}
   async function join(event:FormEvent){event.preventDefault(); const f=cleanName(first),l=cleanName(last); if(!f){setNotice({title:'Enter your name',message:'Your name needs to contain letters.'});return;}if(!namePartsWithinLimit(f,l)){setNotice({title:'Name is too long',message:`First and last names can each contain up to ${NAME_CHARACTER_LIMIT} characters.`});return;}
     if(isInappropriateName(`${first} ${last}`)){setNotice(inappropriateNameNotice);return;}
     if(!await requireOnSite(()=>finishJoin(f,l)))return;
@@ -1960,5 +2001,5 @@ return <section data-empty-king-target={targetKey} className={`king-team-card qu
 <section data-empty-king-target="empty:waiting" className={`king-team-card queue-team-block empty-team-block ${dragging&&drop?.teamId==='empty:waiting'?'king-empty-drop-target':''}`}>
 <div className="team-block-label"><strong>Team {placeholderTeamNumbers.get('empty:waiting')}</strong>{!operator&&me&&<button className={`king-join-button ${playerJoinLocked?'join-action-locked':''}`} disabled={busy||playerJoinLocked} onClick={()=>joinEmptyTeam(placeholderTeamNumbers.get('empty:waiting')!)}>Join +</button>}</div>{Array.from({length:6},(_,slot)=>dragging&&drop?.teamId==='empty:waiting'&&slot===0?<article className="player-row king-player-row king-drop-placeholder" aria-label="Player drop position" key="drop-placeholder"><span className="position">{waitingPlaceholderStart}</span></article>:<article className="player-row king-player-row king-empty-row" key={slot}><span className="position">{waitingPlaceholderStart+slot}</span><div className="player-name"><strong>Open spot</strong></div></article>)}</section>:waiting.length===0?<p className="empty">Teams will appear here after the active courts are filled.</p>:null}</div></section></div>
 }
-function Modal({notice,close,busy}:{notice:Exclude<Notice,null>;close:()=>void;busy:boolean}){const dismiss=async()=>{close();await notice.cancelAction?.();notice.onClose?.()};const emphasized=notice.message.match(/^(.*?) \*\*(.+)\*\*$/);return <div className="modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!notice.blocking&&!notice.onClose)void dismiss()}}><section className={`modal${notice.showBack?' has-modal-back':''}`} role="dialog" aria-modal="true">{notice.showBack&&<button className="modal-back-button" aria-label="Back" disabled={busy} onClick={close}>{'\u2190'}</button>}<span className="modal-mark">OG</span><h2>{notice.title}</h2>{emphasized?<p>{emphasized[1]}<strong className="modal-reminder">**{emphasized[2]}**</strong></p>:<p>{notice.message}</p>}<div className={`modal-actions${notice.actionOnLeft?' action-on-left':''}`}>{notice.action&&<button className={notice.actionTone==='success'?'next':'danger'} disabled={busy} onClick={async()=>{close();await notice.action?.();notice.onClose?.()}}>{notice.confirm}</button>}<button className={notice.cancelTone==='danger'?'danger':notice.cancelTone==='success'?'next':'neutral'} disabled={busy} onClick={()=>void dismiss()}>{notice.cancelLabel??(notice.action?'Cancel':'OK')}</button></div>{notice.auxiliaryAction&&<button className="modal-auxiliary-action" disabled={busy} onClick={async()=>{close();await notice.auxiliaryAction?.();notice.onClose?.()}}>{notice.auxiliaryLabel}</button>}</section></div>}
+function Modal({notice,close,busy}:{notice:Exclude<Notice,null>;close:()=>void;busy:boolean}){const dismiss=async()=>{close();await notice.cancelAction?.();notice.onClose?.()};const emphasized=notice.message.match(/^(.*?) \*\*(.+)\*\*$/);return <div className="modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!notice.blocking&&!notice.onClose)close()}}><section className={`modal${notice.showBack?' has-modal-back':''}`} role="dialog" aria-modal="true">{notice.showBack&&<button className="modal-back-button" aria-label="Back" disabled={busy} onClick={close}>{'\u2190'}</button>}<span className="modal-mark">OG</span><h2>{notice.title}</h2>{emphasized?<p>{emphasized[1]}<strong className="modal-reminder">**{emphasized[2]}**</strong></p>:<p>{notice.message}</p>}<div className={`modal-actions${notice.actionOnLeft?' action-on-left':''}`}>{notice.action&&<button className={notice.actionTone==='success'?'next':'danger'} disabled={busy} onClick={async()=>{close();await notice.action?.();notice.onClose?.()}}>{notice.confirm}</button>}<button className={notice.cancelTone==='danger'?'danger':notice.cancelTone==='success'?'next':'neutral'} disabled={busy} onClick={()=>void dismiss()}>{notice.cancelLabel??(notice.action?'Cancel':'OK')}</button></div>{notice.auxiliaryAction&&<button className="modal-auxiliary-action" disabled={busy} onClick={async()=>{close();await notice.auxiliaryAction?.();notice.onClose?.()}}>{notice.auxiliaryLabel}</button>}</section></div>}
 

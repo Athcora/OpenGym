@@ -89,6 +89,11 @@ function getDeviceId(){
 
 const cleanName = (value:string) => value.replace(/[^\p{L}\s]/gu, '').replace(/\s+/g, ' ').trim();
 const NAME_CHARACTER_LIMIT=30;
+// Admin sign-ins expire after this many hours (enforced in is_waitlist_admin()).
+const ADMIN_SESSION_HOURS=12;
+// Every waitlist_players column the browser may read. device_id is deliberately
+// excluded: it is not readable by browsers (audit S1).
+const PLAYER_COLUMNS='id,user_id,first_name,last_name,display_name,status,queue_position,restricted,rejoin_expires_at,created_at,updated_at,group_id,is_host,sitout_priority,sitout_from_game,court_number,team_id,facility_id';
 function NameLimitCounter({value}:{value:string}){const used=value.length;return used>=NAME_CHARACTER_LIMIT-5?<small className="name-limit-counter" aria-live="polite">{used}/{NAME_CHARACTER_LIMIT}</small>:null}
 function namePartsWithinLimit(firstName:string,lastName:string){return firstName.length<=NAME_CHARACTER_LIMIT&&lastName.length<=NAME_CHARACTER_LIMIT}
 // Terms that never occur inside a legitimate name are blocked anywhere in the
@@ -402,7 +407,8 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   useEffect(()=>{
     document.documentElement.lang=language;
     const applyText=(node:Text)=>{
-      const parent=node.parentElement;if(!parent||parent.closest('script,style'))return;
+      // Never translate player names or text marked translate="no" (audit F10).
+      const parent=node.parentElement;if(!parent||parent.closest('script,style,[translate="no"],.player-name,.king-player-name'))return;
       let state=translationMemory.current.get(node);
       if(!state){state={original:node.data,applied:node.data};translationMemory.current.set(node,state)}else if(node.data!==state.applied)state.original=node.data;
       const translated=translateUiText(state.original,language);state.applied=translated;if(node.data!==translated)node.data=translated;
@@ -672,7 +678,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
       supabase.from('waitlist_config').select('game_number,max_players,court_count,mode,hybrid_rotation_rule,hybrid_config_version,hybrid_auto_kotc_threshold_teams,hybrid_auto_kotc_armed,geofence_enabled,geofence_radius_m,king_max_wins').single(),
       supabase.from('waitlist_courts').select('*').order('court_number'),
       supabase.from('king_teams').select('id,name,status,queue_position,court_number,court_side,consecutive_wins,rejoin_expires_at').order('queue_position'),
-      supabase.from('admin_sessions').select('user_id').maybeSingle(),
+      supabase.from('admin_sessions').select('user_id').gt('created_at',new Date(Date.now()-ADMIN_SESSION_HOURS*3_600_000).toISOString()).maybeSingle(),
       supabase.from('group_requests').select('id,requester_id,target_id,status').eq('status','pending'),
       supabase.from('substitute_requests').select('id,requester_id,target_id,status').eq('status','pending'),
       supabase.from('rejoin_responses').select('id,expires_at,choice,answered_at').eq('facility_id',expectedFacility?.id??'00000000-0000-0000-0000-000000000000').eq('user_id',(activeUser??user)?.id??'00000000-0000-0000-0000-000000000000').order('created_at',{ascending:false}).limit(1).maybeSingle(),
@@ -726,7 +732,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     setRejoinResponse(latestRejoin?.choice===null?latestRejoin:null);setRejoinChecked(!rejoinError);if(rejoin?.id)rejoinLookupAttempts.current=0;
     setGeofenceReturn((geo as GeofenceReturn|null)??null);
     const uid=(activeUser??user)?.id; let own=playerRows.find(item=>item.user_id===uid)??null;
-    if(uid&&!own){const {data:storedOwn}=await supabase.from('waitlist_players').select('*').eq('facility_id',expectedFacility?.id??'00000000-0000-0000-0000-000000000000').eq('user_id',uid).maybeSingle();own=(storedOwn as Player|null)??null;}
+    if(uid&&!own){const {data:storedOwn}=await supabase.from('waitlist_players').select(PLAYER_COLUMNS).eq('facility_id',expectedFacility?.id??'00000000-0000-0000-0000-000000000000').eq('user_id',uid).maybeSingle();own=(storedOwn as Player|null)??null;}
     if(stale())return;
     // Never adopt a player row that belongs to a different auth user than the
     // one currently signed in (for example a refresh that captured the user
@@ -1035,7 +1041,17 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   }
   async function adminUnsit(player:Player){await rpc('admin_unsit_player',{p_player_id:player.id},false)}
   function confirmAdminLeave(player:Player){ask(`Remove ${player.display_name}?`,`${player.display_name} will leave the current game or waitlist. The admin can undo this action.`,'Remove',async()=>{await rpc('admin_leave_player',{p_player_id:player.id},false)})}
-  async function adminLogin(event:FormEvent){event.preventDefault();if(await rpc('sign_in_waitlist_admin',{p_username:adminUser,p_password:adminPassword})){setAdmin(true);setScreen('queue');}}
+  async function adminLogin(event:FormEvent){
+    // A failed attempt is returned as {ok:false} (not an error) so the server can
+    // record it; 5 failures lock that facility's admin sign-in for 15 minutes.
+    event.preventDefault();setBusy(true);const active=facilityRef.current;
+    if(!await ensureFacilityContext(active)){setBusy(false);return;}
+    const {data,error}=await supabase.rpc('sign_in_waitlist_admin',{p_username:adminUser,p_password:adminPassword});setBusy(false);
+    if(error){setNotice({title:'Could not complete that',message:error.message});return;}
+    const result=data as {ok?:boolean;locked?:boolean;message?:string}|null;
+    if(result?.ok===false){setNotice({title:result.locked?'Too many attempts':'Could not sign in',message:result.message??'Incorrect username or password.'});return;}
+    setAdminPassword('');await refresh(undefined,active,true);setAdmin(true);setScreen('queue');
+  }
   async function adminAddPlayer(event:FormEvent){
     event.preventDefault(); const f=cleanName(adminFirst),l=cleanName(adminLast);
     if(!f){setNotice({title:'Enter a player name',message:'The player name needs to contain letters.'});return;}

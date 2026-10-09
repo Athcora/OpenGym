@@ -723,6 +723,9 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     const configuredCourtCount=Math.max(1,Number((c as Config|null)?.court_count??config.court_count));
     setCourts(((courtRows??[]) as Court[]).filter(court=>court.court_number<=configuredCourtCount));
     setAdmin(Boolean(a));
+    // A still-valid admin sign-in (12 hours) survives a page reload: open the
+    // admin queue instead of the guest welcome screen.
+    if(a)setScreen(openScreen=>['welcome','email','name','admin'].includes(openScreen)?'queue':openScreen);
     const [{data:fillRows},{data:teamSubRows},{data:teamSubRequestRows}]=await Promise.all([
       supabase.from('team_fill_ins').select('id,sitter_id,filler_id,destination_team_id,source_team_id,court_number,game_number'),
       supabase.from('team_substitutes').select('id,team_id,player_id'),

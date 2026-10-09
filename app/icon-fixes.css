@@ -49,3 +49,15 @@
 
 /* Next game while your seat is provisional: visibly unavailable. */
 .next-game-control:not(.unavailable) .next:disabled{opacity:.6;filter:saturate(.35);cursor:not-allowed}
+
+@media (max-width:620px){
+  /* Row numbers line up with the names on host/admin rows. */
+  .player-row.admin-row>.position{align-self:flex-start;display:flex;align-items:center;min-height:34px}
+  /* "YOU" sits next to your name instead of floating over the buttons. */
+  .player-row.own.admin-row>.you{position:static;align-self:center;margin:0 6px 0 4px}
+  .player-row.own.admin-row:has(.restrict-button)>.player-name{flex:1 1 calc(100% - 92px)}
+}
+
+/* "HOST ACTIONS" label: no empty 48px row under it. */
+.admin-tools.host-tools{grid-template-rows:auto;grid-auto-rows:minmax(48px,auto)}
+.admin-tools.host-tools>.host-actions-title{height:auto;min-height:0;align-self:end}

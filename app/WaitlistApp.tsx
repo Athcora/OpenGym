@@ -308,14 +308,27 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   const savedQueuePositions=useMemo(()=>{
     const positions=new Map<string,number>();
     for(const court of courts){
-      players.filter(player=>player.status==='current'&&player.court_number===court.court_number).sort(byPosition).forEach((player,index)=>positions.set(player.id,index+1));
+      players.filter(player=>player.status==='current'&&player.court_number===court.court_number).sort(byPosition).forEach((player,index)=>positions.set(player.id,player.line_spot??index+1));
     }
-    players.filter(player=>player.status==='waiting'||player.status==='sitout').sort(byPosition).forEach((player,index)=>positions.set(player.id,index+13));
+    players.filter(player=>player.status==='waiting'||player.status==='sitout').sort(byPosition).forEach((player,index)=>positions.set(player.id,player.line_spot??index+13));
     return positions;
   },[players,courts]);
   const current=useMemo(()=>displayedPlayers.filter(p=>p.status==='current').sort(byPosition),[displayedPlayers]);
   const waiting=useMemo(()=>displayedPlayers.filter(p=>(p.status==='waiting'||p.status==='sitout')&&!wlActiveSubIds.has(p.id)).sort(byPosition),[displayedPlayers,wlActiveSubIds]);
-  const projections=useMemo(()=>projectCourtQueue(waiting,courts,config.game_number,config.max_players),[waiting,courts,config.game_number,config.max_players]);
+  // While finishers are still deciding, the ones ahead of you in line get a seat
+  // before you if they rejoin. Players cannot see held spots, but line numbers
+  // leave a gap for each one, so projections fill those gaps with placeholders.
+  const projections=useMemo(()=>{
+    const spots=new Set(displayedPlayers.filter(player=>player.line_spot!=null).map(player=>player.line_spot as number));
+    if(!spots.size)return projectCourtQueue(waiting,courts,config.game_number,config.max_players);
+    const firm=displayedPlayers.filter(player=>player.status==='current'&&player.line_spot==null).length;
+    const lastSpot=Math.max(0,...waiting.map(player=>player.line_spot??0));
+    const held:Player[]=[];
+    for(let spot=firm+1;spot<lastSpot;spot++)if(!spots.has(spot))held.push({id:`held-spot-${spot}`,user_id:null,first_name:'',last_name:'',display_name:'',status:'waiting',queue_position:null,restricted:false,group_id:null,team_id:null,is_host:false,court_number:null,sitout_priority:false,sitout_from_game:null,line_spot:spot});
+    const visibleHeld=displayedPlayers.filter(player=>player.status==='rejoin'&&player.line_spot!=null&&player.line_spot<lastSpot);
+    const queue=[...waiting,...visibleHeld,...held].sort((a,b)=>(a.line_spot??Number.MAX_SAFE_INTEGER)-(b.line_spot??Number.MAX_SAFE_INTEGER));
+    return projectCourtQueue(queue,courts,config.game_number,config.max_players);
+  },[waiting,displayedPlayers,courts,config.game_number,config.max_players]);
   const projectedGames=useMemo(()=>new Map([...projections].map(([id,value])=>[id,value.game])),[projections]);
   const draggedPlayer=dragging?players.find(player=>player.id===dragging):null;
   const draggedCourtNumber=draggedPlayer?.status==='current'?draggedPlayer.court_number??null:null;

@@ -6,6 +6,7 @@ import WaitlistApp from "./WaitlistApp";
 import "./waitlist.css";
 import "./advanced.css";
 import "./icon-fixes.css";
+import "./palette.css";
 
 export default function Home() {
   useEffect(() => {

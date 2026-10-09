@@ -1,0 +1,219 @@
+/* ==========================================================================
+   OpenGym palette v2 (experiment) — Athcora-inspired, color = meaning.
+   To go back to the original colors, remove `import "./palette.css";`
+   from app/page.tsx (or delete this file).
+
+   Meaning of each color
+     Coral gradient  main game action (Next game, Join, Rejoin) and "you"
+     Green           confirm / add / accept / it's good (Live, Done, Yes)
+     Red             cancel / go back / leave / remove / reset
+     Amber           hold / caution / temporary (Sit out, timers, held spots)
+     Blue            change / move / manage (Swap, Permissions, groups, selection)
+     Slate           view / navigate / dismiss (History, Members, Undo, OK)
+   Dark and light are designed separately (not inverted).
+   ========================================================================== */
+
+/* ---------- Tokens ---------- */
+.app-shell.theme-dark{
+  --og-bg:#0b111d;
+  --og-bg-glow-1:rgba(255,122,69,.13);
+  --og-bg-glow-2:rgba(45,212,191,.07);
+  --og-surface:#121a29;
+  --og-surface-2:#172033;
+  --og-raised:#182136;
+  --og-input:#0d1320;
+  --og-border:#243046;
+  --og-border-strong:#33415b;
+  --og-text:#f3f6fa;
+  --og-muted:#97a3b6;
+  --og-faint:#66738a;
+  --og-shadow:0 18px 50px rgba(0,0,0,.38);
+  --og-brand:#ff6b5e;
+  --og-brand-grad:linear-gradient(135deg,#ff7a45,#ff5c7a);
+  --og-brand-soft:rgba(255,107,94,.12);
+  --og-brand-ring:rgba(255,107,94,.55);
+  --og-go:#16a34a;--og-go-hover:#15913f;--og-go-text:#4ade80;--og-go-soft:rgba(34,197,94,.13);--og-go-line:rgba(34,197,94,.38);
+  --og-stop:#e5484d;--og-stop-hover:#cf3a40;--og-stop-text:#ff8a8e;--og-stop-soft:rgba(229,72,77,.13);--og-stop-line:rgba(229,72,77,.4);
+  --og-hold:#f59e0b;--og-hold-text:#fbbf24;--og-hold-soft:rgba(245,158,11,.13);--og-hold-line:rgba(245,158,11,.4);
+  --og-info:#3b82f6;--og-info-hover:#2f6fdc;--og-info-text:#93c5fd;--og-info-soft:rgba(59,130,246,.14);--og-info-line:rgba(59,130,246,.45);
+  --og-neutral:#1c2539;--og-neutral-hover:#232e46;--og-neutral-text:#dbe3ef;--og-neutral-line:#2c3852;
+  --og-backdrop:rgba(5,8,15,.72);
+  color-scheme:dark;
+}
+.app-shell.theme-light{
+  --og-bg:#f5f6fa;
+  --og-bg-glow-1:rgba(255,122,69,.10);
+  --og-bg-glow-2:rgba(45,212,191,.08);
+  --og-surface:#ffffff;
+  --og-surface-2:#f3f5f9;
+  --og-raised:#ffffff;
+  --og-input:#f6f8fb;
+  --og-border:#e3e8ef;
+  --og-border-strong:#cfd7e2;
+  --og-text:#0d1320;
+  --og-muted:#5b6678;
+  --og-faint:#8a94a6;
+  --og-shadow:0 1px 2px rgba(13,19,32,.05),0 10px 30px rgba(13,19,32,.07);
+  --og-brand:#f0503f;
+  --og-brand-grad:linear-gradient(135deg,#ff7a45,#ff5c7a);
+  --og-brand-soft:rgba(255,92,80,.09);
+  --og-brand-ring:rgba(240,80,63,.55);
+  --og-go:#15803d;--og-go-hover:#116b33;--og-go-text:#15803d;--og-go-soft:#e8f6ed;--og-go-line:#a7dbb8;
+  --og-stop:#dc2626;--og-stop-hover:#bf1f1f;--og-stop-text:#c81e1e;--og-stop-soft:#fdecec;--og-stop-line:#f3b4b4;
+  --og-hold:#b45309;--og-hold-text:#a14a06;--og-hold-soft:#fdf3e1;--og-hold-line:#f0cf98;
+  --og-info:#2563eb;--og-info-hover:#1d55d4;--og-info-text:#1d4ed8;--og-info-soft:#eaf1fe;--og-info-line:#b3cbf7;
+  --og-neutral:#eef1f6;--og-neutral-hover:#e4e9f1;--og-neutral-text:#1e293b;--og-neutral-line:#d5dce6;
+  --og-backdrop:rgba(30,38,54,.42);
+  color-scheme:light;
+}
+
+/* ---------- Page, cards, text ---------- */
+.app-shell:is(.theme-dark,.theme-light){
+  background:
+    radial-gradient(900px 520px at -8% -12%,var(--og-bg-glow-1),transparent 62%),
+    radial-gradient(800px 600px at 108% 108%,var(--og-bg-glow-2),transparent 60%),
+    var(--og-bg)!important;
+  background-attachment:fixed!important;
+  color:var(--og-text)!important;
+}
+.app-shell:is(.theme-dark,.theme-light) :is(.queue-card,.auth-card,.drawer-card,.modal,.onboarding-card,.add-player-card,.rejoin-card,.geofence-return-card,.facility-menu,.past-game,.king-team-card,.tutorial-rejoin-demo,.tutorial-coach){
+  background:var(--og-surface)!important;
+  border-color:var(--og-border)!important;
+  color:var(--og-text)!important;
+  box-shadow:var(--og-shadow)!important;
+}
+.app-shell:is(.theme-dark,.theme-light) :is(.modal,.drawer-card,.onboarding-card){background:var(--og-raised)!important}
+.app-shell:is(.theme-dark,.theme-light) :is(.queue-card>header,.past-game-team>header){border-color:var(--og-border)!important;background:transparent!important}
+.app-shell:is(.theme-dark,.theme-light) :is(h1,h2,h3,.queue-card h2,.player-name strong,.game-heading h1){color:var(--og-text)!important}
+.app-shell:is(.theme-dark,.theme-light) :is(.modal p,.auth-card p,.onboarding-card p,.drawer-card p,.past-game p,.add-player-card>p,.tutorial-coach p,.tutorial-rejoin-demo>p,.fine,.empty){color:var(--og-muted)!important}
+.app-shell:is(.theme-dark,.theme-light) :is(.kicker,.onboarding-kicker,.queue-card header span,.player-name small,.projection-note,.field-label,.facility-heading-label span,.court-team-rule,.court-team-rule>span,.wl-court-now,.name-limit-counter,.back,.text-button,.admin-link,.host-actions-title,.my-actions>span,.your-group-label){color:var(--og-muted)!important}
+.app-shell:is(.theme-dark,.theme-light) .position{color:var(--og-faint)!important}
+.app-shell:is(.theme-dark,.theme-light) .facility-heading-label strong{color:var(--og-text)!important}
+
+/* Rows */
+.app-shell:is(.theme-dark,.theme-light) :is(.player-row,.king-player-row,.history-row,.member-row,.offline-rejoin-row){border-color:var(--og-border)!important}
+.app-shell:is(.theme-dark,.theme-light) .player-row:not(.own):not(.admin-group-selected):not(.substitute-selected){background:transparent!important}
+.app-shell:is(.theme-dark,.theme-light) .player-row:not(.own):not(.admin-group-selected):not(.substitute-selected):hover{background:var(--og-surface-2)!important}
+/* You: brand coral */
+.app-shell:is(.theme-dark,.theme-light) .player-row.own{background:linear-gradient(90deg,var(--og-brand-soft),transparent 75%)!important}
+.app-shell:is(.theme-dark,.theme-light) .player-row.own::after{border-color:var(--og-brand-ring)!important}
+.app-shell:is(.theme-dark,.theme-light) .you{color:var(--og-brand)!important}
+/* Groups: blue (together / managed) */
+.app-shell:is(.theme-dark,.theme-light) .player-row.grouped{border-left-color:var(--og-info)!important;border-right-color:var(--og-info)!important}
+.app-shell:is(.theme-dark,.theme-light) :is(.player-row.group-start,.player-row.group-single){border-top-color:var(--og-info)!important}
+.app-shell:is(.theme-dark,.theme-light) :is(.player-row.group-end,.player-row.group-single){border-bottom-color:var(--og-info)!important}
+.app-shell:is(.theme-dark,.theme-light) .player-row.group-single{border-color:var(--og-info)!important}
+.app-shell:is(.theme-dark,.theme-light) .your-group-label{color:var(--og-info-text)!important}
+/* Selection while creating a group / swapping: blue */
+.app-shell:is(.theme-dark,.theme-light) :is(.admin-group-selected,.substitute-selected){
+  border-color:var(--og-info)!important;background:var(--og-info-soft)!important;
+  box-shadow:0 0 0 4px var(--og-info-soft)!important;
+}
+.app-shell:is(.theme-dark,.theme-light) .sitout-priority-label{color:var(--og-hold-text)!important}
+
+/* Inputs and selects */
+.app-shell:is(.theme-dark,.theme-light) :is(input,select,textarea,.inline-name,.history-search){
+  background-color:var(--og-input)!important;color:var(--og-text)!important;border-color:var(--og-border-strong)!important;
+}
+.app-shell:is(.theme-dark,.theme-light) :is(input,select,textarea):focus{border-color:var(--og-brand)!important;box-shadow:0 0 0 4px var(--og-brand-soft)!important;outline:none}
+.app-shell:is(.theme-dark,.theme-light) select option{background:var(--og-surface);color:var(--og-text)}
+.app-shell:is(.theme-dark,.theme-light) ::placeholder{color:var(--og-faint)!important}
+
+/* Top bar, language, theme switch */
+.app-shell:is(.theme-dark,.theme-light) :is(.icon-button,.language-picker){background:var(--og-surface)!important;border-color:var(--og-border)!important;color:var(--og-text)!important}
+.app-shell:is(.theme-dark,.theme-light) .language-symbol b{color:var(--og-muted)!important}
+.app-shell:is(.theme-dark,.theme-light) .theme-track{background:var(--og-surface-2)!important;border-color:var(--og-border-strong)!important}
+.app-shell:is(.theme-dark,.theme-light) .theme-thumb{background:var(--og-text)!important;color:var(--og-bg)!important}
+.app-shell:is(.theme-dark,.theme-light) .facility-heading-label button,
+.app-shell:is(.theme-dark,.theme-light) .selected-facility button{color:var(--og-brand)!important}
+.app-shell:is(.theme-dark,.theme-light) .live-pill{background:var(--og-go-soft)!important;border-color:var(--og-go-line)!important;color:var(--og-go-text)!important}
+.app-shell:is(.theme-dark,.theme-light) .live-pill i{background:var(--og-go-text)!important;box-shadow:0 0 10px var(--og-go-text)!important}
+.app-shell:is(.theme-dark,.theme-light) .modal-mark{background:var(--og-brand-grad)!important;color:#fff!important}
+.app-shell:is(.theme-dark,.theme-light) .notification-badge{background:var(--og-stop)!important;color:#fff!important;border-color:var(--og-surface)!important}
+
+/* Overlays */
+.app-shell:is(.theme-dark,.theme-light) :is(.modal-backdrop,.drawer,.host-appointment-backdrop,.onboarding-backdrop){background:var(--og-backdrop)!important}
+
+/* ---------- Buttons ---------- */
+.app-shell:is(.theme-dark,.theme-light) button{transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,filter .15s}
+
+/* Slate: view / navigate / dismiss */
+.app-shell:is(.theme-dark,.theme-light) :is(.neutral,.rejoin-tool,.history-tool,.members-tool,.facility-tool,.history-button,.undo-redo-controls button,.court-count-steppers button,.modal-auxiliary-action,.restricted-members-button){
+  background:var(--og-neutral)!important;border:1px solid var(--og-neutral-line)!important;color:var(--og-neutral-text)!important;
+}
+.app-shell:is(.theme-dark,.theme-light) :is(.neutral,.rejoin-tool,.history-tool,.members-tool,.facility-tool,.history-button,.undo-redo-controls button,.court-count-steppers button,.modal-auxiliary-action,.restricted-members-button):not(:disabled):hover{background:var(--og-neutral-hover)!important}
+.app-shell:is(.theme-dark,.theme-light) .undo-redo-controls{background:transparent!important;border-color:var(--og-neutral-line)!important}
+.app-shell:is(.theme-dark,.theme-light) .admin-tools select{background-color:var(--og-input)!important}
+
+/* Green: confirm / add / accept */
+.app-shell:is(.theme-dark,.theme-light) :is(.next,.add-player-tool,.group-create-tool,.accept-all-rejoins,.group-done,.king-join-button,.team-add-substitute,.restricted-members-button.positive){
+  background:var(--og-go)!important;border-color:transparent!important;color:#fff!important;
+}
+.app-shell:is(.theme-dark,.theme-light) :is(.next,.add-player-tool,.group-create-tool,.accept-all-rejoins,.group-done,.king-join-button,.team-add-substitute):not(:disabled):hover{background:var(--og-go-hover)!important}
+.app-shell:is(.theme-dark,.theme-light) .group-create-tool.active{box-shadow:0 0 0 3px var(--og-go-soft)!important}
+.app-shell:is(.theme-dark,.theme-light) .king-own-team-label{background:var(--og-brand-soft)!important;color:var(--og-brand)!important;border:1px solid var(--og-brand-ring)!important}
+
+/* Blue: change / move / manage */
+.app-shell:is(.theme-dark,.theme-light) :is(.substitute-tool,.substitute-action,.group-button:not(.remove-group-button),.team-substitute-toggle){
+  background:var(--og-info)!important;border-color:transparent!important;color:#fff!important;
+}
+.app-shell:is(.theme-dark,.theme-light) :is(.substitute-tool,.substitute-action,.group-button:not(.remove-group-button),.team-substitute-toggle):not(:disabled):hover{background:var(--og-info-hover)!important}
+.app-shell:is(.theme-dark,.theme-light) .substitute-tool.active{box-shadow:0 0 0 3px var(--og-info-soft)!important}
+/* Amber: hold / caution / temporary */
+.app-shell:is(.theme-dark,.theme-light) :is(.admin-sitout-button,.my-actions .neutral,.team-fill-in-button,.restrict-button){
+  background:var(--og-hold-soft)!important;border:1px solid var(--og-hold-line)!important;color:var(--og-hold-text)!important;
+}
+.app-shell:is(.theme-dark,.theme-light) :is(.admin-sitout-button,.my-actions .neutral,.team-fill-in-button,.restrict-button):not(:disabled):hover{background:var(--og-hold)!important;border-color:var(--og-hold)!important;color:#fff!important}
+.app-shell:is(.theme-dark,.theme-light) :is(.rejoin-countdown,.return-countdown,.rejoin-countdown strong){color:var(--og-hold-text)!important}
+
+/* Red: cancel / back / leave / remove / reset — solid for the final
+   destructive confirm, soft for everything else. */
+.app-shell:is(.theme-dark,.theme-light) :is(.danger,.reset-tool,.admin-leave-button,.leave-own-group-button,.admin-leave-group-button,.remove-group-button,.group-cancel,.past-game-reverse button,.modal-back-button,.wl-sub-leave-button,.wl-sub-remove-button){
+  background:var(--og-stop-soft)!important;border:1px solid var(--og-stop-line)!important;color:var(--og-stop-text)!important;
+}
+.app-shell:is(.theme-dark,.theme-light) :is(.danger,.reset-tool,.admin-leave-button,.leave-own-group-button,.admin-leave-group-button,.remove-group-button,.group-cancel,.past-game-reverse button,.modal-back-button):not(:disabled):hover{background:var(--og-stop)!important;border-color:var(--og-stop)!important;color:#fff!important}
+/* Coral: the main game action */
+.app-shell:is(.theme-dark,.theme-light) :is(.next-game-tool,.court-next-button,.my-actions .next,.hero-button,.rejoin-actions .next,.top-rejoin-action,.tutorial-rejoin-highlight){
+  background:var(--og-brand-grad)!important;border:0!important;color:#fff!important;
+  box-shadow:0 8px 24px rgba(255,92,122,.25)!important;
+}
+.app-shell:is(.theme-dark,.theme-light) :is(.next-game-tool,.court-next-button,.my-actions .next,.hero-button,.rejoin-actions .next,.top-rejoin-action):not(:disabled):hover{filter:brightness(1.07)}
+
+/* In a popup: the confirm button of a destructive action is solid red,
+   Cancel / No / Leave is soft red, a lone OK is slate. */
+.app-shell:is(.theme-dark,.theme-light) .modal-actions>button.danger:first-child:not(:last-child){background:var(--og-stop)!important;border-color:var(--og-stop)!important;color:#fff!important}
+.app-shell:is(.theme-dark,.theme-light) .modal-actions>button:last-child:not(:first-child){background:var(--og-stop-soft)!important;border:1px solid var(--og-stop-line)!important;color:var(--og-stop-text)!important}
+.app-shell:is(.theme-dark,.theme-light) .modal-actions>button:last-child:not(:first-child):not(:disabled):hover{background:var(--og-stop)!important;color:#fff!important}
+.app-shell:is(.theme-dark,.theme-light) .modal-actions>button:only-child{background:var(--og-neutral)!important;border:1px solid var(--og-neutral-line)!important;color:var(--og-neutral-text)!important}
+.app-shell:is(.theme-dark,.theme-light) .modal-actions>button:only-child:not(:disabled):hover{background:var(--og-neutral-hover)!important}
+/* Rejoin screen: Leave is soft red */
+.app-shell:is(.theme-dark,.theme-light) .rejoin-actions .danger{background:var(--og-stop-soft)!important}
+
+/* Admin row: Permissions is blue (manage) */
+.app-shell:is(.theme-dark,.theme-light) .admin-player-actions>button:last-child:not(.admin-leave-button):not(.admin-sitout-button){
+  background:var(--og-info-soft)!important;border:1px solid var(--og-info-line)!important;color:var(--og-info-text)!important;
+}
+.app-shell:is(.theme-dark,.theme-light) .admin-player-actions>button:last-child:not(.admin-leave-button):not(.admin-sitout-button):not(:disabled):hover{background:var(--og-info)!important;color:#fff!important}
+
+/* Selection toolbars (Create Group / Swap bar) */
+.app-shell:is(.theme-dark,.theme-light) :is(.admin-group-toolbar,.substitute-toolbar,.kotc-team-toolbar,.team-sub-invite-toolbar){background:var(--og-raised)!important;border-color:var(--og-border-strong)!important;color:var(--og-text)!important;box-shadow:var(--og-shadow)!important}
+
+/* Pencil */
+.app-shell:is(.theme-dark,.theme-light) .pencil{color:var(--og-faint)!important}
+.app-shell:is(.theme-dark,.theme-light) .pencil:hover{color:var(--og-text)!important;background:var(--og-surface-2)!important;box-shadow:none!important}
+
+/* Tutorial focus ring */
+.app-shell:is(.theme-dark,.theme-light) .tutorial-focus{box-shadow:0 0 0 3px var(--og-brand-ring),0 0 24px var(--og-brand-soft)!important}
+
+/* Countdown boxes: amber (time is running) */
+.app-shell:is(.theme-dark,.theme-light) :is(.return-countdown,.rejoin-countdown){background:var(--og-hold-soft)!important;border-color:var(--og-hold-line)!important;box-shadow:none!important}
+.app-shell:is(.theme-dark,.theme-light) :is(.return-countdown,.rejoin-countdown) span{color:var(--og-muted)!important}
+/* Drawers sit on the page color so their cards stand out */
+.app-shell:is(.theme-dark,.theme-light) .drawer-card{background:var(--og-bg)!important;border-color:var(--og-border)!important}
+/* "Change" (facility) is a manage link: blue */
+.app-shell:is(.theme-dark,.theme-light) .facility-heading-label button,
+.app-shell:is(.theme-dark,.theme-light) .selected-facility button{color:var(--og-info-text)!important}
+/* Theme switch visible on both backgrounds */
+.app-shell:is(.theme-dark,.theme-light) .theme-switch{background:var(--og-surface)!important;border:1px solid var(--og-border-strong)!important;border-radius:999px}
+/* Tutorial: Back goes back (red), Next continues (green) */
+.app-shell:is(.theme-dark,.theme-light) .tutorial-actions .neutral{background:var(--og-stop-soft)!important;border:1px solid var(--og-stop-line)!important;color:var(--og-stop-text)!important}

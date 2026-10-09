@@ -7,6 +7,7 @@ import "./waitlist.css";
 import "./advanced.css";
 import "./icon-fixes.css";
 import "./palette.css";
+import "./makeover.css";
 
 export default function Home() {
   useEffect(() => {

@@ -1,0 +1,163 @@
+/* ==========================================================================
+   OpenGym makeover (experiment) — the full new look, built on palette.css.
+   Athcora DNA: Sora display type, DM Sans text, coral gradient pills,
+   hairline navy cards, a gradient strip on hero cards.
+   To go back to the original look, remove the palette.css and makeover.css
+   imports from app/page.tsx and app/g/[slug]/page.tsx.
+   ========================================================================== */
+@font-face{font-family:"Sora";src:url("/fonts/sora-var.woff2") format("woff2");font-weight:100 800;font-display:swap}
+@font-face{font-family:"DM Sans";src:url("/fonts/dm-sans-var.woff2") format("woff2");font-weight:100 1000;font-display:swap}
+
+.app-shell:is(.theme-dark,.theme-light){
+  --og-font-display:"Sora",ui-sans-serif,system-ui,sans-serif;
+  --og-font-text:"DM Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --og-r-sm:10px;--og-r-md:14px;--og-r-lg:20px;--og-r-xl:24px;
+  font-family:var(--og-font-text)!important;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+  font-feature-settings:"ss01","cv11";
+  letter-spacing:-.005em;
+}
+.app-shell:is(.theme-dark,.theme-light) :is(button,input,select,textarea){font-family:var(--og-font-text)!important;letter-spacing:-.005em}
+
+/* ---------- Type ---------- */
+.app-shell:is(.theme-dark,.theme-light) :is(h1,h2,h3,.logo strong,.drawer-card h2,.modal h2,.queue-card h2,.king-court-title h2){font-family:var(--og-font-display)!important}
+.app-shell:is(.theme-dark,.theme-light) h1{font-weight:800!important;letter-spacing:-.045em!important;line-height:1.02!important}
+.app-shell:is(.theme-dark,.theme-light) h2{font-weight:700!important;letter-spacing:-.03em!important}
+.app-shell:is(.theme-dark,.theme-light) :is(.kicker,.onboarding-kicker,.field-label,.court-count-control label,.my-actions>span,.host-actions-title){
+  font-family:var(--og-font-text)!important;font-weight:700!important;font-size:.7rem!important;letter-spacing:.16em!important;text-transform:uppercase}
+.app-shell:is(.theme-dark,.theme-light) .kicker{color:var(--og-brand)!important}
+
+/* ---------- Brand mark: coral orb with volleyball seams ---------- */
+.app-shell:is(.theme-dark,.theme-light) .logo>span,.app-shell:is(.theme-dark,.theme-light) .modal-mark{
+  position:relative;display:grid;place-items:center;overflow:hidden;
+  width:36px!important;height:36px!important;border-radius:50%!important;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='1.5 1.5 21 21' fill='none' stroke='white' stroke-opacity='.92' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11.1 7.1a16.55 16.55 0 0 1 10.9 4'/%3E%3Cpath d='M12 12a12.6 12.6 0 0 1-8.7 5'/%3E%3Cpath d='M16.8 13.6a16.55 16.55 0 0 1-9 7.5'/%3E%3Cpath d='M20.7 17a12.8 12.8 0 0 0-8.7-5 13.3 13.3 0 0 1 0-10'/%3E%3Cpath d='M6.3 3.8a16.55 16.55 0 0 0 1.9 11.5'/%3E%3C/svg%3E") center/100% 100% no-repeat,
+    linear-gradient(135deg,#ff7a45,#ff5c7a)!important;
+  box-shadow:0 6px 18px rgba(255,92,122,.32)!important;
+  color:transparent!important;font-size:0!important;
+}
+.app-shell:is(.theme-dark,.theme-light) .logo>span img{display:none!important}
+.app-shell:is(.theme-dark,.theme-light) .logo{gap:11px!important;align-items:center!important}
+.app-shell:is(.theme-dark,.theme-light) .logo strong{font-size:1.2rem!important;font-weight:700!important;letter-spacing:-.03em!important;color:var(--og-text)!important}
+.app-shell:is(.theme-dark,.theme-light) .logo small{font-family:var(--og-font-text)!important;font-size:.62rem!important;font-weight:700!important;letter-spacing:.18em!important;color:var(--og-muted)!important}
+.app-shell:is(.theme-dark,.theme-light) .logo.compact>span{width:32px!important;height:32px!important}
+.app-shell:is(.theme-dark,.theme-light) .modal-mark{width:40px!important;height:40px!important}
+
+/* ---------- Top bar ---------- */
+.app-shell:is(.theme-dark,.theme-light) .topbar{padding:2px 0}
+.app-shell:is(.theme-dark,.theme-light) :is(.icon-button,.language-picker){
+  border-radius:999px!important;min-height:38px;padding:0 15px!important;
+  font-size:.82rem!important;font-weight:600!important;display:inline-flex;align-items:center;gap:6px;
+  background:transparent!important;border:1px solid var(--og-border-strong)!important;box-shadow:none!important}
+.app-shell:is(.theme-dark,.theme-light) .icon-button:hover{background:var(--og-surface)!important}
+.app-shell:is(.theme-dark,.theme-light) .language-symbol b{font-weight:700!important;letter-spacing:.06em!important}
+.app-shell:is(.theme-dark,.theme-light) .theme-switch{border-radius:999px!important;padding:3px!important;background:var(--og-surface)!important;border:1px solid var(--og-border-strong)!important;box-shadow:var(--og-shadow)!important}
+.app-shell:is(.theme-dark,.theme-light) .theme-track{background:transparent!important;border:0!important}
+.app-shell:is(.theme-dark,.theme-light) .theme-thumb{background:var(--og-brand-grad)!important;color:#fff!important;box-shadow:0 2px 8px rgba(255,92,122,.4)!important}
+
+/* ---------- Game heading ---------- */
+.app-shell:is(.theme-dark,.theme-light) .game-heading{align-items:flex-end!important;margin-bottom:22px!important}
+.app-shell:is(.theme-dark,.theme-light) .game-heading h1{font-size:clamp(2.6rem,7vw,3.6rem)!important;margin:8px 0 0!important}
+.app-shell:is(.theme-dark,.theme-light) .facility-heading-label{font-size:.82rem!important;gap:.4rem!important}
+.app-shell:is(.theme-dark,.theme-light) .facility-heading-label span{font-weight:500!important;opacity:1!important}
+.app-shell:is(.theme-dark,.theme-light) .facility-heading-label strong{font-weight:700!important}
+.app-shell:is(.theme-dark,.theme-light) .facility-heading-label button{font-weight:700!important;font-size:.78rem!important;padding:2px 4px!important}
+.app-shell:is(.theme-dark,.theme-light) .live-pill{border-radius:999px!important;padding:6px 12px 6px 10px!important;font-size:.72rem!important;font-weight:700!important;letter-spacing:.06em!important;text-transform:uppercase}
+.app-shell:is(.theme-dark,.theme-light) .live-pill i{width:6px!important;height:6px!important;animation:og-pulse 2s ease-in-out infinite}
+@keyframes og-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ---------- Cards ---------- */
+.app-shell:is(.theme-dark,.theme-light) :is(.queue-card,.king-team-card){border-radius:var(--og-r-lg)!important;border:1px solid var(--og-border)!important;overflow:hidden}
+.app-shell:is(.theme-dark,.theme-light) .queue-card>header{padding:16px 20px!important;min-height:58px;align-items:center!important}
+.app-shell:is(.theme-dark,.theme-light) .queue-card h2{font-size:1.02rem!important;font-weight:650!important;letter-spacing:-.02em!important}
+.app-shell:is(.theme-dark,.theme-light) .queue-card header>span{
+  font-size:.72rem!important;font-weight:600!important;color:var(--og-muted)!important;
+  padding:4px 10px;border-radius:999px;background:var(--og-surface-2);border:1px solid var(--og-border)}
+/* Hero cards get Athcora's gradient strip */
+.app-shell:is(.theme-dark,.theme-light) :is(.auth-card,.rejoin-card,.geofence-return-card,.onboarding-card){position:relative;overflow:hidden;border-radius:var(--og-r-xl)!important;border:1px solid var(--og-border)!important}
+.app-shell:is(.theme-dark,.theme-light) :is(.auth-card,.rejoin-card,.geofence-return-card,.onboarding-card)::before{
+  content:"";position:absolute;left:28px;right:28px;top:0;height:3px;border-radius:0 0 3px 3px;background:var(--og-brand-grad);opacity:.9}
+.app-shell:is(.theme-dark,.theme-light) .auth-card h1{font-size:clamp(2rem,6vw,2.6rem)!important;margin:16px 0 10px!important}
+.app-shell:is(.theme-dark,.theme-light) .auth-card p{font-size:.98rem!important;line-height:1.55!important}
+
+/* ---------- Rows ---------- */
+.app-shell:is(.theme-dark,.theme-light) .player-row{min-height:58px!important;padding:8px 18px!important}
+.app-shell:is(.theme-dark,.theme-light) .position{font-family:var(--og-font-display)!important;font-weight:600!important;font-size:.84rem!important;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.app-shell:is(.theme-dark,.theme-light) .player-name strong{font-weight:650!important;font-size:1rem!important;letter-spacing:-.015em!important}
+.app-shell:is(.theme-dark,.theme-light) .player-name small{font-size:.74rem!important;font-weight:500!important}
+.app-shell:is(.theme-dark,.theme-light) .you{font-family:var(--og-font-text)!important;font-weight:800!important;font-size:.62rem!important;letter-spacing:.14em!important;
+  padding:3px 7px;border-radius:999px;background:var(--og-brand-soft);border:1px solid var(--og-brand-ring)}
+.app-shell:is(.theme-dark,.theme-light) .pencil{font-size:.8rem!important}
+
+/* ---------- Buttons: shape and type ---------- */
+.app-shell:is(.theme-dark,.theme-light) button{font-weight:650!important;letter-spacing:-.005em!important}
+/* Primary coral pill */
+.app-shell:is(.theme-dark,.theme-light) :is(.next-game-tool,.court-next-button,.hero-button){border-radius:999px!important;min-height:52px!important;font-size:1rem!important;font-weight:700!important;letter-spacing:-.01em!important}
+/* Popup and player action buttons: pills */
+.app-shell:is(.theme-dark,.theme-light) :is(.modal-actions button,.my-actions button,.rejoin-actions button,.permission-actions button,.tutorial-actions button,.host-appointment-actions button){border-radius:999px!important;min-height:48px!important;font-size:.95rem!important;font-weight:700!important}
+/* Admin toolbar: crisp 12px tiles */
+.app-shell:is(.theme-dark,.theme-light) .admin-tools :is(button,select){border-radius:12px!important;min-height:44px!important;font-size:.88rem!important;font-weight:650!important}
+.app-shell:is(.theme-dark,.theme-light) .admin-tools .next-game-tool{border-radius:999px!important;min-height:52px!important;font-size:1rem!important}
+.app-shell:is(.theme-dark,.theme-light) .undo-redo-controls{border-radius:12px!important;padding:3px!important;gap:3px!important}
+.app-shell:is(.theme-dark,.theme-light) .undo-redo-controls button{border-radius:9px!important;min-height:36px!important}
+/* Row action chips */
+.app-shell:is(.theme-dark,.theme-light) :is(.admin-player-actions button,.group-button,.restrict-button,.admin-leave-button,.admin-sitout-button,.leave-own-group-button){
+  border-radius:999px!important;min-height:30px!important;padding:5px 12px!important;font-size:.74rem!important;font-weight:700!important;letter-spacing:0!important}
+/* History / past games link */
+.app-shell:is(.theme-dark,.theme-light) .history-button{border-radius:var(--og-r-md)!important;min-height:54px;padding:16px 20px!important;font-weight:650!important;font-size:.95rem!important}
+.app-shell:is(.theme-dark,.theme-light) .history-button span{color:var(--og-brand)!important}
+
+/* ---------- Inputs ---------- */
+.app-shell:is(.theme-dark,.theme-light) :is(input:not([type=checkbox]):not([type=radio]),select,.inline-name,.history-search){border-radius:12px!important;border-width:1px!important}
+.app-shell:is(.theme-dark,.theme-light) .auth-card input,.app-shell:is(.theme-dark,.theme-light) .add-player-card input{min-height:48px!important;padding:0 14px!important;font-size:1rem!important}
+.app-shell:is(.theme-dark,.theme-light) .court-count-control input{border-radius:12px!important;font-family:var(--og-font-display)!important;font-weight:700!important}
+.app-shell:is(.theme-dark,.theme-light) .court-count-steppers button{border-radius:8px!important}
+
+/* ---------- Popups ---------- */
+.app-shell:is(.theme-dark,.theme-light) .modal{border-radius:var(--og-r-xl)!important;padding:26px!important;border:1px solid var(--og-border)!important}
+.app-shell:is(.theme-dark,.theme-light) .modal h2{font-size:1.28rem!important;margin:18px 0 8px!important;line-height:1.2}
+.app-shell:is(.theme-dark,.theme-light) .modal p{font-size:.95rem!important;line-height:1.55!important}
+.app-shell:is(.theme-dark,.theme-light) .modal-actions{gap:10px!important;margin-top:24px!important}
+.app-shell:is(.theme-dark,.theme-light) :is(.modal-backdrop,.drawer){backdrop-filter:blur(10px) saturate(120%)!important}
+
+/* ---------- Drawers (History, Past games, Members) ---------- */
+.app-shell:is(.theme-dark,.theme-light) .drawer-card{border-radius:var(--og-r-xl)!important;padding:26px!important}
+.app-shell:is(.theme-dark,.theme-light) .drawer-card h2{font-size:1.9rem!important;font-weight:800!important;letter-spacing:-.04em!important}
+.app-shell:is(.theme-dark,.theme-light) .past-game{border-radius:var(--og-r-md)!important;border:1px solid var(--og-border)!important;box-shadow:none!important}
+.app-shell:is(.theme-dark,.theme-light) .back{font-weight:600!important;font-size:.85rem!important}
+
+/* ---------- Your actions ---------- */
+.app-shell:is(.theme-dark,.theme-light) .my-actions{margin:26px 0!important}
+.app-shell:is(.theme-dark,.theme-light) .my-actions>div{gap:10px!important}
+
+/* ---------- Countdowns ---------- */
+.app-shell:is(.theme-dark,.theme-light) :is(.rejoin-countdown,.return-countdown){border-radius:var(--og-r-md)!important;border-width:1px!important}
+.app-shell:is(.theme-dark,.theme-light) :is(.rejoin-countdown,.return-countdown) strong{font-family:var(--og-font-display)!important;font-weight:700!important;letter-spacing:-.04em!important;font-variant-numeric:tabular-nums}
+
+/* ---------- Selection bars ---------- */
+.app-shell:is(.theme-dark,.theme-light) :is(.admin-group-toolbar,.substitute-toolbar,.kotc-team-toolbar,.team-sub-invite-toolbar){border-radius:var(--og-r-lg)!important;border:1px solid var(--og-border-strong)!important}
+.app-shell:is(.theme-dark,.theme-light) :is(.group-done,.group-cancel){border-radius:999px!important;font-weight:700!important}
+
+/* ---------- Footer note ---------- */
+.app-shell:is(.theme-dark,.theme-light) .projection-note{font-size:.74rem!important;color:var(--og-faint)!important}
+
+/* ---------- Focus ---------- */
+.app-shell:is(.theme-dark,.theme-light) :is(button,a,select,input):focus-visible{outline:2px solid var(--og-brand)!important;outline-offset:2px}
+
+/* ---------- Refinements ---------- */
+.app-shell:is(.theme-dark,.theme-light) span.kicker.kicker{color:var(--og-brand)!important}
+.app-shell:is(.theme-dark,.theme-light) :is(input,select,textarea):focus-visible{outline:none!important}
+.app-shell:is(.theme-dark,.theme-light) .auth-card label{display:block;margin-top:18px!important}
+.app-shell:is(.theme-dark,.theme-light) .auth-card .field-label{display:block;margin-bottom:8px}
+.app-shell:is(.theme-dark,.theme-light) .facility-finder:has(input:placeholder-shown) .facility-results:has(>.empty)::before{border-color:var(--og-brand-soft)!important;border-top-color:var(--og-brand)!important}
+.app-shell:is(.theme-dark,.theme-light) .facility-results button{border-radius:var(--og-r-md)!important;border:1px solid var(--og-border)!important;background:var(--og-surface-2)!important;color:var(--og-text)!important}
+.app-shell:is(.theme-dark,.theme-light) .facility-results button:hover{border-color:var(--og-brand-ring)!important}
+.app-shell:is(.theme-dark,.theme-light) .facility-results small{color:var(--og-muted)!important}
+.app-shell:is(.theme-dark,.theme-light) .theme-switch{width:54px!important;height:30px!important}
+@media (max-width:620px){
+  .app-shell:is(.theme-dark,.theme-light){padding-top:max(58px,calc(env(safe-area-inset-top) + 46px))!important}
+  .app-shell:is(.theme-dark,.theme-light) .theme-switch{top:max(12px,env(safe-area-inset-top))!important;left:12px!important}
+  .app-shell:is(.theme-dark,.theme-light) .game-heading h1{font-size:2.5rem!important}
+  .app-shell:is(.theme-dark,.theme-light) .auth-card{padding:26px 22px!important}
+}

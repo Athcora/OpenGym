@@ -185,7 +185,7 @@
     color: #1c222b;
   }
 }
-.next-game-reversal-modal .modal-actions{flex-direction:row}
+
 .modal-auxiliary-action{display:block;width:auto;min-height:0;margin:14px auto 0;padding:2px 4px;border:0;background:transparent;color:#aeb3bf;font-size:.75rem;font-weight:500;opacity:.78;cursor:pointer}
 .modal-auxiliary-action:hover,.modal-auxiliary-action:focus-visible{color:#fff;opacity:1;text-decoration:underline;text-underline-offset:3px}
 .modal-auxiliary-action:disabled{cursor:not-allowed;opacity:.5}

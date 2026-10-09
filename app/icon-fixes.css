@@ -61,3 +61,14 @@
 /* "HOST ACTIONS" label: no empty 48px row under it. */
 .admin-tools.host-tools{grid-template-rows:auto;grid-auto-rows:minmax(48px,auto)}
 .admin-tools.host-tools>.host-actions-title{height:auto;min-height:0;align-self:end}
+
+/* Waitlist (New) court format row: breathing room below the card header line,
+   and on phones the format + team-count dropdowns stay on one line. The
+   selectors include .queue-card so they win over admin-player.css. */
+.queue-card .wl-court-rule{margin-top:12px}
+@media (max-width:620px){
+  .queue-card .wl-court-rule{margin:12px 12px 10px}
+  .queue-card .wl-court-rule .court-team-rule.wl-court-rule-controls{flex-wrap:wrap;column-gap:5px;row-gap:6px;font-size:.56rem;letter-spacing:.01em}
+  .queue-card .wl-court-rule .court-team-rule.wl-court-rule-controls>span{flex:0 0 auto;white-space:nowrap}
+  .queue-card .wl-court-rule .court-team-rule.wl-court-rule-controls select{flex:0 0 82px;width:82px;min-width:0;max-width:82px;min-height:30px;padding:4px 17px 4px 7px;font-size:.7rem;text-overflow:ellipsis;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%239197a3' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;background-size:8px 5px}
+}

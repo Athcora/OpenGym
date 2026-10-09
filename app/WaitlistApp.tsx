@@ -250,11 +250,6 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   },[screen,config.geofence_enabled]);
 
   useEffect(()=>{
-    const className='next-game-reversal-modal';
-    document.body.classList.toggle(className,notice?.confirm==='Reverse');
-    return()=>document.body.classList.remove(className);
-  },[notice?.title]);
-  useEffect(()=>{
     const commitWhenTappingOutside=(event:PointerEvent)=>{
       const input=courtCountInputRef.current;
       const target=event.target as Node|null;

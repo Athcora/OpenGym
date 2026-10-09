@@ -41,3 +41,11 @@
   .wl-court-rule .wl-court-rule-controls>span{flex:0 0 auto;flex-basis:auto;white-space:nowrap}
   .wl-court-rule .wl-court-rule-controls select{flex:0 1 auto;min-width:0;max-width:44%;min-height:30px;padding:4px 20px 4px 7px;font-size:.74rem;text-overflow:ellipsis}
 }
+
+/* Tutorial rejoin demo: Rejoin is now the right-hand button, so the arrow
+   points at the right half. */
+.tutorial-rejoin-arrow{margin-left:calc(min(calc((100% - 28px)/2),205px) - 7px);margin-right:7px}
+@media(min-width:700px){.tutorial-rejoin-arrow{margin-left:calc(min(calc((100% - 28px)/2),205px) - 9px);margin-right:9px}}
+
+/* Next game while your seat is provisional: visibly unavailable. */
+.next-game-control:not(.unavailable) .next:disabled{opacity:.6;filter:saturate(.35);cursor:not-allowed}

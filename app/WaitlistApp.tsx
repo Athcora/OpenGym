@@ -288,14 +288,18 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   const serverInactive=Boolean(!admin&&me&&!['current','waiting','sitout'].includes(me.status));
   ownPlayerIdRef.current=me?.id??ownPlayer?.id??null;
   const host=Boolean(meIsVisibleInQueue&&me?.is_host&&!admin); const operator=admin||host;
+  // Watch the server's host flag, not the on-screen host view: the view turns
+  // off while a host is deciding whether to rejoin, and turning back on must
+  // not look like a new appointment.
+  const hostFlag=Boolean(me?.is_host&&!admin);
   useEffect(()=>{
     if(!hostStatusReady){renderedHostStatus.current=null;return;}
     if(!user||admin||!me){renderedHostStatus.current=null;return;}
-    const previous=renderedHostStatus.current;renderedHostStatus.current=host;
-    if(!host)hostAppointmentShown.current=false;
+    const previous=renderedHostStatus.current;renderedHostStatus.current=hostFlag;
+    if(!hostFlag)hostAppointmentShown.current=false;
     // Show the appointment once per appointment, never again during the host tutorial.
-    if(previous===false&&host&&!hostAppointmentShown.current){hostAppointmentShown.current=true;hostAppointmentActive.current=true;setHostAppointmentNotice(HOST_APPOINTED_MESSAGE);}
-  },[user?.id,admin,me?.id,host,hostStatusReady]);
+    if(previous===false&&hostFlag&&!hostAppointmentShown.current){hostAppointmentShown.current=true;hostAppointmentActive.current=true;setHostAppointmentNotice(HOST_APPOINTED_MESSAGE);}
+  },[user?.id,admin,me?.id,hostFlag,hostStatusReady]);
   adminAccess.current=admin;
   activeStatusRef.current=activeMe?.status??null;waitlistModeRef.current=config.mode;ownPlayerRef.current=me;
   screenRef.current=screen;

@@ -12,7 +12,7 @@ test('both rejoin modes automatically remove an expired player and explain why',
 });
 
 test('the timeout dialog uses the requested message and a neutral OK dismissal',()=>{
-  assert.match(app,/title:'Rejoin time expired'/);
-  assert.match(app,/You did not rejoin in time, so you were removed from the waitlist\. If you want to rejoin, sign up again\./);
+  assert.match(app,/title:'Timed Out'/);
+  assert.match(app,/message:'You did not rejoin in time, so you were removed from the waitlist\.'/);
   assert.match(app,/cancelLabel:'OK'/);
 });

@@ -1084,7 +1084,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     ask(`Sit out ${player.display_name}?`,detail,'Sit out',async()=>{await rpc('admin_set_player_sitout',{p_player_id:player.id,p_skip_game:skippedGame})});
   }
   async function adminUnsit(player:Player){await rpc('admin_unsit_player',{p_player_id:player.id},false)}
-  function confirmAdminLeave(player:Player){ask(`Remove ${player.display_name}?`,`${player.display_name} will leave the current game or waitlist. The admin can undo this action.`,'Remove',async()=>{await rpc('admin_leave_player',{p_player_id:player.id},false)})}
+  function confirmAdminLeave(player:Player){ask(`Remove ${player.display_name}?`,`${player.display_name} will leave the current game or waitlist.${admin?' You can undo this with Undo.':' An admin can undo this.'}`,'Remove',async()=>{await rpc('admin_leave_player',{p_player_id:player.id},false)})}
   async function adminLogin(event:FormEvent){
     // A failed attempt is returned as {ok:false} (not an error) so the server can
     // record it; 5 failures lock that facility's admin sign-in for 15 minutes.
@@ -1190,7 +1190,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
     }
   }
   function startAdminGrouping(){
-    cancelSubstitute();setNotice({title:'Create a group',message:'Select between two and six players to become a team. Tap each player card, then choose Done.',onClose:()=>{setAdminGroupIds([]);setAdminGrouping(true);}});
+    cancelSubstitute();setNotice({title:'Create a group',message:`Select between two and six players to ${isTeamsMode(config.mode)?'become a team':'group together'}. Tap each player card, then choose Done.`,onClose:()=>{setAdminGroupIds([]);setAdminGrouping(true);}});
   }
   function cancelAdminGrouping(){setAdminGrouping(false);setAdminGroupIds([]);}
   function startAdminSubstitute(){cancelAdminGrouping();setNotice({title:'Swap players',message:'Choose exactly two players to swap positions. Each selected player will have a blue border.',onClose:()=>{setSubstituteIds([]);setAdminSubstituting(true);}});}
@@ -1198,7 +1198,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
   function previewAdminSubstitute(){
     if(substituteIds.length!==2){setNotice({title:'Choose two players',message:'Select exactly two players to swap positions.'});return;}
     const selected=substituteIds.map(id=>players.find(player=>player.id===id)).filter((player):player is Player=>Boolean(player));
-    ask('Swap these players?',`${selected[0].display_name} and ${selected[1].display_name} will permanently swap positions. Either player will leave their existing group.`,'Continue',async()=>{if(await rpc('admin_substitute_players',{p_first_id:selected[0].id,p_second_id:selected[1].id})){cancelSubstitute();}},'success','danger');
+    ask('Swap these players?',`${selected[0].display_name} and ${selected[1].display_name} will permanently swap positions.${selected.some(player=>player.group_id)?' Either player will leave their existing group.':''}`,'Continue',async()=>{if(await rpc('admin_substitute_players',{p_first_id:selected[0].id,p_second_id:selected[1].id})){cancelSubstitute();}},'success','danger');
   }
   function startPlayerSubstitute(){ask('Request a swap?','Swap sends another player a request to permanently exchange positions with you.','Continue',async()=>{setSubstituteIds([]);setPlayerSubstituting(true);},'success','danger');}
   function previewPlayerSubstitute(){
@@ -1785,7 +1785,7 @@ function TutorialDemo({mode,host=false}:{mode:Config['mode'];host?:boolean}){
  {host&&<button className="history-button your-history-button history-tool">Action History <span>→</span></button>}</div><div className="tutorial-demo-dimmer"/></section>
 }
 
-function PermissionsModal({player,admin,close,hostAction,restrictAction}:{player:Player;admin:boolean;close:()=>void;hostAction:()=>void;restrictAction:()=>void}){return <div className="modal-backdrop" role="presentation"><section className="modal permissions-modal" role="dialog" aria-modal="true"><span className="modal-mark">OG</span><h2>Permissions for {player.display_name}</h2><p>{admin?'Choose the permission change you want to make.':'You can appoint this player as a Session Host. A session can have up to two hosts.'}</p><div className="permission-actions"><button className="next" onClick={hostAction}>{player.is_host?'Remove Host':'Appoint as Host'}</button>{admin&&<button className="danger" onClick={restrictAction}>{player.restricted?'Unrestrict':'Restrict'}</button>}<button className="neutral" onClick={close}>Cancel</button></div></section></div>}
+function PermissionsModal({player,admin,close,hostAction,restrictAction}:{player:Player;admin:boolean;close:()=>void;hostAction:()=>void;restrictAction:()=>void}){return <div className="modal-backdrop" role="presentation"><section className="modal permissions-modal" role="dialog" aria-modal="true"><span className="modal-mark">OG</span><h2>Permissions for {player.display_name}</h2><p>{admin?'Choose the permission change you want to make.':'You can appoint this player as a Session Host. A session can have up to two hosts.'}</p><div className="permission-actions">{(player.is_host||player.user_id)&&<button className="next" onClick={hostAction}>{player.is_host?'Remove Host':'Appoint as Host'}</button>}{admin&&<button className="danger" onClick={restrictAction}>{player.restricted?'Unrestrict':'Restrict'}</button>}<button className="neutral" onClick={close}>Cancel</button></div></section></div>}
 
 function HostAppointmentModal({message,start}:{message:string;start:()=>void}){return <div className="modal-backdrop host-appointment-backdrop" role="presentation"><section className="modal" role="dialog" aria-modal="true"><span className="modal-mark">OG</span><h2>You are now a Session Host</h2><p>{message}</p><div className="modal-actions host-appointment-actions"><button className="next" onClick={start}>Host Tutorial</button></div></section></div>}
 

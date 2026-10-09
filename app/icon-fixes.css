@@ -19,3 +19,25 @@
   body.king-drag-holding .king-board,body.king-drag-holding .king-board *{cursor:grabbing;-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}
   body.mobile-admin-dragging .king-player-row{touch-action:none}
 }
+
+/* Edit-name pencil: sits centered in the gap between the position number and
+   the name, out of the flow, so every player's name lines up. */
+.player-row>.position{flex:0 0 40px;width:40px}
+.player-row .player-name{position:relative}
+.player-row .player-name>.pencil{position:absolute;left:-18px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;padding:0;border-radius:5px;font-size:.7rem;line-height:1}
+.player-row .player-name>.pencil:hover{transform:translateY(-50%)}
+
+@media (max-width:620px){
+  /* Admin / host row buttons: compact instead of stretching across the row. */
+  .player-row .admin-player-actions{width:auto;flex:0 0 calc(100% - 40px);margin:2px 0 2px 40px}
+  .player-row .admin-player-actions:not(:has(.restrict-button)){flex-basis:calc(50% - 20px)}
+  .player-row .admin-player-actions:not(:has(.restrict-button)){margin:0 0 0 auto;align-self:center}
+  .player-row:has(.restrict-button)>.player-name{flex:1 1 calc(100% - 40px)}
+  .player-row .admin-player-actions:has(.restrict-button){flex-basis:calc(78% - 31px)}
+  .player-row .admin-player-actions button{flex:1 1 0;min-width:0;padding:6px 4px;font-size:.6rem}
+
+  /* Waitlist (New) court format controls on one line. */
+  .wl-court-rule .wl-court-rule-controls{flex-wrap:nowrap;gap:5px;font-size:.58rem;letter-spacing:.02em}
+  .wl-court-rule .wl-court-rule-controls>span{flex:0 0 auto;flex-basis:auto;white-space:nowrap}
+  .wl-court-rule .wl-court-rule-controls select{flex:0 1 auto;min-width:0;max-width:44%;min-height:30px;padding:4px 20px 4px 7px;font-size:.74rem;text-overflow:ellipsis}
+}

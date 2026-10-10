@@ -161,3 +161,36 @@
   .app-shell:is(.theme-dark,.theme-light) .game-heading h1{font-size:2.5rem!important}
   .app-shell:is(.theme-dark,.theme-light) .auth-card{padding:26px 22px!important}
 }
+
+/* ---------- Round 2 fixes ---------- */
+/* Your actions: Swap keeps its size when Next game shows a note under it */
+.app-shell:is(.theme-dark,.theme-light) .my-actions>div>button{align-self:start}
+/* Light/dark switch stays at the top-left of the page (doesn't follow scroll) */
+.app-shell:is(.theme-dark,.theme-light){position:relative}
+.app-shell:is(.theme-dark,.theme-light) .theme-switch{
+  position:absolute!important;width:58px!important;height:32px!important;padding:0!important;
+  background:transparent!important;border:0!important;box-shadow:none!important;border-radius:999px!important}
+.app-shell:is(.theme-dark,.theme-light) .theme-track{
+  width:58px!important;height:32px!important;box-sizing:border-box;
+  background:var(--og-surface)!important;border:1px solid var(--og-border-strong)!important;box-shadow:var(--og-shadow)!important}
+/* Top-right buttons: each fits its own label */
+.app-shell:is(.theme-dark,.theme-light) .top-actions{align-items:flex-end!important}
+.app-shell:is(.theme-dark,.theme-light) .top-actions>.icon-button{width:auto!important;padding:0 16px!important;white-space:nowrap}
+/* Language pill: even padding, a proper chevron */
+.app-shell:is(.theme-dark,.theme-light) .language-picker{width:auto!important;min-width:0!important;padding:0 12px 0 11px!important;gap:0!important}
+.app-shell:is(.theme-dark,.theme-light) .language-symbol{gap:5px!important}
+.app-shell:is(.theme-dark,.theme-light) .language-symbol b{font-size:.64rem!important}
+.app-shell:is(.theme-dark,.theme-light) .language-picker::after{
+  content:""!important;width:9px;height:6px;margin-left:8px!important;flex:0 0 auto;
+  background:var(--og-muted);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat}
+/* Admin row chips always fit their text */
+.app-shell:is(.theme-dark,.theme-light) .admin-player-actions button{white-space:nowrap;overflow:visible!important;text-overflow:clip!important}
+@media (max-width:620px){
+  .app-shell:is(.theme-dark,.theme-light) .player-row .admin-player-actions{gap:5px!important}
+  .app-shell:is(.theme-dark,.theme-light) .player-row .admin-player-actions button{flex:1 1 auto!important;min-width:max-content!important;padding:6px 9px!important;font-size:.68rem!important}
+}
+/* Group Up after sending: "Request sent ✓" */
+.app-shell:is(.theme-dark,.theme-light) .group-button.request-sent,
+.app-shell:is(.theme-dark,.theme-light) .group-button.request-sent:disabled{
+  background:var(--og-go-soft)!important;border:1px solid var(--og-go-line)!important;color:var(--og-go-text)!important;opacity:1!important;cursor:default;filter:none!important}

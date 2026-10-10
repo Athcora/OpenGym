@@ -11,8 +11,8 @@ const queue = app.match(/function QueueCard[\s\S]*?\r?\n}\r?\nfunction teamLabel
 test('Teams keeps the source row mounted and gives it the same pointer ownership as Regular/Rejoin', () => {
   assert.match(teamCard, /const members=team\.members;/);
   assert.match(teamCard, /\$\{dragging===item\?\.id\?'dragging':''\}/);
-  assert.match(teamCard, /onPointerMove=\{event=>\{if\(item&&item\.status!=='rejoin'&&operator\)_moveDrag\(event\)\}\}/);
-  assert.match(teamCard, /onPointerUp=\{event=>\{if\(item&&item\.status!=='rejoin'&&operator\)_moveDrag\(event\)\}\}/);
+  assert.match(teamCard, /onPointerMove=\{event=>\{if\(item&&item\.status!=='rejoin'&&admin\)_moveDrag\(event\)\}\}/);
+  assert.match(teamCard, /onPointerUp=\{event=>\{if\(item&&item\.status!=='rejoin'&&admin\)_moveDrag\(event\)\}\}/);
   assert.match(king, /row\.setPointerCapture\(state\.pointerId\)/);
   assert.match(king, /document\.addEventListener\('touchmove',preventNativeTouchScroll,\{passive:false\}\)/);
   assert.match(queue, /row\.setPointerCapture\(e\.pointerId\)/);

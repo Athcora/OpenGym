@@ -113,6 +113,19 @@ test('the drop slot is measured from the rows themselves, not from the card head
 });
 
 test('a press that never becomes a drag does not leave other courts hidden',()=>{
-  assert.match(app,/const prepareDesktopDrag=\(event:PointerEvent\)=>\{if\(document\.body\.classList\.contains\('admin-group-selecting'\)/);
+  // Courts are hidden only once a press has actually become a drag.
+  assert.match(app,/const activateDesktopDrag=[^\n]*hideOtherCourtsForDrag\(row\)/);
+  assert.doesNotMatch(app,/const prepareDesktopDrag=/);
   assert.match(app,/useEffect\(\(\)=>\{if\(dragging\)return;document\.querySelectorAll\('\.court-section\.drag-hidden-court'\)/);
+});
+
+test('only admins can drag players, and a click never becomes a drag',()=>{
+  assert.match(app,/useEffect\(\(\)=>\{if\(!admin\)return;const trackMouse=/);
+  assert.match(app,/useEffect\(\(\)=>\{if\(!admin\)return;const trackDrag=/);
+  assert.match(app,/onPointerDown=\{e=>\{if\(!admin\|\|e\.pointerType==='mouse'/);
+  assert.match(app,/const DESKTOP_DRAG_THRESHOLD=6;/);
+  assert.match(app,/>=DESKTOP_DRAG_THRESHOLD\)activateDesktopDrag\(/);
+  // Shared drag state so the drop finishes even when the row changes lists.
+  assert.match(app,/const mobileDrag=sharedQueueDrag;/);
+  assert.match(app,/row\.addEventListener\('touchmove',preventNativeTouchScroll,\{passive:false\}\)/);
 });

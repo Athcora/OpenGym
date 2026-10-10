@@ -194,3 +194,30 @@
 .app-shell:is(.theme-dark,.theme-light) .player-row .group-button.request-sent,
 .app-shell:is(.theme-dark,.theme-light) .player-row .group-button.request-sent:hover{
   background:var(--og-go-soft)!important;border:1px solid var(--og-go-line)!important;color:var(--og-go-text)!important;opacity:1!important;cursor:pointer;filter:none!important;box-shadow:none!important}
+
+/* ---------- Tutorials follow light / dark mode ---------- */
+.app-shell:is(.theme-dark,.theme-light) .tutorial-mode-demo{
+  background:
+    radial-gradient(900px 520px at -8% -12%,var(--og-bg-glow-1),transparent 62%),
+    radial-gradient(800px 600px at 108% 108%,var(--og-bg-glow-2),transparent 60%),
+    var(--og-bg)!important;
+  color:var(--og-text)!important}
+.app-shell.theme-dark .tutorial-demo-dimmer{background:rgba(5,8,15,.55)!important}
+.app-shell.theme-light .tutorial-demo-dimmer{background:rgba(30,38,54,.28)!important;backdrop-filter:blur(1px)!important}
+.app-shell.theme-dark .tutorial-scrim{background:rgba(5,8,15,.6)!important}
+.app-shell.theme-light .tutorial-scrim{background:rgba(30,38,54,.32)!important}
+.app-shell:is(.theme-dark,.theme-light) :is(.tutorial-coach,.onboarding-card,.tutorial-rejoin-demo){
+  background:var(--og-raised)!important;border:1px solid var(--og-border)!important;color:var(--og-text)!important;
+  box-shadow:var(--og-shadow)!important;border-radius:var(--og-r-xl)!important}
+.app-shell:is(.theme-dark,.theme-light) :is(.tutorial-coach,.onboarding-card,.tutorial-rejoin-demo) p{color:var(--og-muted)!important}
+.app-shell:is(.theme-dark,.theme-light) .tutorial-coach h2{font-size:1.3rem!important}
+.app-shell:is(.theme-dark,.theme-light) .tutorial-progress{color:var(--og-muted)!important;font-weight:700!important;letter-spacing:.14em!important}
+.app-shell:is(.theme-dark,.theme-light) .tutorial-progress button{color:var(--og-brand)!important;font-weight:700!important;letter-spacing:0!important}
+.app-shell:is(.theme-dark,.theme-light) .onboarding-kicker{color:var(--og-brand)!important}
+.app-shell:is(.theme-dark,.theme-light) .tutorial-rejoin-demo .kicker{color:var(--og-brand)!important}
+/* Highlight rings: coral, readable on both backgrounds */
+.app-shell:is(.theme-dark,.theme-light) :is(.tutorial-focus,.tutorial-rejoin-demo .tutorial-rejoin-highlight){
+  box-shadow:0 0 0 3px var(--og-brand),0 0 0 9px var(--og-brand-soft),var(--og-shadow)!important}
+.app-shell:is(.theme-dark,.theme-light) .host-tutorial-focus{
+  outline:3px solid var(--og-brand)!important;outline-offset:4px;box-shadow:0 0 0 9px var(--og-brand-soft)!important}
+.app-shell:is(.theme-dark,.theme-light) .tutorial-rejoin-arrow{color:var(--og-brand)!important}

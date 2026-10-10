@@ -683,7 +683,7 @@ export default function App({initialFacilitySlug}:{initialFacilitySlug?:string}=
       try{
         if(!await ensureFacilityContext())return;
         const {data,error}=await supabase.rpc('reverse_past_game_guarded',{p_game_id:game.id,p_facility_id:facilityRef.current?.id});
-        if(error){setNotice({title:'Could not reverse the game',message:error.message});return;}
+        if(error){setNotice({title:'Could not reverse the game',message:error.message});await refresh();await loadPastGames();return;}
         await broadcastQueueRefresh();await refresh();await loadPastGames();
         setNotice({title:'Game reversed',message:data?.message??'The previous lineup was restored.',cancelLabel:'OK'});
       }finally{setBusy(false);}

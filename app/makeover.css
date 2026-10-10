@@ -191,6 +191,6 @@
   .app-shell:is(.theme-dark,.theme-light) .player-row .admin-player-actions button{flex:1 1 auto!important;min-width:max-content!important;padding:6px 9px!important;font-size:.68rem!important}
 }
 /* Group Up after sending: "Request sent ✓" */
-.app-shell:is(.theme-dark,.theme-light) .group-button.request-sent,
-.app-shell:is(.theme-dark,.theme-light) .group-button.request-sent:disabled{
-  background:var(--og-go-soft)!important;border:1px solid var(--og-go-line)!important;color:var(--og-go-text)!important;opacity:1!important;cursor:default;filter:none!important}
+.app-shell:is(.theme-dark,.theme-light) .player-row .group-button.request-sent,
+.app-shell:is(.theme-dark,.theme-light) .player-row .group-button.request-sent:hover{
+  background:var(--og-go-soft)!important;border:1px solid var(--og-go-line)!important;color:var(--og-go-text)!important;opacity:1!important;cursor:pointer;filter:none!important;box-shadow:none!important}

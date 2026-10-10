@@ -244,3 +244,5 @@
 .app-shell:is(.theme-dark,.theme-light) .topbar{min-height:64px!important}
 .app-shell:is(.theme-dark,.theme-light) .topbar:has(.top-actions>.icon-button+.icon-button){min-height:108px!important}
 @media (max-width:620px){.app-shell:is(.theme-dark,.theme-light) .topbar>.top-actions{right:12px!important}}
+/* Signed in but not on the waitlist: one full-width Join button */
+.app-shell:is(.theme-dark,.theme-light) .join-actions>div{grid-template-columns:1fr!important}

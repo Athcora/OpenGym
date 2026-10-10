@@ -221,3 +221,26 @@
 .app-shell:is(.theme-dark,.theme-light) .host-tutorial-focus{
   outline:3px solid var(--og-brand)!important;outline-offset:4px;box-shadow:0 0 0 9px var(--og-brand-soft)!important}
 .app-shell:is(.theme-dark,.theme-light) .tutorial-rejoin-arrow{color:var(--og-brand)!important}
+
+/* ---------- Header: volleyball mark sits under the light/dark switch ---------- */
+.app-shell:is(.theme-dark,.theme-light) .topbar{position:static!important;padding-left:0!important;min-height:92px;align-items:flex-start!important}
+.app-shell:is(.theme-dark,.theme-light) .topbar>.logo{
+  position:absolute!important;top:calc(max(12px,env(safe-area-inset-top)) + 44px)!important;left:27px!important;margin:0!important;z-index:2}
+.app-shell:is(.theme-dark,.theme-light) .topbar>.logo>div{display:none!important}
+.app-shell:is(.theme-dark,.theme-light) .topbar>.logo>span{width:32px!important;height:32px!important}
+@media (max-width:620px){
+  .app-shell:is(.theme-dark,.theme-light) .theme-switch{left:12px!important}
+  .app-shell:is(.theme-dark,.theme-light) .topbar>.logo{left:25px!important}
+}
+/* Top right: Log out first, language under it (Enable alerts above both when shown) */
+.app-shell:is(.theme-dark,.theme-light) .topbar>.top-actions{margin-left:auto!important;flex-direction:column!important;align-items:flex-end!important}
+
+/* Light/dark switch icon: drawn sun and moon, exactly centered */
+.app-shell:is(.theme-dark,.theme-light) .theme-thumb{font-size:0!important;color:transparent!important;line-height:0!important}
+.app-shell.theme-dark .theme-thumb{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M19.5 14.6A8 8 0 0 1 9.4 4.5a7.6 7.6 0 1 0 10.1 10.1z' fill='white'/%3E%3C/svg%3E") center/14px 14px no-repeat,var(--og-brand-grad)!important}
+.app-shell.theme-light .theme-thumb{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='4.2' fill='white' stroke='none'/%3E%3Cpath d='M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6'/%3E%3C/svg%3E") center/16px 16px no-repeat,var(--og-brand-grad)!important}
+/* Log out / language pinned to the page's top-right corner, mirroring the switch */
+.app-shell:is(.theme-dark,.theme-light) .topbar>.top-actions{position:absolute!important;top:max(12px,env(safe-area-inset-top))!important;right:14px!important;margin:0!important;z-index:2}
+.app-shell:is(.theme-dark,.theme-light) .topbar{min-height:64px!important}
+.app-shell:is(.theme-dark,.theme-light) .topbar:has(.top-actions>.icon-button+.icon-button){min-height:108px!important}
+@media (max-width:620px){.app-shell:is(.theme-dark,.theme-light) .topbar>.top-actions{right:12px!important}}

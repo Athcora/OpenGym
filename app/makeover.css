@@ -279,3 +279,15 @@ body:has(.app-shell.theme-light) .admin-drag-preview .position{color:#5b6678!imp
 .admin-drag-preview .admin-drag-preview-row{display:flex!important;flex-wrap:nowrap!important;align-items:center!important;gap:12px!important;min-height:56px!important;padding:8px 16px!important}
 .admin-drag-preview .admin-drag-preview-row .player-name{flex:1 1 auto!important;min-width:0}
 .admin-drag-preview .admin-drag-preview-row .position{flex:0 0 auto;width:auto!important;margin:0!important}
+
+/* Loading feedback: the tapped button spins in place (same size, same color);
+   a small pill takes over when the tapped button is gone or the wait is long. */
+@keyframes og-work-spin{to{transform:rotate(360deg)}}
+.app-shell:is(.theme-dark,.theme-light) button.is-working.is-working{position:relative!important;color:transparent!important;-webkit-text-fill-color:transparent!important;text-shadow:none!important;opacity:1!important;cursor:progress!important;pointer-events:none}
+.app-shell:is(.theme-dark,.theme-light) button.is-working.is-working *{visibility:hidden}
+.app-shell:is(.theme-dark,.theme-light) button.is-working.is-working::after{content:""!important;position:absolute!important;inset:0!important;margin:auto!important;width:1.05em!important;height:1.05em!important;border:2px solid var(--work-spinner,currentColor)!important;border-right-color:transparent!important;border-radius:50%!important;background:none!important;animation:og-work-spin .7s linear infinite!important;display:block!important;transform:none;opacity:.9}
+.app-shell .work-indicator{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:10000;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 32px);white-space:nowrap;padding:10px 16px;border-radius:999px;background:var(--og-surface,#121a29);color:var(--og-text,#f3f6fa);border:1px solid var(--og-border-strong,#33415b);box-shadow:var(--og-shadow,0 18px 50px rgba(0,0,0,.38));font-size:.9rem;font-weight:600;line-height:1.3;pointer-events:none;animation:og-work-in .18s ease-out}
+.app-shell .work-indicator .work-spinner{flex:0 0 auto;width:16px;height:16px;border:2px solid var(--og-brand,#ff5c7a);border-right-color:transparent;border-radius:50%;animation:og-work-spin .7s linear infinite}
+.app-shell .work-indicator.work-offline{border-color:#e5484d;color:var(--og-text,#f3f6fa)}
+@keyframes og-work-in{from{opacity:0;transform:translate(-50%,6px)}to{opacity:1;transform:translate(-50%,0)}}
+@media (prefers-reduced-motion:reduce){.app-shell button.is-working::after,.app-shell .work-indicator .work-spinner{animation-duration:1.6s!important}}
